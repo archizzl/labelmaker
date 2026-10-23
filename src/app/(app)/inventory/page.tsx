@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { BandFilter } from "@/components/band-filter";
 import { connection } from "next/server";
 import { ActionForm, SaveWhenChanged, SubmitButton } from "@/components/client";
+import { DisclosureRow } from "@/components/disclosure-row";
 import { Badge, Callout, Card, Disclosure, Empty, Field, PageHeader } from "@/components/ui";
 import { db, schema } from "@/db";
 import { isLow, MOVE_REASONS } from "@/lib/inventory";
@@ -193,27 +194,31 @@ function ItemTable({
                   .join(" · ") || "–"}
               </div>
               {i.notes && <p className="text-xs text-muted">{i.notes}</p>}
-              <div className="flex flex-wrap items-start gap-2 pt-1">
-                {canCount && (
-                  <Disclosure summary="Change count">
-                    <AdjustForm item={i} />
-                  </Disclosure>
-                )}
-                <Disclosure summary="History">
-                  <History moves={movesOf(i.id)} />
-                </Disclosure>
-                {canEdit && (
-                  <Disclosure summary="Edit">
-                    <ItemForm item={i} bands={bands} catalog={catalog} ownBandsOnly={ownBandsOnly} />
-                    <form action={archiveInventoryItem} className="mt-3">
-                      <input type="hidden" name="id" value={i.id} />
-                      <SubmitButton variant="ghost" size="sm" confirm={`Remove ${itemLabel(i)} from the inventory? Its history is kept.`}>
-                        Remove from inventory
-                      </SubmitButton>
-                    </form>
-                  </Disclosure>
-                )}
-              </div>
+              <DisclosureRow
+                className="pt-1"
+                panels={[
+                  ...(canCount ? [{ label: "Change count", content: <AdjustForm item={i} /> }] : []),
+                  { label: "History", content: <History moves={movesOf(i.id)} /> },
+                  ...(canEdit
+                    ? [
+                        {
+                          label: "Edit",
+                          content: (
+                            <>
+                              <ItemForm item={i} bands={bands} catalog={catalog} ownBandsOnly={ownBandsOnly} />
+                              <form action={archiveInventoryItem} className="mt-3">
+                                <input type="hidden" name="id" value={i.id} />
+                                <SubmitButton variant="ghost" size="sm" confirm={`Remove ${itemLabel(i)} from the inventory? Its history is kept.`}>
+                                  Remove from inventory
+                                </SubmitButton>
+                              </form>
+                            </>
+                          ),
+                        },
+                      ]
+                    : []),
+                ]}
+              />
             </div>
             <div className={`text-right ${photoOf ? "col-start-2 md:col-start-auto" : ""}`}>
               <div className={`text-2xl font-bold tabular-nums ${isLow(i) ? "text-warn" : i.onHand === 0 ? "text-muted" : ""}`}>{i.onHand}</div>
