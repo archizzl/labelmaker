@@ -1,9 +1,10 @@
 import { asc, eq } from "drizzle-orm";
 import { BandFilter } from "@/components/band-filter";
 import Link from "next/link";
+import { DisclosureRow } from "@/components/disclosure-row";
 import { connection } from "next/server";
 import { ActionForm, Fading, SaveWhenChanged, SubmitButton } from "@/components/client";
-import { Badge, buttonClass, Callout, Card, Disclosure, Empty, Field, PageHeader } from "@/components/ui";
+import { Badge, buttonClass, Callout, Card, Empty, Field, PageHeader } from "@/components/ui";
 import { db, schema } from "@/db";
 import { type MerchOrder, PICKUP_MESSAGE, pickList, readyToShip } from "@/lib/merch-orders";
 import { formatCents } from "@/lib/money";
@@ -245,93 +246,107 @@ function OrderList({
               ))}
             </ul>
             {o.note && <p className="rounded-sm bg-warn-bg px-2 py-1 text-sm">Note: {o.note}</p>}
-            <div className="flex flex-wrap items-start gap-2 pt-1">
-              <Link href={slipHref([o.paymentId])} className={buttonClass("secondary", "sm")}>
-                Packing slip
-              </Link>
-              <Disclosure summary="Transaction details">
-                <OrderDetails order={o} sales={sales ? (sales.get(o.paymentId) ?? []) : null} bandName={bandName} />
-              </Disclosure>
-              {!o.failed && canShip(o) && (
-                <Disclosure summary="Mark shipped">
-                  <ActionForm action={markOrderShipped} className="grid gap-3 sm:grid-cols-2">
-                    <input type="hidden" name="paymentId" value={o.paymentId} />
-                    <Field label="Carrier (optional)">
-                      <input name="carrier" list="carriers" placeholder="USPS" />
-                    </Field>
-                    <Field label="Tracking number (optional)">
-                      <input name="tracking" />
-                    </Field>
-                    <label className="flex items-center gap-2 text-sm sm:col-span-2">
-                      <input type="checkbox" name="notify" defaultChecked /> Email {o.buyer.name || "the buyer"} that it’s shipped
-                    </label>
-                    <Field label="Message (optional)" className="sm:col-span-2">
-                      <input name="message" placeholder="Thanks so much! Hope you love it." />
-                    </Field>
-                    <fieldset className="grid gap-3 border-t border-border pt-3 sm:col-span-2 sm:grid-cols-3">
-                      <legend className="pb-1 text-sm font-medium">
-                        Shipping costs <span className="font-normal text-muted">(optional, added to Receipts)</span>
-                      </legend>
-                      <Field label="Postage">
-                        <input name="postage" inputMode="decimal" placeholder="4.63" />
-                      </Field>
-                      <Field label="Packaging">
-                        <input name="packaging" inputMode="decimal" placeholder="0.85" />
-                      </Field>
-                      <Field label="Paid by">
-                        <select name="costPaidBy" defaultValue="label">
-                          <option value="label">The label</option>
-                          {o.bandIds.length === 1 && <option value="band_fund">{bandName.get(o.bandIds[0])}’s band fund</option>}
-                          <optgroup label="Someone (to pay back)">
-                            {people.map((p) => (
-                              <option key={p.id} value={`person:${p.id}`}>
-                                {p.name}
-                              </option>
-                            ))}
-                          </optgroup>
-                        </select>
-                      </Field>
-                      <Field label="Receipt (optional)" className="sm:col-span-3">
-                        <input type="file" name="receipt" accept="image/*,application/pdf" multiple className="text-sm" />
-                      </Field>
-                    </fieldset>
-                    <datalist id="carriers">
-                      {CARRIERS.map((c) => (
-                        <option key={c} value={c} />
-                      ))}
-                    </datalist>
-                    <div className="sm:col-span-2">
-                      <SubmitButton confirm={`Mark ${o.buyer.name || "this order"}’s order shipped on Bandcamp? If the email box is ticked, Bandcamp emails them.`}>
-                        Mark shipped on Bandcamp
-                      </SubmitButton>
-                    </div>
-                  </ActionForm>
-                </Disclosure>
-              )}
-              {!o.failed && canShip(o) && (
-                <Disclosure summary="Pickup">
-                  <ActionForm action={markOrderPickup} className="grid gap-3 sm:grid-cols-2">
-                    <input type="hidden" name="paymentId" value={o.paymentId} />
-                    {/* <p className="text-sm text-muted sm:col-span-2">
-                      For an order collected in person. It’s marked shipped on Bandcamp now (so it isn’t late), then waits under Waiting for
-                      pickup until you hand it over.
-                    </p> */}
-                    <label className="flex items-center gap-2 text-sm sm:col-span-2">
-                      <input type="checkbox" name="notify" defaultChecked /> Email {o.buyer.name || "the buyer"} that it’s ready
-                    </label>
-                    <Field label="Message to them" className="sm:col-span-2">
-                      <input name="message" defaultValue={PICKUP_MESSAGE} maxLength={1000} />
-                    </Field>
-                    <Field label="Note for you (optional)" className="sm:col-span-2">
-                      <input name="note" maxLength={500} />
-                    </Field>
-                    <div className="sm:col-span-2">
-                      <SubmitButton confirm={`Mark ${o.buyer.name || "this order"}’s order shipped on Bandcamp as an in-person pickup?`}>Mark as pickup</SubmitButton>
-                    </div>
-                  </ActionForm>
-                </Disclosure>
-              )}
-            </div>
+            <DisclosureRow
+              className="pt-1"
+              before={
+                <Link href={slipHref([o.paymentId])} className={buttonClass("secondary", "sm")}>
+                  Packing slip
+                </Link>
+              }
+              panels={[
+                {
+                  label: "Transaction details",
+                  content: (
+                    <OrderDetails order={o} sales={sales ? (sales.get(o.paymentId) ?? []) : null} bandName={bandName} />
+                  ),
+                },
+                ...(!o.failed && canShip(o)
+                  ? [
+                      {
+                        label: "Mark shipped",
+                        content: (
+                          <ActionForm action={markOrderShipped} className="grid gap-3 sm:grid-cols-2">
+                            <input type="hidden" name="paymentId" value={o.paymentId} />
+                            <Field label="Carrier (optional)">
+                              <input name="carrier" list="carriers" placeholder="USPS" />
+                            </Field>
+                            <Field label="Tracking number (optional)">
+                              <input name="tracking" />
+                            </Field>
+                            <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                              <input type="checkbox" name="notify" defaultChecked /> Email {o.buyer.name || "the buyer"} that it’s shipped
+                            </label>
+                            <Field label="Message (optional)" className="sm:col-span-2">
+                              <input name="message" placeholder="Thanks so much! Hope you love it." />
+                            </Field>
+                            <fieldset className="grid gap-3 border-t border-border pt-3 sm:col-span-2 sm:grid-cols-3">
+                              <legend className="pb-1 text-sm font-medium">
+                                Shipping costs <span className="font-normal text-muted">(optional, added to Receipts)</span>
+                              </legend>
+                              <Field label="Postage">
+                                <input name="postage" inputMode="decimal" placeholder="4.63" />
+                              </Field>
+                              <Field label="Packaging">
+                                <input name="packaging" inputMode="decimal" placeholder="0.85" />
+                              </Field>
+                              <Field label="Paid by">
+                                <select name="costPaidBy" defaultValue="label">
+                                  <option value="label">The label</option>
+                                  {o.bandIds.length === 1 && <option value="band_fund">{bandName.get(o.bandIds[0])}’s band fund</option>}
+                                  <optgroup label="Someone (to pay back)">
+                                    {people.map((p) => (
+                                      <option key={p.id} value={`person:${p.id}`}>
+                                        {p.name}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                </select>
+                              </Field>
+                              <Field label="Receipt (optional)" className="sm:col-span-3">
+                                <input type="file" name="receipt" accept="image/*,application/pdf" multiple className="text-sm" />
+                              </Field>
+                            </fieldset>
+                            <datalist id="carriers">
+                              {CARRIERS.map((c) => (
+                                <option key={c} value={c} />
+                              ))}
+                            </datalist>
+                            <div className="sm:col-span-2">
+                              <SubmitButton confirm={`Mark ${o.buyer.name || "this order"}’s order shipped on Bandcamp? If the email box is ticked, Bandcamp emails them.`}>
+                                Mark shipped on Bandcamp
+                              </SubmitButton>
+                            </div>
+                          </ActionForm>
+                        ),
+                      },
+                      {
+                        label: "Pickup",
+                        content: (
+                          <ActionForm action={markOrderPickup} className="grid gap-3 sm:grid-cols-2">
+                            <input type="hidden" name="paymentId" value={o.paymentId} />
+                            {/* <p className="text-sm text-muted sm:col-span-2">
+                              For an order collected in person. It’s marked shipped on Bandcamp now (so it isn’t late), then waits under Waiting for
+                              pickup until you hand it over.
+                            </p> */}
+                            <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                              <input type="checkbox" name="notify" defaultChecked /> Email {o.buyer.name || "the buyer"} that it’s ready
+                            </label>
+                            <Field label="Message to them" className="sm:col-span-2">
+                              <input name="message" defaultValue={PICKUP_MESSAGE} maxLength={1000} />
+                            </Field>
+                            <Field label="Note for you (optional)" className="sm:col-span-2">
+                              <input name="note" maxLength={500} />
+                            </Field>
+                            <div className="sm:col-span-2">
+                              <SubmitButton confirm={`Mark ${o.buyer.name || "this order"}’s order shipped on Bandcamp as an in-person pickup?`}>Mark as pickup</SubmitButton>
+                            </div>
+                          </ActionForm>
+                        ),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
           </div>
           <div className="text-sm">
             <address className="not-italic">

@@ -1,6 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { ActionForm, SaveWhenChanged, SubmitButton } from "@/components/client";
+import { DisclosureRow } from "@/components/disclosure-row";
 import { Card, Disclosure, Empty, Field } from "@/components/ui";
 import { db, schema } from "@/db";
 import { AREAS, type Area, normalizeBandAreas, normalizePermissions } from "@/lib/permissions";
@@ -44,17 +45,25 @@ export async function MemberTypesCard({ orgId }: { orgId: string }) {
                     <span className="font-medium">{t.name}</span>
                     <span className="text-xs text-muted">{holders.length ? holders.join(", ") : "nobody yet"}</span>
                   </div>
-                  <div className="mt-2 flex flex-wrap items-start gap-2">
-                    <Disclosure summary="Change">
-                      <MemberTypeForm id={t.id} name={t.name} permissions={permissions} bandAreas={bandAreas} />
-                    </Disclosure>
-                    <form action={deleteMemberType}>
-                      <input type="hidden" name="id" value={t.id} />
-                      <SubmitButton variant="ghost" size="sm" confirm={`Delete ${t.name}? Anyone with it goes back to seeing just their own earnings.`}>
-                        Delete
-                      </SubmitButton>
-                    </form>
-                  </div>
+                  <DisclosureRow
+                    className="mt-2"
+                    panels={[
+                      {
+                        label: "Change",
+                        content: (
+                          <MemberTypeForm id={t.id} name={t.name} permissions={permissions} bandAreas={bandAreas} />
+                        ),
+                      },
+                    ]}
+                    after={
+                      <form action={deleteMemberType}>
+                        <input type="hidden" name="id" value={t.id} />
+                        <SubmitButton variant="ghost" size="sm" confirm={`Delete ${t.name}? Anyone with it goes back to seeing just their own earnings.`}>
+                          Delete
+                        </SubmitButton>
+                      </form>
+                    }
+                  />
                 </li>
               );
             })}

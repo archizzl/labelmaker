@@ -2,6 +2,7 @@ import { deleteSplitRule } from "@/server/actions";
 import type { RuleWithShares } from "@/server/data";
 import { SubmitButton } from "./client";
 import { type PersonOption, SplitEditor } from "./split-editor";
+import { DisclosureRow } from "./disclosure-row";
 import { Badge, Disclosure } from "./ui";
 
 type Scope = {
@@ -75,25 +76,33 @@ export function SplitRules({
                   <SharesSummary shares={r.shares} people={people} />
                 )}
                 {!readOnly && (
-                <div className="mt-3 flex flex-wrap items-start gap-2">
-                  <Disclosure summary="Edit">
-                    <SplitEditor
-                      {...scope}
-                      ruleId={r.id}
-                      people={people}
-                      initial={r.shares}
-                      effectiveFrom={r.effectiveFrom}
-                      overridesCatalog={r.overridesCatalog}
-                      showOverride={showOverride}
-                    />
-                  </Disclosure>
-                  <form action={deleteSplitRule}>
-                    <input type="hidden" name="ruleId" value={r.id} />
-                    <SubmitButton variant="danger" size="sm" confirm="Delete this split?">
-                      Delete
-                    </SubmitButton>
-                  </form>
-                </div>
+                <DisclosureRow
+                  className="mt-3"
+                  panels={[
+                    {
+                      label: "Edit",
+                      content: (
+                        <SplitEditor
+                          {...scope}
+                          ruleId={r.id}
+                          people={people}
+                          initial={r.shares}
+                          effectiveFrom={r.effectiveFrom}
+                          overridesCatalog={r.overridesCatalog}
+                          showOverride={showOverride}
+                        />
+                      ),
+                    },
+                  ]}
+                  after={
+                    <form action={deleteSplitRule}>
+                      <input type="hidden" name="ruleId" value={r.id} />
+                      <SubmitButton variant="danger" size="sm" confirm="Delete this split?">
+                        Delete
+                      </SubmitButton>
+                    </form>
+                  }
+                />
                 )}
               </li>
             ))}

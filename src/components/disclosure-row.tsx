@@ -8,11 +8,23 @@ import { buttonClass } from "./ui";
  * others onto a new line, as separate Disclosures do (an open one is as wide as its panel). One
  * open at a time. Each panel sits in a <details>, so a form that closes its panel when saved still does.
  */
-export function DisclosureRow({ panels, className = "" }: { panels: { label: string; content: ReactNode }[]; className?: string }) {
+export function DisclosureRow({
+  panels,
+  before,
+  after,
+  className = "",
+}: {
+  panels: { label: string; content: ReactNode }[];
+  /** Other buttons in the row (a link, a delete button), before or after the panels' ones. */
+  before?: ReactNode;
+  after?: ReactNode;
+  className?: string;
+}) {
   const [open, setOpen] = useState<number | null>(null);
   return (
     <div className={className}>
       <div className="flex flex-wrap items-start gap-2">
+        {before}
         {panels.map((p, i) => (
           <button
             key={p.label}
@@ -24,6 +36,7 @@ export function DisclosureRow({ panels, className = "" }: { panels: { label: str
             {p.label}
           </button>
         ))}
+        {after}
       </div>
       {panels.map((p, i) => (
         <details key={p.label} open={open === i} onToggle={(e) => !e.currentTarget.open && open === i && setOpen(null)} className={open === i ? "" : "hidden"}>
