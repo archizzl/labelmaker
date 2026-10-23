@@ -91,7 +91,6 @@ function itemsFor(
 /** Pick which of your accounts (labels and bands) you're working in. */
 function AccountSwitcher({ account, accounts, photos }: { account: Account; accounts: Account[]; photos: Record<string, string> }) {
   const [open, setOpen] = useState(false);
-  const path = usePathname();
   const box = useRef<HTMLDivElement>(null);
   // Closes on a click anywhere else, or Escape.
   useEffect(() => {
@@ -129,7 +128,6 @@ function AccountSwitcher({ account, accounts, photos }: { account: Account; acco
       </button>
       {open && (
         <form action={switchAccount} className="absolute right-0 z-20 mt-1 max-h-[70vh] w-64 overflow-y-auto border border-border bg-surface py-1 shadow-lg" role="menu">
-          <input type="hidden" name="from" value={path} />
           {accounts.map((a) => (
             <button
               key={a.id}

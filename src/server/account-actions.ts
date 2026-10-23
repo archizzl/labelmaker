@@ -7,7 +7,6 @@ import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { slugify } from "@/lib/slug";
 import { auth } from "./auth";
-import { sectionAfterSwitch } from "@/lib/switch-section";
 import { accountContext, accountsFor, type Context, getSession, requireAdmin, VIEW_AS_COOKIE } from "./context";
 import { labelReachNote } from "./own-books";
 import { AREAS, type Area, normalizeBandAreas, normalizePermissions } from "@/lib/permissions";
@@ -175,17 +174,16 @@ export async function saveSetupMe(_: FormState, fd: FormData): Promise<FormState
   redirect(done);
 }
 
-/** Work in another of your groups, in the section you were in (`from`, the page you were on). */
+/** Work in another of your accounts. */
 export async function switchAccount(fd: FormData) {
   const session = await getSession();
   if (!session) redirect("/login");
   const orgId = str(fd, "orgId");
-  const target = (await accountsFor(session.user.id)).find((a) => a.id === orgId);
-  if (!target) throw new Error("You're not in that group.");
+  if (!(await accountsFor(session.user.id)).some((a) => a.id === orgId)) throw new Error("You're not in that group.");
   (await cookies()).delete(VIEW_AS_COOKIE);
   await auth.api.setActiveOrganization({ body: { organizationId: orgId }, headers: await headers() });
   revalidatePath("/", "layout");
-  redirect(sectionAfterSwitch(str(fd, "from"), target.kind));
+  redirect("/");
 }
 
 export async function saveAccountSettings(_: FormState, fd: FormData): Promise<FormState> {
