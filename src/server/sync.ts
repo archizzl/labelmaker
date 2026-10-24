@@ -20,6 +20,7 @@ import { normalizeText, routeSale, routingKey } from "@/lib/routing";
 import { allBands, BLOCKED_MESSAGE, createBandFor, fetchPage, findBandFor, findExistingRelease, hostOf, isBotChallenge, releasesToMatch, rememberLabelPhoto, upsertRelease } from "./bandcamp";
 import { API_SYNC_PREFIX, bandcampCredentials, salesReport } from "./bandcamp-api";
 import { emailFingerprint } from "./secrets";
+import { takeOnlineSales } from "./inventory";
 import { loadCatalog, reRouteAll } from "./data";
 import { alreadyInLabelBooks, labelReach, moveSalesToLabel } from "./own-books";
 
@@ -69,7 +70,7 @@ export async function saveSales(orgId: string, filename: string, parsed: ParseRe
       .values({ orgId, filename, rowCount: routed.length, addedCount: fresh.length, duplicateCount: routed.length - fresh.length })
       .returning({ id: imports.id });
     for (let i = 0; i < fresh.length; i += 500) {
-      await tx
+      const added = await tx
         .insert(sales)
         .values(
           fresh.slice(i, i + 500).map(({ sale: s, route }) => ({
@@ -96,7 +97,20 @@ export async function saveSales(orgId: string, filename: string, parsed: ParseRe
             buyerKey: buyerKeyOf(s.buyerEmail),
           })),
         )
-        .onConflictDoNothing();
+        .onConflictDoNothing()
+        .returning({
+          id: sales.id,
+          date: sales.date,
+          category: sales.category,
+          itemType: sales.itemType,
+          netCents: sales.netCents,
+          quantity: sales.quantity,
+          releaseId: sales.releaseId,
+          packageName: sales.packageName,
+          raw: sales.raw,
+        });
+      // Merch sold online comes off its stock.
+      await takeOnlineSales(tx, orgId, added);
     }
     // Sales imported before buyers were fingerprinted get theirs from this report.
     const known = routed.filter((r) => r.duplicate && r.sale.buyerEmail && buyerKeyOf(r.sale.buyerEmail));

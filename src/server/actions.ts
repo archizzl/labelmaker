@@ -20,6 +20,7 @@ import { requestCatalogSync } from "./catalog-requests";
 import { syncAccount, syncCatalog, UP_TO_DATE } from "./auto-sync";
 import { getContext, ownBooksOf, requireAccess, requireAdmin } from "./context";
 import { prepare, runSalesSync, saveSales } from "./sync";
+import { putBackStock } from "./inventory";
 import { computePayoutPeriod, reRouteAll, strandedSales } from "./data";
 import { type PayoutScope, payoutName } from "./period-view";
 import { markSeen } from "./nav-badges";
@@ -782,8 +783,14 @@ export async function syncWithBandcamp(_?: ActionState, fd?: FormData): Promise<
 }
 
 export async function deleteImport(fd: FormData) {
-  const { orgId } = await requireAccess("sales", "edit");
-  await db.delete(imports).where(and(eq(imports.orgId, orgId), eq(imports.id, int(fd, "id"))));
+  const { orgId, user } = await requireAccess("sales", "edit");
+  const id = int(fd, "id");
+  await db.transaction(async (tx) => {
+    // What its sales took off stock goes back.
+    const sold = await tx.select({ id: schema.sales.id }).from(schema.sales).where(and(eq(schema.sales.orgId, orgId), eq(schema.sales.importId, id)));
+    await putBackStock(tx, sold.map((s) => s.id), user.id);
+    await tx.delete(imports).where(and(eq(imports.orgId, orgId), eq(imports.id, id)));
+  });
   done();
 }
 

@@ -257,7 +257,8 @@ function AdjustForm({ item }: { item: Item }) {
   );
 }
 
-const REASON_LABEL = new Map<string, string>(MOVE_REASONS.map((r) => [r.key, r.label]));
+// (In the history, without the form's note in brackets: "Sold", "Recount".)
+const REASON_LABEL = new Map<string, string>(MOVE_REASONS.map((r) => [r.key, r.label.replace(/ \(.*\)$/, "")]));
 
 function History({ moves }: { moves: Move[] }) {
   if (!moves.length) return <p className="text-sm text-muted">No changes yet.</p>;

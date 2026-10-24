@@ -59,3 +59,33 @@ export function catalogCandidates(
   }
   return out;
 }
+
+type Tracked = { id: number; releaseId: number | null; packageId: number | null; option: string | null; sku: string | null; createdAt: string };
+export type OnlineSale = { date: string; category: string; itemType: string; netCents: number; releaseId: number | null; packageName: string; raw: Record<string, string> };
+
+/**
+ * The tracked item a sale from Bandcamp is stock of, if it's clearly one: by its SKU, or else by its
+ * catalog item, format and size or colour. Refunds don't count (what was refunded may not come
+ * back), and nor does anything sold before the item was tracked (its count already allows for it).
+ */
+export function stockForSale(sale: OnlineSale, items: Tracked[], packagesOf: (releaseId: number) => { bandcampId: number; title: string }[]): number | null {
+  if (sale.category !== "merch" || sale.netCents < 0 || sale.itemType.includes("refund")) return null;
+  const same = (a: string | null | undefined, b: string | null | undefined) => (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
+  const option = sale.raw.option ?? null;
+  const live = items.filter((i) => sale.date >= i.createdAt.slice(0, 10));
+  // Several sizes can share a SKU: then the size decides.
+  const pick = (found: Tracked[]) => (found.length > 1 ? found.filter((i) => same(i.option, option)) : found);
+  const sku = sale.raw.sku?.trim();
+  if (sku) {
+    const bySku = pick(live.filter((i) => i.sku && same(i.sku, sku)));
+    if (bySku.length === 1) return bySku[0].id;
+    if (bySku.length > 1) return null;
+  }
+  if (sale.releaseId === null) return null;
+  let found = live.filter((i) => i.releaseId === sale.releaseId);
+  const pkg = packagesOf(sale.releaseId).find((p) => same(p.title, sale.packageName));
+  if (pkg) found = found.filter((i) => i.packageId === null || i.packageId === pkg.bandcampId);
+  else if (new Set(found.map((i) => i.packageId)).size > 1) return null;
+  found = found.filter((i) => same(i.option, option));
+  return found.length === 1 ? found[0].id : null;
+}

@@ -9,7 +9,7 @@ import { parseCents } from "@/lib/money";
 import { plural } from "@/lib/plural";
 import { saleInPayout } from "./sales-browse";
 import { merchSources, saleAdder } from "./manual-sales";
-import { takeStock } from "./inventory";
+import { putBackStock, takeStock } from "./inventory";
 import { importNamed } from "./import-rows";
 import { onLabelSince } from "./own-books";
 
@@ -148,14 +148,9 @@ export async function deleteManualSale(_: ManualSaleState, fd: FormData): Promis
       : [id];
   for (const x of ids) if (await saleInPayout(sale.orgId, x)) return { error: ids.length > 1 ? "Part of it is in a payout already, so it stays." : "It’s part of a payout already, so it stays." };
   await db.transaction(async (tx) => {
-    for (const x of ids) {
-      // What it took off stock goes back.
-      const moves = await tx.select().from(schema.inventoryMoves).where(eq(schema.inventoryMoves.saleId, x));
-      for (const m of moves) {
-        await takeStock(tx, { id: m.itemId, orgId: m.orgId }, "other", -m.delta, { saleId: null, userId, note: "Back in stock: the sale was deleted" });
-      }
-      await tx.delete(schema.sales).where(and(eq(schema.sales.orgId, sale.orgId), eq(schema.sales.id, x)));
-    }
+    // What it took off stock goes back.
+    await putBackStock(tx, ids, userId);
+    for (const x of ids) await tx.delete(schema.sales).where(and(eq(schema.sales.orgId, sale.orgId), eq(schema.sales.id, x)));
   });
   revalidatePath("/", "layout");
   return { ok: "Deleted." };
