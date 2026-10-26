@@ -4,8 +4,15 @@ import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, schema } from "@/db";
-import { MANUAL_IMPORT, MANUAL_KINDS, MANUAL_SOURCE, MANUAL_VIA } from "@/lib/manual-sales";
-import { parseCents } from "@/lib/money";
+import {
+  MANUAL_IMPORT,
+  MANUAL_KINDS,
+  MANUAL_SOURCE,
+  MANUAL_VIA,
+  PAYMENT_METHODS,
+  SHOW_DETAILS,
+} from "@/lib/manual-sales";
+import { formatCents, parseCents } from "@/lib/money";
 import { plural } from "@/lib/plural";
 import { saleInPayout } from "./sales-browse";
 import { merchSources, saleAdder } from "./manual-sales";
@@ -17,8 +24,14 @@ export type ManualSaleState = { ok?: string; error?: string } | null;
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 
-/** Add a sale by hand (a show, merch sold in person): counted like any other sale, for the band chosen. */
-export async function addManualSale(_: ManualSaleState, fd: FormData): Promise<ManualSaleState> {
+/**
+ * Add a sale by hand (a show, merch sold in person): counted like any other sale, for the band
+ * chosen, unless its money was already shared out (cash, by default), when payouts leave it out.
+ */
+export async function addManualSale(
+  _: ManualSaleState,
+  fd: FormData,
+): Promise<ManualSaleState> {
   const adder = await saleAdder();
   if (!adder) return { error: "Only a band’s members can add its sales." };
   const { orgId, user, managedBy } = adder.ctx;
@@ -31,51 +44,124 @@ export async function addManualSale(_: ManualSaleState, fd: FormData): Promise<M
   const kind = MANUAL_KINDS.find((k) => k.value === str(fd, "kind"));
   if (!kind) return { error: "Choose what it was." };
   const currency = (str(fd, "currency") || "USD").toUpperCase().slice(0, 3);
+  const paidWith = PAYMENT_METHODS.find((m) => m === str(fd, "paidWith"));
+  if (!paidWith) return { error: "Choose how it was paid." };
+  const outsidePayouts = str(fd, "outsidePayouts")
+    ? str(fd, "outsidePayouts") === "1"
+    : paidWith === "Cash";
 
   // What was sold: merch is a line per item sold (from the catalog, or "something else"); a show
-  // or anything else is one line.
-  type Line = { itemName: string; format: string; release: { books: string; id: number } | null; netCents: number; quantity: number; stock?: { id: number; orgId: string } | null };
+  // or anything else is one line (a show's details, any given, kept with it).
+  const details: Record<string, string> = {};
+  type Line = {
+    itemName: string;
+    format: string;
+    release: { books: string; id: number } | null;
+    netCents: number;
+    quantity: number;
+    stock?: { id: number; orgId: string } | null;
+  };
   const lines: Line[] = [];
   if (kind.value === "merch") {
     const sold = [...fd.keys()]
       .filter((k) => k.startsWith("sold:"))
-      .map((k) => ({ ref: k.slice("sold:".length), quantity: Math.round(Number(str(fd, k)) || 0) }))
+      .map((k) => ({
+        ref: k.slice("sold:".length),
+        quantity: Math.round(Number(str(fd, k)) || 0),
+      }))
       .filter((x) => x.quantity > 0);
-    const entries = await merchSources({ orgId, managed: managedBy ? { labelOrgId: managedBy.labelOrgId, bandId: managedBy.bandId } : null, onlyBands: adder.onlyBands });
+    const entries = await merchSources({
+      orgId,
+      managed: managedBy
+        ? { labelOrgId: managedBy.labelOrgId, bandId: managedBy.bandId }
+        : null,
+      onlyBands: adder.onlyBands,
+    });
     for (const { ref, quantity } of sold) {
       const each = parseCents(str(fd, `each:${ref}`));
       if (ref === "other") {
         const itemName = str(fd, "name:other").slice(0, 200);
         if (!itemName) return { error: "Say what the something else was." };
         if (!each) return { error: `Enter the price of ${itemName}.` };
-        lines.push({ itemName, format: "", release: null, netCents: each * quantity, quantity });
+        lines.push({
+          itemName,
+          format: "",
+          release: null,
+          netCents: each * quantity,
+          quantity,
+        });
         continue;
       }
       // (Its own books' items must be the band's; the label's are all for the band.)
       const entry = entries.find((e) => e.value === ref);
-      if (!entry || (entry.bandId !== null && entry.bandId !== bandId)) return { error: "That item isn’t the band’s." };
-      if (!each) return { error: `Enter the price of ${entry.format ? `${entry.itemName}, ${entry.format}` : entry.itemName}.` };
+      if (!entry || (entry.bandId !== null && entry.bandId !== bandId))
+        return { error: "That item isn’t the band’s." };
+      if (!each)
+        return {
+          error: `Enter the price of ${entry.format ? `${entry.itemName}, ${entry.format}` : entry.itemName}.`,
+        };
       lines.push({
         itemName: entry.itemName,
         format: entry.format,
-        release: entry.releaseId ? { books: entry.books, id: entry.releaseId } : null,
+        release: entry.releaseId
+          ? { books: entry.books, id: entry.releaseId }
+          : null,
         netCents: each * quantity,
         quantity,
         stock: entry.stock,
       });
     }
-    if (!lines.length) return { error: "Enter how many of something were sold." };
+    if (!lines.length)
+      return { error: "Enter how many of something were sold." };
+  } else if (kind.value === "show") {
+    const itemName = str(fd, "itemName").slice(0, 200);
+    if (!itemName) return { error: "Say which show it was." };
+    const tickets = Math.max(0, Math.round(Number(str(fd, "tickets")) || 0));
+    const ticketPrice = parseCents(str(fd, "ticketPrice"));
+    for (const d of SHOW_DETAILS) {
+      const value =
+        d.name === "tickets"
+          ? tickets
+            ? String(tickets)
+            : ""
+          : d.name === "ticketPrice"
+            ? ticketPrice
+              ? formatCents(ticketPrice, currency)
+              : ""
+            : d.name === "capacity"
+              ? String(
+                  Math.max(0, Math.round(Number(str(fd, "capacity")) || 0)) ||
+                    "",
+                )
+              : str(fd, d.name).slice(0, d.name === "notes" ? 1000 : 200);
+      if (value) details[d.label.toLowerCase()] = value;
+    }
+    // Left blank, it's the tickets sold times their price.
+    const netCents = parseCents(str(fd, "amount")) || tickets * ticketPrice;
+    if (!netCents) return { error: "Enter the amount." };
+    lines.push({ itemName, format: "", release: null, netCents, quantity: 1 });
   } else {
     const itemName = str(fd, "itemName").slice(0, 200);
     if (!itemName) return { error: "Say what it was." };
     const netCents = parseCents(str(fd, "amount"));
     if (!netCents) return { error: "Enter the amount." };
-    lines.push({ itemName, format: "", release: null, netCents, quantity: Math.max(1, Math.round(Number(str(fd, "quantity")) || 1)) });
+    lines.push({
+      itemName,
+      format: "",
+      release: null,
+      netCents,
+      quantity: Math.max(1, Math.round(Number(str(fd, "quantity")) || 1)),
+    });
   }
 
   // A band's own group on a label: from its time on the label, its sales are the label's, for its band there.
-  const since = managedBy ? await onLabelSince(managedBy.labelOrgId, managedBy.bandId) : null;
-  const books = managedBy && (!since || date >= since) ? { orgId: managedBy.labelOrgId, bandId: managedBy.bandId } : { orgId, bandId };
+  const since = managedBy
+    ? await onLabelSince(managedBy.labelOrgId, managedBy.bandId)
+    : null;
+  const books =
+    managedBy && (!since || date >= since)
+      ? { orgId: managedBy.labelOrgId, bandId: managedBy.bandId }
+      : { orgId, bandId };
   const importId = await importNamed(books.orgId, MANUAL_IMPORT);
   // Everything sold at once is one order (like a Bandcamp order with several items): one line each,
   // so splits, costs and stock work item by item, shown together in the sales list.
@@ -105,23 +191,40 @@ export async function addManualSale(_: ManualSaleState, fd: FormData): Promise<M
             bandId: books.bandId,
             releaseId: l.release?.books === books.orgId ? l.release.id : null,
             routedVia: MANUAL_VIA,
-            raw: { source: MANUAL_SOURCE, kind: kind.label, "added by": user.name },
+            outsidePayouts,
+            raw: {
+              source: MANUAL_SOURCE,
+              kind: kind.label,
+              ...details,
+              "paid with": paidWith,
+              "added by": user.name,
+            },
           };
         }),
       )
       .returning({ id: schema.sales.id });
     // What was sold comes off its stock, linked to the sale so deleting it puts it back.
     for (const [i, l] of lines.entries()) {
-      if (l.stock) await takeStock(tx, l.stock, "sold", l.quantity, { saleId: added[i].id, userId: user.id, note: `From a sale on ${date}` });
+      if (l.stock)
+        await takeStock(tx, l.stock, "sold", l.quantity, {
+          saleId: added[i].id,
+          userId: user.id,
+          note: `From a sale on ${date}`,
+        });
     }
   });
   revalidatePath("/", "layout");
   if (lines.length > 1) return { ok: `Added ${plural(lines.length, "sale")}.` };
-  return { ok: `Added ${lines[0].format ? `${lines[0].itemName}, ${lines[0].format}` : lines[0].itemName}.` };
+  return {
+    ok: `Added ${lines[0].format ? `${lines[0].itemName}, ${lines[0].format}` : lines[0].itemName}.`,
+  };
 }
 
 /** Take back a sale that was added by hand (or, with "whole", every item in its order), while it isn't part of a payout yet. */
-export async function deleteManualSale(_: ManualSaleState, fd: FormData): Promise<ManualSaleState> {
+export async function deleteManualSale(
+  _: ManualSaleState,
+  fd: FormData,
+): Promise<ManualSaleState> {
   const adder = await saleAdder();
   if (!adder) return { error: "Only a band’s members can delete its sales." };
   const { orgId, managedBy, user } = adder.ctx;
@@ -129,28 +232,54 @@ export async function deleteManualSale(_: ManualSaleState, fd: FormData): Promis
   const id = Number(str(fd, "id"));
   // (A band's own group: its own books, or the label's for its band.)
   const [sale] = await db
-    .select({ id: schema.sales.id, orgId: schema.sales.orgId, bandId: schema.sales.bandId, via: schema.sales.routedVia, order: schema.sales.transactionId })
+    .select({
+      id: schema.sales.id,
+      orgId: schema.sales.orgId,
+      bandId: schema.sales.bandId,
+      via: schema.sales.routedVia,
+      order: schema.sales.transactionId,
+    })
     .from(schema.sales)
     .where(eq(schema.sales.id, id));
   const ours =
     sale &&
-    ((sale.orgId === orgId && adder.bands.some((b) => b.id === sale.bandId)) || (managedBy && sale.orgId === managedBy.labelOrgId && sale.bandId === managedBy.bandId));
+    ((sale.orgId === orgId && adder.bands.some((b) => b.id === sale.bandId)) ||
+      (managedBy &&
+        sale.orgId === managedBy.labelOrgId &&
+        sale.bandId === managedBy.bandId));
   if (!sale || !ours) return { error: "That isn’t one of your band’s sales." };
-  if (sale.via !== MANUAL_VIA) return { error: "Only sales added by hand can be deleted." };
+  if (sale.via !== MANUAL_VIA)
+    return { error: "Only sales added by hand can be deleted." };
   const ids =
     str(fd, "whole") === "1"
       ? (
           await db
             .select({ id: schema.sales.id })
             .from(schema.sales)
-            .where(and(eq(schema.sales.orgId, sale.orgId), eq(schema.sales.transactionId, sale.order), eq(schema.sales.routedVia, MANUAL_VIA)))
+            .where(
+              and(
+                eq(schema.sales.orgId, sale.orgId),
+                eq(schema.sales.transactionId, sale.order),
+                eq(schema.sales.routedVia, MANUAL_VIA),
+              ),
+            )
         ).map((r) => r.id)
       : [id];
-  for (const x of ids) if (await saleInPayout(sale.orgId, x)) return { error: ids.length > 1 ? "Part of it is in a payout already, so it stays." : "It’s part of a payout already, so it stays." };
+  for (const x of ids)
+    if (await saleInPayout(sale.orgId, x))
+      return {
+        error:
+          ids.length > 1
+            ? "Part of it is in a payout already, so it stays."
+            : "It’s part of a payout already, so it stays.",
+      };
   await db.transaction(async (tx) => {
     // What it took off stock goes back.
     await putBackStock(tx, ids, userId);
-    for (const x of ids) await tx.delete(schema.sales).where(and(eq(schema.sales.orgId, sale.orgId), eq(schema.sales.id, x)));
+    for (const x of ids)
+      await tx
+        .delete(schema.sales)
+        .where(and(eq(schema.sales.orgId, sale.orgId), eq(schema.sales.id, x)));
   });
   revalidatePath("/", "layout");
   return { ok: "Deleted." };

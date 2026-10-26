@@ -26,4 +26,23 @@ export const MANUAL_KINDS = [
   { value: "other", label: "Other", category: "other", itemType: "other" },
 ] as const;
 
+/** How it was paid. Cash is left out of payouts unless unticked: it's taken as already shared out. */
+export const PAYMENT_METHODS = [
+  "Card",
+  "Cash",
+  "Bank transfer",
+  "Other",
+] as const;
+
+/** What can be kept about a show, all optional: shown with the sale under these labels. */
+export const SHOW_DETAILS = [
+  { name: "venue", label: "Venue" },
+  { name: "city", label: "City" },
+  { name: "promoter", label: "Promoter" },
+  { name: "tickets", label: "Tickets sold" },
+  { name: "ticketPrice", label: "Price per ticket" },
+  { name: "capacity", label: "Capacity" },
+  { name: "notes", label: "Notes" },
+] as const;
+
 export type ManualKind = (typeof MANUAL_KINDS)[number]["value"];

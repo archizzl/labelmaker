@@ -1,5 +1,20 @@
 import "server-only";
-import { and, asc, desc, eq, getTableName, gte, ilike, inArray, isNull, lt, lte, or, type SQL, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  getTableName,
+  gte,
+  ilike,
+  inArray,
+  isNull,
+  lt,
+  lte,
+  or,
+  type SQL,
+  sql,
+} from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { db, schema } from "@/db";
 import { buildTrend, type Trend } from "@/lib/chart-data";
@@ -23,7 +38,17 @@ function fingerprint(email: string) {
 }
 
 const CATEGORIES = ["album", "track", "merch", "other"] as const;
-export const SORTS = ["date", "item", "band", "type", "country", "source", "qty", "net", "payout"] as const;
+export const SORTS = [
+  "date",
+  "item",
+  "band",
+  "type",
+  "country",
+  "source",
+  "qty",
+  "net",
+  "payout",
+] as const;
 export const PAYOUT_STATES = ["paid", "pending", "none"] as const;
 export type PayoutState = (typeof PAYOUT_STATES)[number];
 export type SortKey = (typeof SORTS)[number];
@@ -56,11 +81,15 @@ export type SalesFilter = {
 /** Rows per page: the choices offered, and the default. Any number from 5 to 500 works in the URL. */
 export const DEFAULT_PAGE_SIZE = 10;
 
-const isoDate = (s: unknown) => (typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : undefined);
-const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)?.trim() || undefined;
+const isoDate = (s: unknown) =>
+  typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : undefined;
+const one = (v: string | string[] | undefined) =>
+  (Array.isArray(v) ? v[0] : v)?.trim() || undefined;
 
 /** Read the filters from the page's search params (anything unrecognised is ignored). */
-export function parseSalesFilter(sp: Record<string, string | string[] | undefined>): SalesFilter {
+export function parseSalesFilter(
+  sp: Record<string, string | string[] | undefined>,
+): SalesFilter {
   const band = one(sp.band);
   const type = one(sp.type);
   const sort = one(sp.sort);
@@ -80,12 +109,20 @@ export function parseSalesFilter(sp: Record<string, string | string[] | undefine
     sort: SORTS.find((s) => s === sort) ?? "date",
     dir: one(sp.dir) === "asc" ? "asc" : "desc",
     page: Math.max(1, Number.parseInt(one(sp.page) ?? "1", 10) || 1),
-    per: Math.min(500, Math.max(5, Number.parseInt(one(sp.per) ?? "", 10) || DEFAULT_PAGE_SIZE)),
+    per: Math.min(
+      500,
+      Math.max(5, Number.parseInt(one(sp.per) ?? "", 10) || DEFAULT_PAGE_SIZE),
+    ),
   };
 }
 
 /** The same filters as URL params, minus the defaults, with some changed. */
-export function filterQuery(f: SalesFilter, change: Partial<Record<keyof SalesFilter, string | number | boolean | undefined>> = {}) {
+export function filterQuery(
+  f: SalesFilter,
+  change: Partial<
+    Record<keyof SalesFilter, string | number | boolean | undefined>
+  > = {},
+) {
   const merged: Record<string, unknown> = { ...f, ...change };
   const p = new URLSearchParams();
   for (const [k, v] of Object.entries(merged)) {
@@ -106,19 +143,20 @@ const source = sql<string>`coalesce(nullif(${sales.raw}->>'referer', ''), nullif
  * A column named with its table. Drizzle leaves the table off when a query reads only one table,
  * and inside these subqueries a bare "org_id" would be the subquery's own column.
  */
-const named = (c: AnyPgColumn) => sql`${sql.identifier(getTableName(c.table))}.${sql.identifier(c.name)}`;
+const named = (c: AnyPgColumn) =>
+  sql`${sql.identifier(getTableName(c.table))}.${sql.identifier(c.name)}`;
 /*
  * The finalized payout that paid a sale, the same rule payouts use: the one whose list has it (or,
  * for payouts without a list, one for the whole label or the sale's band whose dates include it). It counts as paid once every person in it is
- * marked paid (or kept, for whoever holds the label's account).
+ * marked paid (or kept, for whoever holds the label's account). None for a sale left out of payouts.
  */
-const coveringPeriod = sql`coalesce(
+const coveringPeriod = sql`case when ${named(sales.outsidePayouts)} then null else coalesce(
   (select ps.period_id from ${schema.periodSales} ps where ps.org_id = ${named(sales.orgId)} and ps.dedupe_key = ${named(sales.dedupeKey)} limit 1),
   (select p.id from ${periods} p
     where p.org_id = ${named(sales.orgId)} and ${named(sales.date)} between p.start_date and p.end_date
       and (p.band_id is null or p.band_id = ${named(sales.bandId)})
       and not exists (select 1 from ${schema.periodSales} x where x.period_id = p.id)
-    order by p.id limit 1))`;
+    order by p.id limit 1)) end`;
 const payoutState = sql<PayoutState>`case
   when ${coveringPeriod} is null then 'none'
   when exists (select 1 from ${payouts} po where po.period_id = ${coveringPeriod} and po.status = 'pending') then 'pending'
@@ -130,11 +168,18 @@ const like = (s: string) => `%${s.replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
  * Whose sales: one account's, or a label-made band account's own together with what its label has
  * for its band (the label's part read-only).
  */
-export type SalesBooks = string | { own: string; label: { orgId: string; bandId: number } };
+export type SalesBooks =
+  string | { own: string; label: { orgId: string; bandId: number } };
 
 function inBooks(books: SalesBooks): SQL {
   if (typeof books === "string") return eq(sales.orgId, books);
-  return or(eq(sales.orgId, books.own), and(eq(sales.orgId, books.label.orgId), eq(sales.bandId, books.label.bandId)))!;
+  return or(
+    eq(sales.orgId, books.own),
+    and(
+      eq(sales.orgId, books.label.orgId),
+      eq(sales.bandId, books.label.bandId),
+    ),
+  )!;
 }
 
 function where(books: SalesBooks, f: SalesFilter): SQL {
@@ -154,7 +199,10 @@ function where(books: SalesBooks, f: SalesFilter): SQL {
       ),
     );
   }
-  if (f.onlyBands) c.push(f.onlyBands.length ? inArray(sales.bandId, f.onlyBands) : sql`false`);
+  if (f.onlyBands)
+    c.push(
+      f.onlyBands.length ? inArray(sales.bandId, f.onlyBands) : sql`false`,
+    );
   if (f.buyer) c.push(eq(sales.buyerKey, f.buyer));
   if (f.from) c.push(gte(sales.date, f.from));
   if (f.to) c.push(lte(sales.date, f.to));
@@ -162,8 +210,10 @@ function where(books: SalesBooks, f: SalesFilter): SQL {
   else if (f.band) c.push(eq(sales.bandId, f.band));
   if (f.release) c.push(eq(sales.releaseId, f.release));
   if (f.type) c.push(eq(sales.category, f.type));
-  if (f.country !== undefined) c.push(sql`${country} = ${f.country === "(none)" ? "" : f.country}`);
-  if (f.source !== undefined) c.push(sql`${source} = ${f.source === "(direct)" ? "" : f.source}`);
+  if (f.country !== undefined)
+    c.push(sql`${country} = ${f.country === "(none)" ? "" : f.country}`);
+  if (f.source !== undefined)
+    c.push(sql`${source} = ${f.source === "(direct)" ? "" : f.source}`);
   if (f.currency) c.push(eq(sales.currency, f.currency));
   if (f.refunds) c.push(lt(sales.netCents, 0));
   if (f.payout) c.push(sql`${payoutState} = ${f.payout}`);
@@ -208,6 +258,7 @@ export async function browseSales(books: SalesBooks, f: SalesFilter) {
         bandId: sales.bandId,
         bandName: bands.name,
         routedVia: sales.routedVia,
+        outsidePayouts: sales.outsidePayouts,
         releaseId: sales.releaseId,
         releaseTitle: releases.title,
         country,
@@ -218,18 +269,29 @@ export async function browseSales(books: SalesBooks, f: SalesFilter) {
         buyerKey: sales.buyerKey,
         buyerSales: sql<number>`(select count(*)::int from ${sales} b where b.org_id = ${sales.orgId} and b.buyer_key = ${sales.buyerKey})`,
         // If the buyer is on the mailing list, who they are (they gave the label their details).
-        fanEmail: sql<string | null>`(select ${fans.email} from ${fans} where ${fans.orgId} = ${sales.orgId} and ${fans.emailKey} = ${sales.buyerKey} limit 1)`,
-        fanName: sql<string | null>`(select ${fans.name} from ${fans} where ${fans.orgId} = ${sales.orgId} and ${fans.emailKey} = ${sales.buyerKey} limit 1)`,
+        fanEmail: sql<
+          string | null
+        >`(select ${fans.email} from ${fans} where ${fans.orgId} = ${sales.orgId} and ${fans.emailKey} = ${sales.buyerKey} limit 1)`,
+        fanName: sql<
+          string | null
+        >`(select ${fans.name} from ${fans} where ${fans.orgId} = ${sales.orgId} and ${fans.emailKey} = ${sales.buyerKey} limit 1)`,
       })
       .from(sales)
       .leftJoin(bands, eq(bands.id, sales.bandId))
       .leftJoin(releases, eq(releases.id, sales.releaseId))
       .where(w)
       // Blanks (no country, no source) go last either way.
-      .orderBy(sql`${ORDER[f.sort]} ${sql.raw(f.dir)} nulls last`, by(sales.date), by(sales.id))
+      .orderBy(
+        sql`${ORDER[f.sort]} ${sql.raw(f.dir)} nulls last`,
+        by(sales.date),
+        by(sales.id),
+      )
       .limit(f.per)
       .offset((f.page - 1) * f.per),
-    db.select({ n: sql<number>`count(*)::int` }).from(sales).where(w),
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(sales)
+      .where(w),
   ]);
   return { rows, count: n };
 }
@@ -264,7 +326,12 @@ export async function summarizeSales(books: SalesBooks, f: SalesFilter) {
   // Month by month per key, for a breakdown's trend line.
   const monthly = (key: SQL<string>) =>
     db
-      .select({ currency: sales.currency, month: sql<string>`substr(${sales.date}, 1, 7)`, key, value: net })
+      .select({
+        currency: sales.currency,
+        month: sql<string>`substr(${sales.date}, 1, 7)`,
+        key,
+        value: net,
+      })
       .from(sales)
       .leftJoin(bands, eq(bands.id, sales.bandId))
       .where(w)
@@ -276,40 +343,53 @@ export async function summarizeSales(books: SalesBooks, f: SalesFilter) {
     type: sql<string>`${sales.category}`,
     band: sql<string>`coalesce(${bands.name}, 'Not matched to a band')`,
   };
-  const [trendRows, [totals, byMonth, byItem, byCountry, bySource, byType, byBand, byPayout]] = await Promise.all([
+  const [
+    trendRows,
+    [totals, byMonth, byItem, byCountry, bySource, byType, byBand, byPayout],
+  ] = await Promise.all([
     Promise.all(Object.values(keys).map(monthly)),
     Promise.all([
-    db
-      .select({
-        currency: sales.currency,
-        sales: sql<number>`count(*)::int`,
-        units,
-        net,
-        refunds: sql<number>`count(*) filter (where ${sales.netCents} < 0)::int`,
-        refundCents: sql<number>`coalesce(sum(${sales.netCents}) filter (where ${sales.netCents} < 0), 0)::int`,
-        first: sql<string>`min(${sales.date})`,
-        last: sql<string>`max(${sales.date})`,
-      })
-      .from(sales)
-      .where(w)
-      .groupBy(sales.currency)
-      .orderBy(sql`4 desc`),
-    db
-      .select({ currency: sales.currency, month: sql<string>`substr(${sales.date}, 1, 7)`, net, units })
-      .from(sales)
-      .where(w)
-      .groupBy(sales.currency, sql`2`)
-      .orderBy(sql`2`),
-    group(keys.item),
-    group(keys.country),
-    group(keys.source),
-    group(keys.type),
-    group(keys.band),
-    db
-      .select({ currency: sales.currency, state: payoutState, net, sales: sql<number>`count(*)::int` })
-      .from(sales)
-      .where(w)
-      .groupBy(sales.currency, sql`2`),
+      db
+        .select({
+          currency: sales.currency,
+          sales: sql<number>`count(*)::int`,
+          units,
+          net,
+          refunds: sql<number>`count(*) filter (where ${sales.netCents} < 0)::int`,
+          refundCents: sql<number>`coalesce(sum(${sales.netCents}) filter (where ${sales.netCents} < 0), 0)::int`,
+          first: sql<string>`min(${sales.date})`,
+          last: sql<string>`max(${sales.date})`,
+        })
+        .from(sales)
+        .where(w)
+        .groupBy(sales.currency)
+        .orderBy(sql`4 desc`),
+      db
+        .select({
+          currency: sales.currency,
+          month: sql<string>`substr(${sales.date}, 1, 7)`,
+          net,
+          units,
+        })
+        .from(sales)
+        .where(w)
+        .groupBy(sales.currency, sql`2`)
+        .orderBy(sql`2`),
+      group(keys.item),
+      group(keys.country),
+      group(keys.source),
+      group(keys.type),
+      group(keys.band),
+      db
+        .select({
+          currency: sales.currency,
+          state: payoutState,
+          net,
+          sales: sql<number>`count(*)::int`,
+        })
+        .from(sales)
+        .where(w)
+        .groupBy(sales.currency, sql`2`),
     ]),
   ]);
 
@@ -331,7 +411,10 @@ export async function summarizeSales(books: SalesBooks, f: SalesFilter) {
     byBand: pick(byBand),
     /** Month by month for the biggest few of each breakdown (main currency): their trend lines. */
     trends: Object.fromEntries(
-      Object.keys(keys).map((k, i) => [k, buildTrend(trendRows[i].filter((r) => r.currency === main))]),
+      Object.keys(keys).map((k, i) => [
+        k,
+        buildTrend(trendRows[i].filter((r) => r.currency === main)),
+      ]),
     ) as Record<keyof typeof keys, Trend>,
     byPayout: Object.fromEntries(
       PAYOUT_STATES.map((st) => {
@@ -349,8 +432,12 @@ function fillMonths(rows: { month: string; net: number; units: number }[]) {
   const out: { month: string; net: number; units: number }[] = [];
   let [y, mo] = rows[0].month.split("-").map(Number);
   const last = rows[rows.length - 1].month;
-  for (let k = rows[0].month; k <= last && out.length < 600; ) {
-    out.push({ month: k, net: m.get(k)?.net ?? 0, units: m.get(k)?.units ?? 0 });
+  for (let k = rows[0].month; k <= last && out.length < 600;) {
+    out.push({
+      month: k,
+      net: m.get(k)?.net ?? 0,
+      units: m.get(k)?.units ?? 0,
+    });
     mo++;
     if (mo > 12) [y, mo] = [y + 1, 1];
     k = `${y}-${String(mo).padStart(2, "0")}`;
@@ -359,13 +446,23 @@ function fillMonths(rows: { month: string; net: number; units: number }[]) {
 }
 
 /** Choices for the filter dropdowns. */
-export async function salesFilterOptions(books: SalesBooks, onlyBands?: number[]) {
+export async function salesFilterOptions(
+  books: SalesBooks,
+  onlyBands?: number[],
+) {
   const orgId = typeof books === "string" ? books : books.own;
   const [bandRows, countries, sources, currencies] = await Promise.all([
     db
       .select({ id: bands.id, name: bands.name })
       .from(bands)
-      .where(and(eq(bands.orgId, orgId), onlyBands ? inArray(bands.id, onlyBands.length ? onlyBands : [-1]) : undefined))
+      .where(
+        and(
+          eq(bands.orgId, orgId),
+          onlyBands
+            ? inArray(bands.id, onlyBands.length ? onlyBands : [-1])
+            : undefined,
+        ),
+      )
       .orderBy(asc(bands.name)),
     db
       .selectDistinct({ v: country })
@@ -379,10 +476,7 @@ export async function salesFilterOptions(books: SalesBooks, onlyBands?: number[]
       .groupBy(sql`1`)
       .orderBy(sql`2 desc`)
       .limit(40),
-    db
-      .selectDistinct({ v: sales.currency })
-      .from(sales)
-      .where(inBooks(books)),
+    db.selectDistinct({ v: sales.currency }).from(sales).where(inBooks(books)),
   ]);
   return {
     bands: bandRows,
@@ -393,20 +487,28 @@ export async function salesFilterOptions(books: SalesBooks, onlyBands?: number[]
 }
 
 /** Of an account's sales, the ones that are part of a payout already. */
-export async function paidSaleIds(orgId: string, ids: number[]): Promise<Set<number>> {
+export async function paidSaleIds(
+  orgId: string,
+  ids: number[],
+): Promise<Set<number>> {
   const out = new Set<number>();
   for (let i = 0; i < ids.length; i += 500) {
     const rows = await db
       .select({ id: sales.id, period: coveringPeriod.mapWith(Number) })
       .from(sales)
-      .where(and(eq(sales.orgId, orgId), inArray(sales.id, ids.slice(i, i + 500))));
+      .where(
+        and(eq(sales.orgId, orgId), inArray(sales.id, ids.slice(i, i + 500))),
+      );
     for (const r of rows) if (r.period) out.add(r.id);
   }
   return out;
 }
 
 /** Whether a sale is part of a payout already (so it can't be taken back out). */
-export async function saleInPayout(orgId: string, saleId: number): Promise<boolean> {
+export async function saleInPayout(
+  orgId: string,
+  saleId: number,
+): Promise<boolean> {
   const [row] = await db
     .select({ period: coveringPeriod.mapWith(Number) })
     .from(sales)

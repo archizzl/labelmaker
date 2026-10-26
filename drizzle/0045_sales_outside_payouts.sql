@@ -1,0 +1,1 @@
+ALTER TABLE "sales" ADD COLUMN "outside_payouts" boolean DEFAULT false NOT NULL;

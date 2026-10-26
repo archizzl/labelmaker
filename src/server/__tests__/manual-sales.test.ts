@@ -6,7 +6,13 @@ import { newAccount, testDb } from "../../../test/helpers/db";
 let orgId = "";
 let testUser = "";
 let managedBy: { labelOrgId: string; bandId: number } | null = null;
-const ctx = () => ({ orgId, managedBy, person: null, access: { admin: true, permissions: {}, bandAreas: [], bandIds: [] }, user: { id: testUser, name: "Tester" } });
+const ctx = () => ({
+  orgId,
+  managedBy,
+  person: null,
+  access: { admin: true, permissions: {}, bandAreas: [], bandIds: [] },
+  user: { id: testUser, name: "Tester" },
+});
 vi.mock("../context", () => ({
   requireAccess: async () => ctx(),
   getContext: async () => ctx(),
@@ -21,55 +27,152 @@ let actions: typeof import("../manual-sale-actions");
 beforeAll(async () => {
   ({ db, schema } = await testDb());
   testUser = randomUUID();
-  await db.insert(schema.user).values({ id: testUser, name: "Tester", email: `${testUser}@example.test`, emailVerified: true, createdAt: new Date(), updatedAt: new Date() });
+  await db
+    .insert(schema.user)
+    .values({
+      id: testUser,
+      name: "Tester",
+      email: `${testUser}@example.test`,
+      emailVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
   actions = await import("../manual-sale-actions");
 });
 
-const pkg = (bandcampId: number, title: string) => ({ bandcampId, title, typeName: null, sku: null, upc: null, price: null, currency: null });
+const pkg = (bandcampId: number, title: string) => ({
+  bandcampId,
+  title,
+  typeName: null,
+  sku: null,
+  upc: null,
+  price: null,
+  currency: null,
+});
 
 async function setup() {
   managedBy = null;
   orgId = await newAccount("Band", "band");
-  const [band] = await db.insert(schema.bands).values({ orgId, name: "Glass Harbor" }).returning();
-  const [other] = await db.insert(schema.bands).values({ orgId, name: "Someone Else" }).returning();
+  const [band] = await db
+    .insert(schema.bands)
+    .values({ orgId, name: "Glass Harbor" })
+    .returning();
+  const [other] = await db
+    .insert(schema.bands)
+    .values({ orgId, name: "Someone Else" })
+    .returning();
   const [lp] = await db
     .insert(schema.releases)
-    .values({ orgId, bandId: band.id, title: "Night Swims", kind: "album", packages: [pkg(11, "12in Vinyl LP")] })
+    .values({
+      orgId,
+      bandId: band.id,
+      title: "Night Swims",
+      kind: "album",
+      packages: [pkg(11, "12in Vinyl LP")],
+    })
     .returning();
-  const [shirt] = await db.insert(schema.releases).values({ orgId, bandId: band.id, title: "Logo T-Shirt", kind: "merch" }).returning();
-  const [theirs] = await db.insert(schema.releases).values({ orgId, bandId: other.id, title: "Their Tote", kind: "merch" }).returning();
+  const [shirt] = await db
+    .insert(schema.releases)
+    .values({ orgId, bandId: band.id, title: "Logo T-Shirt", kind: "merch" })
+    .returning();
+  const [theirs] = await db
+    .insert(schema.releases)
+    .values({ orgId, bandId: other.id, title: "Their Tote", kind: "merch" })
+    .returning();
   return { band, lp, shirt, theirs };
 }
 
 const form = (values: Record<string, string | number>) => {
   const fd = new FormData();
-  for (const [k, v] of Object.entries({ date: "2026-10-17", currency: "USD", quantity: 1, ...values })) fd.set(k, String(v));
+  for (const [k, v] of Object.entries({
+    date: "2026-10-17",
+    currency: "USD",
+    quantity: 1,
+    paidWith: "Card",
+    ...values,
+  }))
+    fd.set(k, String(v));
   return fd;
 };
-const lastSale = async () => (await db.select().from(schema.sales).where(eq(schema.sales.orgId, orgId)).orderBy(schema.sales.id)).at(-1)!;
+const lastSale = async () =>
+  (
+    await db
+      .select()
+      .from(schema.sales)
+      .where(eq(schema.sales.orgId, orgId))
+      .orderBy(schema.sales.id)
+  ).at(-1)!;
 
 describe("adding a sale by hand", () => {
   it("adds a sale for each merch item sold, at its price each, named like Bandcamp's rows", async () => {
     const { band, lp, shirt } = await setup();
     const result = await actions.addManualSale(
       null,
-      form({ bandId: band.id, kind: "merch", [`each:${lp.id}:11`]: "25.00", [`sold:${lp.id}:11`]: 2, [`each:${shirt.id}:`]: "20", [`sold:${shirt.id}:`]: 3 }),
+      form({
+        bandId: band.id,
+        kind: "merch",
+        [`each:${lp.id}:11`]: "25.00",
+        [`sold:${lp.id}:11`]: 2,
+        [`each:${shirt.id}:`]: "20",
+        [`sold:${shirt.id}:`]: 3,
+      }),
     );
     expect(result).toEqual({ ok: "Added 2 sales." });
-    const sales = await db.select().from(schema.sales).where(eq(schema.sales.orgId, orgId)).orderBy(schema.sales.id);
-    expect(sales.map((s) => ({ itemName: s.itemName, packageName: s.packageName, releaseId: s.releaseId, quantity: s.quantity, netCents: s.netCents, category: s.category }))).toEqual([
-      { itemName: "Night Swims", packageName: "12in Vinyl LP", releaseId: lp.id, quantity: 2, netCents: 5000, category: "merch" },
-      { itemName: "Logo T-Shirt", packageName: "", releaseId: shirt.id, quantity: 3, netCents: 6000, category: "merch" },
+    const sales = await db
+      .select()
+      .from(schema.sales)
+      .where(eq(schema.sales.orgId, orgId))
+      .orderBy(schema.sales.id);
+    expect(
+      sales.map((s) => ({
+        itemName: s.itemName,
+        packageName: s.packageName,
+        releaseId: s.releaseId,
+        quantity: s.quantity,
+        netCents: s.netCents,
+        category: s.category,
+      })),
+    ).toEqual([
+      {
+        itemName: "Night Swims",
+        packageName: "12in Vinyl LP",
+        releaseId: lp.id,
+        quantity: 2,
+        netCents: 5000,
+        category: "merch",
+      },
+      {
+        itemName: "Logo T-Shirt",
+        packageName: "",
+        releaseId: shirt.id,
+        quantity: 3,
+        netCents: 6000,
+        category: "merch",
+      },
     ]);
   });
 
   it("makes what's sold at once one order, which can be deleted item by item or whole", async () => {
     const { band, lp, shirt } = await setup();
     const sell = () =>
-      actions.addManualSale(null, form({ bandId: band.id, kind: "merch", [`each:${lp.id}:11`]: "25", [`sold:${lp.id}:11`]: 1, [`each:${shirt.id}:`]: "20", [`sold:${shirt.id}:`]: 2 }));
+      actions.addManualSale(
+        null,
+        form({
+          bandId: band.id,
+          kind: "merch",
+          [`each:${lp.id}:11`]: "25",
+          [`sold:${lp.id}:11`]: 1,
+          [`each:${shirt.id}:`]: "20",
+          [`sold:${shirt.id}:`]: 2,
+        }),
+      );
     await sell();
     await sell();
-    const sales = await db.select().from(schema.sales).where(eq(schema.sales.orgId, orgId)).orderBy(schema.sales.id);
+    const sales = await db
+      .select()
+      .from(schema.sales)
+      .where(eq(schema.sales.orgId, orgId))
+      .orderBy(schema.sales.id);
     expect(sales[0].transactionId).toBe(sales[1].transactionId);
     expect(sales[2].transactionId).toBe(sales[3].transactionId);
     expect(sales[0].transactionId).not.toBe(sales[2].transactionId);
@@ -84,56 +187,238 @@ describe("adding a sale by hand", () => {
     // One item of the first order; then the whole second one.
     expect(await del(sales[0].id, false)).toEqual({ ok: "Deleted." });
     expect(await del(sales[3].id, true)).toEqual({ ok: "Deleted." });
-    expect((await db.select().from(schema.sales).where(eq(schema.sales.orgId, orgId))).map((s) => s.id)).toEqual([sales[1].id]);
+    expect(
+      (
+        await db
+          .select()
+          .from(schema.sales)
+          .where(eq(schema.sales.orgId, orgId))
+      ).map((s) => s.id),
+    ).toEqual([sales[1].id]);
   });
 
   it("takes something not in the catalog, and leaves out items none were sold of", async () => {
     const { band, lp } = await setup();
     const result = await actions.addManualSale(
       null,
-      form({ bandId: band.id, kind: "merch", [`each:${lp.id}:11`]: "25.00", [`sold:${lp.id}:11`]: "", "name:other": "Tote bag", "each:other": "15", "sold:other": 1 }),
+      form({
+        bandId: band.id,
+        kind: "merch",
+        [`each:${lp.id}:11`]: "25.00",
+        [`sold:${lp.id}:11`]: "",
+        "name:other": "Tote bag",
+        "each:other": "15",
+        "sold:other": 1,
+      }),
     );
     expect(result).toEqual({ ok: "Added Tote bag." });
-    expect(await lastSale()).toMatchObject({ itemName: "Tote bag", releaseId: null, netCents: 1500, quantity: 1 });
+    expect(await lastSale()).toMatchObject({
+      itemName: "Tote bag",
+      releaseId: null,
+      netCents: 1500,
+      quantity: 1,
+    });
   });
 
   it("needs something sold, a price for it, and the band's own items", async () => {
     const { band, shirt, theirs } = await setup();
-    expect(await actions.addManualSale(null, form({ bandId: band.id, kind: "merch" }))).toEqual({ error: "Enter how many of something were sold." });
-    expect(await actions.addManualSale(null, form({ bandId: band.id, kind: "merch", [`sold:${shirt.id}:`]: 1 }))).toEqual({ error: "Enter the price of Logo T-Shirt." });
-    expect(await actions.addManualSale(null, form({ bandId: band.id, kind: "merch", [`each:${theirs.id}:`]: "9", [`sold:${theirs.id}:`]: 1 }))).toEqual({
+    expect(
+      await actions.addManualSale(
+        null,
+        form({ bandId: band.id, kind: "merch" }),
+      ),
+    ).toEqual({ error: "Enter how many of something were sold." });
+    expect(
+      await actions.addManualSale(
+        null,
+        form({ bandId: band.id, kind: "merch", [`sold:${shirt.id}:`]: 1 }),
+      ),
+    ).toEqual({ error: "Enter the price of Logo T-Shirt." });
+    expect(
+      await actions.addManualSale(
+        null,
+        form({
+          bandId: band.id,
+          kind: "merch",
+          [`each:${theirs.id}:`]: "9",
+          [`sold:${theirs.id}:`]: 1,
+        }),
+      ),
+    ).toEqual({
       error: "That item isn’t the band’s.",
     });
   });
 
   it("adds a show as one amount", async () => {
     const { band } = await setup();
-    await actions.addManualSale(null, form({ bandId: band.id, kind: "show", itemName: "Door money", amount: "300" }));
-    expect(await lastSale()).toMatchObject({ releaseId: null, itemName: "Door money", itemType: "show", netCents: 30000, quantity: 1 });
+    await actions.addManualSale(
+      null,
+      form({
+        bandId: band.id,
+        kind: "show",
+        itemName: "Door money",
+        amount: "300",
+      }),
+    );
+    expect(await lastSale()).toMatchObject({
+      releaseId: null,
+      itemName: "Door money",
+      itemType: "show",
+      netCents: 30000,
+      quantity: 1,
+    });
+  });
+
+  it("keeps a show's details, and takes the tickets sold times their price when there's no amount", async () => {
+    const { band } = await setup();
+    await actions.addManualSale(
+      null,
+      form({
+        bandId: band.id,
+        kind: "show",
+        itemName: "Release show",
+        amount: "",
+        tickets: 40,
+        ticketPrice: "12.50",
+        venue: "The Owl",
+        city: "Leeds",
+        capacity: "",
+        notes: "",
+      }),
+    );
+    const sale = await lastSale();
+    expect(sale).toMatchObject({
+      itemName: "Release show",
+      netCents: 50000,
+      quantity: 1,
+    });
+    expect(sale.raw).toMatchObject({
+      venue: "The Owl",
+      city: "Leeds",
+      "tickets sold": "40",
+      "price per ticket": "$12.50",
+      "paid with": "Card",
+    });
+    expect(sale.raw).not.toHaveProperty("capacity");
+    expect(
+      await actions.addManualSale(
+        null,
+        form({
+          bandId: band.id,
+          kind: "show",
+          itemName: "Free show",
+          amount: "",
+        }),
+      ),
+    ).toEqual({ error: "Enter the amount." });
+  });
+
+  it("leaves cash out of payouts unless unticked, and other payments in unless ticked", async () => {
+    const { band } = await setup();
+    const add = async (values: Record<string, string>) => {
+      await actions.addManualSale(
+        null,
+        form({
+          bandId: band.id,
+          kind: "show",
+          itemName: "Door money",
+          amount: "100",
+          ...values,
+        }),
+      );
+      return (await lastSale()).outsidePayouts;
+    };
+    expect(await add({ paidWith: "Cash" })).toBe(true);
+    expect(await add({ paidWith: "Cash", outsidePayouts: "0" })).toBe(false);
+    expect(await add({ paidWith: "Card", outsidePayouts: "0" })).toBe(false);
+    expect(await add({ paidWith: "Bank transfer", outsidePayouts: "1" })).toBe(
+      true,
+    );
+    expect(
+      await actions.addManualSale(
+        null,
+        form({
+          bandId: band.id,
+          kind: "show",
+          itemName: "Door money",
+          amount: "100",
+          paidWith: "",
+        }),
+      ),
+    ).toEqual({
+      error: "Choose how it was paid.",
+    });
+
+    // Payouts count only the two left in.
+    const { computePeriod } = await import("../data");
+    const { results } = await computePeriod(orgId, "2026-01-01", "2026-12-31");
+    expect(results.length).toBe(2);
   });
 
   it("for a band account the label made, lists and takes the label's merch for its band, sold out or not, and stock outside the catalog", async () => {
     // The label: the band's CDs in its catalog (one out of stock), and a tote in stock that isn't in the catalog.
     const labelOrgId = await newAccount("Label");
-    const [labelBand] = await db.insert(schema.bands).values({ orgId: labelOrgId, name: "Flag Day" }).returning();
-    const [otherBand] = await db.insert(schema.bands).values({ orgId: labelOrgId, name: "Someone Else" }).returning();
+    const [labelBand] = await db
+      .insert(schema.bands)
+      .values({ orgId: labelOrgId, name: "Flag Day" })
+      .returning();
+    const [otherBand] = await db
+      .insert(schema.bands)
+      .values({ orgId: labelOrgId, name: "Someone Else" })
+      .returning();
     const [cd] = await db
       .insert(schema.releases)
-      .values({ orgId: labelOrgId, bandId: labelBand.id, title: "Flags of the World", kind: "album", packages: [pkg(31, "CD")] })
+      .values({
+        orgId: labelOrgId,
+        bandId: labelBand.id,
+        title: "Flags of the World",
+        kind: "album",
+        packages: [pkg(31, "CD")],
+      })
       .returning();
-    await db.insert(schema.releases).values({ orgId: labelOrgId, bandId: otherBand.id, title: "Not Theirs", kind: "album", packages: [pkg(41, "LP")] });
+    await db
+      .insert(schema.releases)
+      .values({
+        orgId: labelOrgId,
+        bandId: otherBand.id,
+        title: "Not Theirs",
+        kind: "album",
+        packages: [pkg(41, "LP")],
+      });
     // In person, the CD sells for $12 (on Bandcamp it has no price here), and the tote for $15.
     await db
       .insert(schema.inventoryItems)
-      .values({ orgId: labelOrgId, bandId: labelBand.id, name: "Flags of the World — CD", releaseId: cd.id, packageId: 31, onHand: 0, priceCents: 1200 });
-    const [tote] = await db.insert(schema.inventoryItems).values({ orgId: labelOrgId, bandId: labelBand.id, name: "Tote bag", onHand: 4, priceCents: 1500 }).returning();
+      .values({
+        orgId: labelOrgId,
+        bandId: labelBand.id,
+        name: "Flags of the World — CD",
+        releaseId: cd.id,
+        packageId: 31,
+        onHand: 0,
+        priceCents: 1200,
+      });
+    const [tote] = await db
+      .insert(schema.inventoryItems)
+      .values({
+        orgId: labelOrgId,
+        bandId: labelBand.id,
+        name: "Tote bag",
+        onHand: 4,
+        priceCents: 1500,
+      })
+      .returning();
     // The band's own books: its band, and nothing in its catalog.
     orgId = await newAccount("Flag Day", "band");
-    const [band] = await db.insert(schema.bands).values({ orgId, name: "Flag Day" }).returning();
+    const [band] = await db
+      .insert(schema.bands)
+      .values({ orgId, name: "Flag Day" })
+      .returning();
     managedBy = { labelOrgId, bandId: labelBand.id };
 
     const { merchChoices, merchSources } = await import("../manual-sales");
-    const choices = merchChoices(await merchSources({ orgId, managed: managedBy }));
+    const choices = merchChoices(
+      await merchSources({ orgId, managed: managedBy }),
+    );
     expect(choices.map((c) => [c.label, c.price])).toEqual([
       ["Flags of the World — CD", 12],
       ["Tote bag", 15],
@@ -141,27 +426,80 @@ describe("adding a sale by hand", () => {
 
     const result = await actions.addManualSale(
       null,
-      form({ bandId: band.id, kind: "merch", [`each:${cd.id}:31`]: "10", [`sold:${cd.id}:31`]: 2, [`each:stock:${tote.id}`]: "15", [`sold:stock:${tote.id}`]: 1 }),
+      form({
+        bandId: band.id,
+        kind: "merch",
+        [`each:${cd.id}:31`]: "10",
+        [`sold:${cd.id}:31`]: 2,
+        [`each:stock:${tote.id}`]: "15",
+        [`sold:stock:${tote.id}`]: 1,
+      }),
     );
     expect(result).toEqual({ ok: "Added 2 sales." });
     // On the label, the band's sales are the label's: in its books, for its band, linked to its catalog.
-    expect(await db.select().from(schema.sales).where(eq(schema.sales.orgId, orgId))).toEqual([]);
-    const sales = await db.select().from(schema.sales).where(eq(schema.sales.orgId, labelOrgId)).orderBy(schema.sales.id);
-    expect(sales.map((s) => ({ itemName: s.itemName, packageName: s.packageName, releaseId: s.releaseId, netCents: s.netCents, bandId: s.bandId }))).toEqual([
-      { itemName: "Flags of the World", packageName: "CD", releaseId: cd.id, netCents: 2000, bandId: labelBand.id },
-      { itemName: "Tote bag", packageName: "", releaseId: null, netCents: 1500, bandId: labelBand.id },
+    expect(
+      await db.select().from(schema.sales).where(eq(schema.sales.orgId, orgId)),
+    ).toEqual([]);
+    const sales = await db
+      .select()
+      .from(schema.sales)
+      .where(eq(schema.sales.orgId, labelOrgId))
+      .orderBy(schema.sales.id);
+    expect(
+      sales.map((s) => ({
+        itemName: s.itemName,
+        packageName: s.packageName,
+        releaseId: s.releaseId,
+        netCents: s.netCents,
+        bandId: s.bandId,
+      })),
+    ).toEqual([
+      {
+        itemName: "Flags of the World",
+        packageName: "CD",
+        releaseId: cd.id,
+        netCents: 2000,
+        bandId: labelBand.id,
+      },
+      {
+        itemName: "Tote bag",
+        packageName: "",
+        releaseId: null,
+        netCents: 1500,
+        bandId: labelBand.id,
+      },
     ]);
 
     // The band's group deletes one: it goes from the label's books, and the tote's back in stock.
     const fd = new FormData();
     fd.set("id", String(sales[1].id));
-    expect(await actions.deleteManualSale(null, fd)).toEqual({ ok: "Deleted." });
-    expect((await db.select().from(schema.inventoryItems).where(eq(schema.inventoryItems.id, tote.id)))[0].onHand).toBe(4);
+    expect(await actions.deleteManualSale(null, fd)).toEqual({
+      ok: "Deleted.",
+    });
+    expect(
+      (
+        await db
+          .select()
+          .from(schema.inventoryItems)
+          .where(eq(schema.inventoryItems.id, tote.id))
+      )[0].onHand,
+    ).toBe(4);
 
     // A sale from before the band was on the label (its first sale there) stays in its own books.
     await db.insert(schema.sales).values({
       orgId: labelOrgId,
-      importId: (await db.insert(schema.imports).values({ orgId: labelOrgId, filename: "x.csv", rowCount: 1, addedCount: 1, duplicateCount: 0 }).returning())[0].id,
+      importId: (
+        await db
+          .insert(schema.imports)
+          .values({
+            orgId: labelOrgId,
+            filename: "x.csv",
+            rowCount: 1,
+            addedCount: 1,
+            duplicateCount: 0,
+          })
+          .returning()
+      )[0].id,
       dedupeKey: "label-first",
       date: "2025-01-01",
       itemType: "album",
@@ -178,27 +516,65 @@ describe("adding a sale by hand", () => {
       bandId: labelBand.id,
       raw: {},
     });
-    await actions.addManualSale(null, form({ bandId: band.id, kind: "show", itemName: "Old show", amount: "50", date: "2024-06-01" }));
-    expect(await lastSale()).toMatchObject({ itemName: "Old show", bandId: band.id });
+    await actions.addManualSale(
+      null,
+      form({
+        bandId: band.id,
+        kind: "show",
+        itemName: "Old show",
+        amount: "50",
+        date: "2024-06-01",
+      }),
+    );
+    expect(await lastSale()).toMatchObject({
+      itemName: "Old show",
+      bandId: band.id,
+    });
   });
 
   it("deletes a new sale while other accounts have payouts", async () => {
     // Another account's finalized payout, with its list of sales.
     const otherOrg = await newAccount("Label");
-    const [period] = await db.insert(schema.periods).values({ orgId: otherOrg, name: "Summer", startDate: "2026-01-01", endDate: "2026-12-31" }).returning();
-    await db.insert(schema.periodSales).values({ orgId: otherOrg, periodId: period.id, dedupeKey: "theirs" });
+    const [period] = await db
+      .insert(schema.periods)
+      .values({
+        orgId: otherOrg,
+        name: "Summer",
+        startDate: "2026-01-01",
+        endDate: "2026-12-31",
+      })
+      .returning();
+    await db
+      .insert(schema.periodSales)
+      .values({ orgId: otherOrg, periodId: period.id, dedupeKey: "theirs" });
     const { band } = await setup();
-    await actions.addManualSale(null, form({ bandId: band.id, kind: "show", itemName: "Door money", amount: "300" }));
+    await actions.addManualSale(
+      null,
+      form({
+        bandId: band.id,
+        kind: "show",
+        itemName: "Door money",
+        amount: "300",
+      }),
+    );
     const fd = new FormData();
     fd.set("id", String((await lastSale()).id));
-    expect(await actions.deleteManualSale(null, fd)).toEqual({ ok: "Deleted." });
+    expect(await actions.deleteManualSale(null, fd)).toEqual({
+      ok: "Deleted.",
+    });
   });
 
   it("names a format without repeating the release", async () => {
     const { merchName } = await import("../manual-sales");
-    expect(merchName({ title: "Triple Single" }, { title: "Triple Single CD" })).toEqual({ itemName: "Triple Single", format: "CD" });
-    expect(merchName({ title: "Night Swims" }, { title: "12in Vinyl LP" })).toEqual({ itemName: "Night Swims", format: "12in Vinyl LP" });
-    expect(merchName({ title: "Logo T-Shirt" }, { title: "Logo T-Shirt" })).toEqual({ itemName: "Logo T-Shirt", format: "" });
+    expect(
+      merchName({ title: "Triple Single" }, { title: "Triple Single CD" }),
+    ).toEqual({ itemName: "Triple Single", format: "CD" });
+    expect(
+      merchName({ title: "Night Swims" }, { title: "12in Vinyl LP" }),
+    ).toEqual({ itemName: "Night Swims", format: "12in Vinyl LP" });
+    expect(
+      merchName({ title: "Logo T-Shirt" }, { title: "Logo T-Shirt" }),
+    ).toEqual({ itemName: "Logo T-Shirt", format: "" });
   });
 
   it("takes what's sold off its stock (each size its own line), and puts it back when the sale is deleted", async () => {
@@ -206,35 +582,99 @@ describe("adding a sale by hand", () => {
     const [small, medium] = await db
       .insert(schema.inventoryItems)
       .values([
-        { orgId, bandId: band.id, name: "Logo T-Shirt", releaseId: shirt.id, option: "S", onHand: 5, priceCents: 2000 },
-        { orgId, bandId: band.id, name: "Logo T-Shirt", releaseId: shirt.id, option: "M", onHand: 0 },
+        {
+          orgId,
+          bandId: band.id,
+          name: "Logo T-Shirt",
+          releaseId: shirt.id,
+          option: "S",
+          onHand: 5,
+          priceCents: 2000,
+        },
+        {
+          orgId,
+          bandId: band.id,
+          name: "Logo T-Shirt",
+          releaseId: shirt.id,
+          option: "M",
+          onHand: 0,
+        },
       ])
       .returning();
-    const [sticker] = await db.insert(schema.inventoryItems).values({ orgId, bandId: band.id, name: "Sticker", onHand: 10, priceCents: 300 }).returning();
+    const [sticker] = await db
+      .insert(schema.inventoryItems)
+      .values({
+        orgId,
+        bandId: band.id,
+        name: "Sticker",
+        onHand: 10,
+        priceCents: 300,
+      })
+      .returning();
     const { merchChoices, merchSources } = await import("../manual-sales");
     const choices = merchChoices(await merchSources({ orgId, managed: null }));
-    expect(choices.filter((c) => c.value.startsWith("stock:")).map((c) => [c.label, c.price])).toEqual([
+    expect(
+      choices
+        .filter((c) => c.value.startsWith("stock:"))
+        .map((c) => [c.label, c.price]),
+    ).toEqual([
       ["Logo T-Shirt — M", null],
       ["Logo T-Shirt — S", 20],
       ["Sticker", 3],
     ]);
 
-    const onHand = async (id: number) => (await db.select().from(schema.inventoryItems).where(eq(schema.inventoryItems.id, id)))[0].onHand;
+    const onHand = async (id: number) =>
+      (
+        await db
+          .select()
+          .from(schema.inventoryItems)
+          .where(eq(schema.inventoryItems.id, id))
+      )[0].onHand;
     await actions.addManualSale(
       null,
-      form({ bandId: band.id, kind: "merch", [`each:stock:${small.id}`]: "20", [`sold:stock:${small.id}`]: 2, [`each:stock:${sticker.id}`]: "3", [`sold:stock:${sticker.id}`]: 3, [`each:stock:${medium.id}`]: "20", [`sold:stock:${medium.id}`]: 1 }),
+      form({
+        bandId: band.id,
+        kind: "merch",
+        [`each:stock:${small.id}`]: "20",
+        [`sold:stock:${small.id}`]: 2,
+        [`each:stock:${sticker.id}`]: "3",
+        [`sold:stock:${sticker.id}`]: 3,
+        [`each:stock:${medium.id}`]: "20",
+        [`sold:stock:${medium.id}`]: 1,
+      }),
     );
-    expect([await onHand(small.id), await onHand(sticker.id), await onHand(medium.id)]).toEqual([3, 7, 0]);
-    const sales = await db.select().from(schema.sales).where(eq(schema.sales.orgId, orgId));
-    expect(sales.find((x) => x.itemName === "Logo T-Shirt")).toMatchObject({ packageName: "S", releaseId: shirt.id, netCents: 4000 });
+    expect([
+      await onHand(small.id),
+      await onHand(sticker.id),
+      await onHand(medium.id),
+    ]).toEqual([3, 7, 0]);
+    const sales = await db
+      .select()
+      .from(schema.sales)
+      .where(eq(schema.sales.orgId, orgId));
+    expect(sales.find((x) => x.itemName === "Logo T-Shirt")).toMatchObject({
+      packageName: "S",
+      releaseId: shirt.id,
+      netCents: 4000,
+    });
 
     // The sticker sale goes: its 3 are back. (M was out of stock: nothing came off, nothing goes back.)
     const stickerSale = sales.find((x) => x.itemName === "Sticker")!;
     const fd = new FormData();
     fd.set("id", String(stickerSale.id));
-    expect(await actions.deleteManualSale(null, fd)).toEqual({ ok: "Deleted." });
-    expect([await onHand(small.id), await onHand(sticker.id), await onHand(medium.id)]).toEqual([3, 10, 0]);
-    const history = await db.select().from(schema.inventoryMoves).where(eq(schema.inventoryMoves.itemId, sticker.id)).orderBy(schema.inventoryMoves.id);
+    expect(await actions.deleteManualSale(null, fd)).toEqual({
+      ok: "Deleted.",
+    });
+    expect([
+      await onHand(small.id),
+      await onHand(sticker.id),
+      await onHand(medium.id),
+    ]).toEqual([3, 10, 0]);
+    const history = await db
+      .select()
+      .from(schema.inventoryMoves)
+      .where(eq(schema.inventoryMoves.itemId, sticker.id))
+      .orderBy(schema.inventoryMoves.id);
     expect(history.map((m) => [m.reason, m.delta])).toEqual([
       ["sold", -3],
       ["other", 3],

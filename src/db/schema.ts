@@ -359,6 +359,8 @@ export const sales = pgTable(
      * mailing list. The email itself isn't stored. "" when the report had none.
      */
     buyerKey: text("buyer_key"),
+    /** A sale added by hand whose money was already shared out (paid in cash): left out of payouts. */
+    outsidePayouts: boolean("outside_payouts").notNull().default(false),
   },
   (t) => [
     uniqueIndex("sales_org_dedupe").on(t.orgId, t.dedupeKey),
