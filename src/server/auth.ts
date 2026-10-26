@@ -6,6 +6,7 @@ import { nextCookies } from "better-auth/next-js";
 import { organization } from "better-auth/plugins";
 import { APIError } from "better-auth/api";
 import { db, schema } from "@/db";
+import { isProfilePhotoUrl } from "./profile-photos";
 import { checkSignup, consumeInvite } from "./signup-invites";
 
 /**
@@ -18,8 +19,13 @@ export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
   // The site, and its admin dashboard's own address (admin.labelmaker.ing).
   trustedOrigins: [process.env.BETTER_AUTH_URL, process.env.ADMIN_URL].filter((u): u is string => !!u),
-  // On the live site, signing in on labelmaker.ing also signs you in on admin.labelmaker.ing.
-  ...(process.env.COOKIE_DOMAIN ? { advanced: { crossSubDomainCookies: { enabled: true, domain: process.env.COOKIE_DOMAIN } } } : {}),
+  advanced: {
+    // On the live site, signing in on labelmaker.ing also signs you in on admin.labelmaker.ing.
+    ...(process.env.COOKIE_DOMAIN ? { crossSubDomainCookies: { enabled: true, domain: process.env.COOKIE_DOMAIN } } : {}),
+    // Who's who for the rate limits below: Cloudflare's own record of the visitor's address, which
+    // (unlike X-Forwarded-For) a visitor can't set themselves.
+    ipAddress: { ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for"] },
+  },
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
@@ -35,6 +41,7 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user, ctx) => {
+          checkPhoto(user.image);
           const check = await checkSignup(user.email, inviteCodeFrom(ctx));
           if (!check.ok) throw new APIError("FORBIDDEN", { message: check.reason });
         },
@@ -42,6 +49,9 @@ export const auth = betterAuth({
           const code = inviteCodeFrom(ctx);
           if (code) await consumeInvite(code, user.id);
         },
+      },
+      update: {
+        before: async (user) => checkPhoto(user.image),
       },
     },
     // A new sign-in starts in their first account (alphabetically, as the account switcher lists
@@ -98,6 +108,15 @@ export const auth = betterAuth({
 });
 
 export type Session = typeof auth.$Infer.Session;
+
+/**
+ * A login's photo is only ever one uploaded on Account (saved there directly, not through Better
+ * Auth). Its own endpoints would take any address, which would then load from that site for
+ * everyone who sees the person.
+ */
+function checkPhoto(image: string | null | undefined) {
+  if (image && !isProfilePhotoUrl(image)) throw new APIError("BAD_REQUEST", { message: "Upload a photo on Account instead." });
+}
 
 /** The invite code a sign-up came with (sent in the x-invite-code header by the sign-up form). */
 function inviteCodeFrom(ctx: { headers?: Headers } | null) {

@@ -13,6 +13,9 @@ const PREFIX = "/account/photo/";
 
 export const profilePhotoUrl = (id: number) => `${PREFIX}${id}`;
 
+/** A photo uploaded here, not an address on another site. */
+export const isProfilePhotoUrl = (url: string) => url.startsWith(PREFIX) && /^\d+$/.test(url.slice(PREFIX.length));
+
 /** Make this the account's photo (the one before goes). */
 export async function setProfilePhoto(userId: string, file: File) {
   const stored = await storeFile(`profiles/${userId}`, file, file.type);
