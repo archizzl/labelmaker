@@ -141,9 +141,9 @@ export function ResetPasswordForm({ token }: { token: string }) {
 }
 
 /**
- * Join a band's account (or a label's) with an invite link. `members`: its people without a login of
- * their own yet, to pick from (or add yourself, or be the band's shared login); null when the link
- * already says who. `details`: what this login already has for itself, to check or change before
+ * Join a band's account (or a label's) with an invite link. `members`: who they may be (the people
+ * without a login yet whose email is theirs), or add themselves, or be the band's shared login; with
+ * none of those to choose, they join as someone new. Null when the link already says who. `details`: what this login already has for itself, to check or change before
  * joining (saved everywhere it's someone). `auto`: straight after signing up or in, when there's
  * nothing to choose.
  */
@@ -171,6 +171,8 @@ export function JoinBandForm({
 }) {
   const [state, action, pending] = useActionState(joinWithInviteLink, null);
   const [as, setAs] = useState(members?.[0] ? String(members[0].id) : "new");
+  // Nobody to choose (no one's email is theirs, and no shared login to be): they're someone new.
+  const choose = !!members && (members.length > 0 || (!forLabel && !sharedTaken));
   const form = useRef<HTMLFormElement>(null);
   const sent = useRef(false);
   useEffect(() => {
@@ -182,7 +184,8 @@ export function JoinBandForm({
   return (
     <form ref={form} action={action} className="space-y-4">
       <input type="hidden" name="id" value={id} />
-      {members && (
+      {members && !choose && <input type="hidden" name="as" value="new" />}
+      {choose && (
         <fieldset className="space-y-2">
           <legend className="mb-1 text-sm font-medium">Who are you?</legend>
           {members.map((m) => (
@@ -191,7 +194,7 @@ export function JoinBandForm({
             </label>
           ))}
           <label className="flex items-center gap-2 text-sm">
-            <input type="radio" name="as" value="new" checked={as === "new"} onChange={() => setAs("new")} /> I’m not listed
+            <input type="radio" name="as" value="new" checked={as === "new"} onChange={() => setAs("new")} /> Someone new
           </label>
           {!forLabel && !sharedTaken && (
             <label className="flex items-center gap-2 text-sm">
@@ -205,7 +208,14 @@ export function JoinBandForm({
         <div className="grid gap-3 sm:grid-cols-2">
           <h2 className="text-sm font-medium sm:col-span-2">Your details</h2>
           <Field label="Your name">
-            <input name="name" autoComplete="name" required={as === "new"} defaultValue={details.name === bandName ? "" : details.name} />
+            {/* The person they chose keeps the name the group has for them, unless they change it. */}
+            <input
+              key={as}
+              name="name"
+              autoComplete="name"
+              required={as === "new"}
+              defaultValue={members.find((m) => String(m.id) === as)?.name ?? (details.name === bandName ? "" : details.name)}
+            />
           </Field>
           <Field label="PayPal email">
             <input name="email" type="email" defaultValue={details.email ?? ""} />

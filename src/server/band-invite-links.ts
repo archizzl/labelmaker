@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, gt, inArray, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { bandMembers } from "./band-member";
+import { normalizeEmail } from "./people";
 
 /*
  * Invite links to join a label-made band account, or a label itself (see schema.bandInviteLinks). Each band has one
@@ -81,6 +82,24 @@ export async function unclaimedMembers(bandOrgId: string, labelOrgId: string, ba
     db.select({ personId: schema.bandLoginPeople.personId }).from(schema.bandLoginPeople).where(eq(schema.bandLoginPeople.orgId, bandOrgId)),
   ]);
   return members.filter((m) => !claimed.some((c) => c.personId === m.id));
+}
+
+/**
+ * Who someone joining with an invite link may say they are: the people without a login yet (for a
+ * label-made band account, the band's members) whose email on file is the one they signed in with.
+ * Anyone else with the link joins as someone new: otherwise they could become anyone listed, and
+ * change how that person is paid. (Emails aren't checked, so this asks for the exact address.)
+ */
+export async function claimablePeople(found: NonNullable<Awaited<ReturnType<typeof usableInviteLink>>>, email: string) {
+  const mine = normalizeEmail(email);
+  if (!mine) return [];
+  const open = found.forLabel ? await unclaimedPeople(found.labelOrgId) : await unclaimedMembers(found.band.id, found.labelOrgId, found.bandId);
+  if (!open.length) return [];
+  const emails = await db
+    .select({ id: schema.people.id, email: schema.people.email })
+    .from(schema.people)
+    .where(inArray(schema.people.id, open.map((p) => p.id)));
+  return open.filter((p) => emails.some((e) => e.id === p.id && normalizeEmail(e.email) === mine));
 }
 
 /** A label's people who don't have a login yet, there or in one of its bands' accounts (for its own invite link). */

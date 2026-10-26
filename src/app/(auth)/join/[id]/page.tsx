@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ConnectExistingForm, JoinBandForm } from "@/components/auth-forms";
 import { LinkButton } from "@/components/ui";
-import { connectableAccounts, hasSharedLogin, unclaimedMembers, unclaimedPeople, unusedBandAccount, usableInviteLink } from "@/server/band-invite-links";
+import { claimablePeople, connectableAccounts, hasSharedLogin, unusedBandAccount, usableInviteLink } from "@/server/band-invite-links";
 import { myDetails } from "@/server/people";
 import { getSession, groupPhotos } from "@/server/context";
 import { joinPreview } from "@/lib/join-preview";
@@ -76,13 +76,7 @@ export default async function JoinPage({ params, searchParams }: PageProps<"/joi
         <JoinBandForm
           id={id}
           bandName={band.name}
-          members={
-            found.link.personId
-              ? null
-              : found.forLabel
-                ? await unclaimedPeople(found.labelOrgId)
-                : await unclaimedMembers(band.id, found.labelOrgId, found.bandId)
-          }
+          members={found.link.personId ? null : await claimablePeople(found, session.user.email)}
           forLabel={found.forLabel}
           askRole={!found.forLabel || band.kind === "band"}
           sharedTaken={!found.forLabel && (await hasSharedLogin(band.id))}

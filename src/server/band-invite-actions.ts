@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { subAccountFor } from "./band-accounts";
-import { connectableAccounts, hasSharedLogin, resetStandingLink, stamp, unclaimedMembers, unclaimedPeople, unusedBandAccount, usableInviteLink } from "./band-invite-links";
+import { claimablePeople, connectableAccounts, hasSharedLogin, resetStandingLink, stamp, unclaimedMembers, unusedBandAccount, usableInviteLink } from "./band-invite-links";
 import { assignMemberType } from "./member-types";
 import { applyMyDetails } from "./people";
 import { syncOwnPeople } from "./own-books";
@@ -70,9 +70,9 @@ export async function joinWithInviteLink(_: InviteLinkState, fd: FormData): Prom
     if (await hasSharedLogin(org.id)) return { error: `${org.name} already has its shared account. Choose who you are.` };
   } else {
     personId = Number(choice) || null;
-    // Each person has at most one login of their own.
-    const open = found.forLabel ? await unclaimedPeople(labelOrgId) : await unclaimedMembers(org.id, labelOrgId, found.bandId);
-    if (!personId || !open.some((p) => p.id === personId)) return { error: "That person already has an account. Choose who you are." };
+    // Each person has at most one login of their own, and only someone with their email on file can be them.
+    const open = await claimablePeople(found, session.user.email);
+    if (!personId || !open.some((p) => p.id === personId)) return { error: "That person already has an account, or has another email. Join as someone new." };
   }
   // A link from before standing links was single-use: mark it used. The standing link stays open.
   if (link.expiresAt < "9999") {
