@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { safePath } from "@/lib/safe-path";
 import { SignUpForm } from "@/components/auth-forms";
 import { getSession } from "@/server/context";
 import { usableInvite } from "@/server/signup-invites";
@@ -13,7 +14,7 @@ export const metadata = { title: "sign up" };
  */
 export default async function SignupPage({ searchParams }: PageProps<"/signup">) {
   const q = await searchParams;
-  const next = typeof q.next === "string" ? q.next : "/welcome";
+  const next = safePath(typeof q.next === "string" ? q.next : null, "/welcome");
   if (await getSession()) redirect(next);
   const code = typeof q.code === "string" ? q.code : null;
   const invite = code ? await usableInvite(code) : null;

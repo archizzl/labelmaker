@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { safePath } from "@/lib/safe-path";
 
 /*
  * Abel's replies: the little markdown it writes (paragraphs, lists, small tables, bold, and links
@@ -15,7 +16,7 @@ function inline(text: string, onNavigate?: () => void): ReactNode[] {
   for (let m; (m = re.exec(text)); ) {
     if (m.index > last) out.push(text.slice(last, m.index));
     if (m[1]) out.push(<strong key={m.index}>{m[1]}</strong>);
-    else if (m[3].startsWith("/") && !m[3].startsWith("//"))
+    else if (safePath(m[3], "") === m[3])
       out.push(
         <Link key={m.index} href={m[3]} onClick={onNavigate}>
           {m[2]}

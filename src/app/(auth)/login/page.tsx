@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignInForm } from "@/components/auth-forms";
+import { safePath } from "@/lib/safe-path";
 import { getSession } from "@/server/context";
 
 export const metadata = { title: "sign in" };
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const q = await searchParams;
-  const next = typeof q.next === "string" ? q.next : "/";
+  const next = safePath(typeof q.next === "string" ? q.next : null);
   if (await getSession()) redirect(next);
   return (
     <>

@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { safePath } from "@/lib/safe-path";
 import { realContext, VIEW_AS_COOKIE, viewAsValue } from "./context";
 
 /**
@@ -30,6 +31,5 @@ export async function startViewAs(fd: FormData) {
 export async function stopViewAs(fd: FormData) {
   (await cookies()).delete(VIEW_AS_COOKIE);
   revalidatePath("/", "layout");
-  const back = String(fd.get("back") ?? "/");
-  redirect(back.startsWith("/") && !back.startsWith("//") ? back : "/");
+  redirect(safePath(String(fd.get("back") ?? "/")));
 }

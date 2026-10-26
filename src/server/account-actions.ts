@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
+import { safePath } from "@/lib/safe-path";
 import { slugify } from "@/lib/slug";
 import { auth } from "./auth";
 import { accountContext, accountsFor, type Context, getSession, requireAdmin, VIEW_AS_COOKIE } from "./context";
@@ -31,11 +32,6 @@ export type FormState = { error?: string; ok?: string } | null;
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 
-/** Only same-site paths are allowed as a "next" destination. */
-function safeNext(next: string) {
-  return next.startsWith("/") && !next.startsWith("//") ? next : "/";
-}
-
 /** Better Auth reports problems as errors with a readable message. */
 function messageOf(e: unknown, fallback: string) {
   const m = (e as { body?: { message?: string }; message?: string })?.body?.message ?? (e as Error)?.message;
@@ -59,7 +55,7 @@ export async function signUp(_: FormState, fd: FormData): Promise<FormState> {
   } catch (e) {
     return { error: messageOf(e, "Couldn't create your account.") };
   }
-  redirect(safeNext(str(fd, "next") || "/welcome"));
+  redirect(safePath(str(fd, "next") || "/welcome"));
 }
 
 export async function signIn(_: FormState, fd: FormData): Promise<FormState> {
@@ -70,7 +66,7 @@ export async function signIn(_: FormState, fd: FormData): Promise<FormState> {
   } catch (e) {
     return { error: messageOf(e, "That email and password don't match.") };
   }
-  redirect(safeNext(str(fd, "next")));
+  redirect(safePath(str(fd, "next")));
 }
 
 /** Set a new password from a reset link, then sign in with it. */
@@ -90,7 +86,7 @@ export async function signOut(fd?: FormData) {
   (await cookies()).delete(VIEW_AS_COOKIE);
   await auth.api.signOut({ headers: await headers() });
   const next = fd ? str(fd, "next") : "";
-  redirect(next ? safeNext(next) : "/login");
+  redirect(next ? safePath(next) : "/login");
 }
 
 // ---------- accounts ----------
