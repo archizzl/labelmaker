@@ -113,8 +113,8 @@ Never write to the live database by hand. Changes go through migrations and the 
   - Payouts are at `/periods`, label funds at `/funds` with the label's splits and deductions (`/rules`) as its Rules tab, a member's own earnings at `/me`.
   - Also: sales (with `/sales/import` and `/sales/add`), orders, inventory, receipts, catalog, projects (feature flag), fans (hidden from the nav), from-label (a linked band's view of its label), settings, account.
   - The nav is `src/components/nav.tsx`; what members see is set by member types (`src/lib/permissions.ts`).
-- **`src/app/(auth)`:** sign-in, sign-up, password reset, invites, join links and the welcome/apply page.
-- **`src/app/(admin)`:** the site admin dashboard (applications, invite links, accounts, groups, feature flags).
+- **`src/app/(auth)`:** sign-in, sign-up, password reset, invites, join links and the welcome page (anyone can set up a group there).
+- **`src/app/(admin)`:** the site admin dashboard (old group applications, invite links, accounts, groups, feature flags).
 - **`src/app/api`:** Better Auth, the hourly cron sync (`cron/sync`, called by `cloudflare/worker.ts`), sync status.
 - **`src/server`:** data and server actions.
   - `abel/`: Abel, the assistant (feature flag `abel`, needs `OPENROUTER_API_KEY`, `DEEPSEEK_API_KEY` or `GEMINI_API_KEY`; `config.ts` picks the service). Google ADK, imported only through `abel/adk.ts` (its web build: the default one doesn't run on Workers). `openai-compatible.ts` is the model class that translates ADK's Gemini format to OpenRouter's and DeepSeek's OpenAI-style API. `tool.ts` is the permission rule every tool follows (and `actionTool`, which makes a server action a tool). `read-tools.ts` and `lookups.ts` mirror their pages' access and band limits; `write-tools.ts` and `actions/` (by area) have a tool for every server action that needs no file or password, each calling the action after the person confirms. A new server action should get a tool there too; an edit tool starts from the item's current values, since the save actions write every field. `find.ts` finds anything by name (people rarely say what kind of thing they mean). To see how a change to his tools or instructions plays out, run `npm run abel:eval` (real AI calls, read-only on the local data; the conversations are in `src/server/abel/__evals__/abel.eval.ts`) and read `.abel-eval.md`. Chats are in `abel_chats`/`abel_events`, changes in `abel_actions`. The chat route is `src/app/api/abel`, the panel `src/components/abel`.
@@ -122,7 +122,7 @@ Never write to the live database by hand. Changes go through migrations and the 
   - `data.ts`: payout calculations.
   - `auto-sync.ts`, `sync.ts`, `bandcamp-api.ts`: syncing with Bandcamp.
   - `band-accounts.ts`, `links.ts`, `own-books.ts`: band groups a label made, label links, and a band group's own books.
-  - `applications.ts`, `signup-invites.ts`: who may sign up and set up a group.
+  - `signup-invites.ts`: site admins' sign-up invite links. `applications.ts`: group applications from before anyone could set one up (the admin dashboard still lists them).
 - **`src/lib`:** pure logic. `splits.ts` is the split engine, `routing.ts` matches sales to bands, `feature-flags.ts` lists flagged features.
 - **`src/db/schema.ts`:** the schema; `drizzle/` holds the migrations.
 - **`scripts/`:** `dev`, `deploy`, `workers:local` and one-off tools (each explains itself at the top).

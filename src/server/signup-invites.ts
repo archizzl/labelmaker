@@ -1,16 +1,15 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
 
 /*
- * Signup invites (made by a site admin on /admin). Anyone can create a login, but one made with an
- * invite skips the application a new label or band account otherwise needs (src/server/applications.ts).
- * Checked by Better Auth itself whenever a user would be created (src/server/auth.ts), so a used,
+ * Signup invites (made by a site admin on /admin). Anyone can create a login; an invite can be for
+ * one email, and is used up by the first sign-up with it. Checked by Better Auth itself whenever a user would be created (src/server/auth.ts), so a used,
  * revoked or someone else's invite is refused on every sign-up route.
  */
 
-const { signupInvites, invitation } = schema;
+const { signupInvites } = schema;
 const nowIso = () => new Date().toISOString().replace("T", " ").slice(0, 19);
 const normalize = (email: string) => email.trim().toLowerCase();
 
@@ -35,15 +34,6 @@ export async function checkSignup(email: string, code: string | null): Promise<I
     if (invite.email && invite.email !== e) return { ok: false, reason: `This invite is for ${invite.email}. Use that email, or ask for a new invite.` };
     return { ok: true, code };
   }
-  // Invited into an existing account (the team invite links): that email may sign up.
-  const [pending] = await db
-    .select({ id: invitation.id })
-    .from(invitation)
-    .where(and(sql`lower(${invitation.email}) = ${e}`, eq(invitation.status, "pending"), gt(invitation.expiresAt, new Date())))
-    .limit(1);
-  if (pending) return { ok: true, code: null };
-  // Anyone else can create a login too: a new label or band account still needs a site admin's
-  // approval (src/server/applications.ts).
   return { ok: true, code: null };
 }
 

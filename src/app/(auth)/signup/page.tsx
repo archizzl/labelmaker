@@ -8,9 +8,9 @@ import { usableInvite } from "@/server/signup-invites";
 export const metadata = { title: "sign up" };
 
 /**
- * Creating a login. Anyone can; then they apply for a label or band account (on /welcome), which a
- * site admin approves. With a site admin's invite link (/signup?code=…) they skip the approval, and
- * someone invited into an existing account arrives with ?email=….
+ * Creating a login. Anyone can, then set up a label or band group on /welcome. A site admin's invite
+ * link (/signup?code=…) can be for one email only, and someone invited into an existing group
+ * arrives with ?email=….
  */
 export default async function SignupPage({ searchParams }: PageProps<"/signup">) {
   const q = await searchParams;
@@ -27,7 +27,7 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
         <h1 className="mb-2 text-xl font-bold">This invite doesn’t work</h1>
         <p className="mb-5 text-sm text-muted">
           This invite link has been used, revoked or has expired. Ask whoever sent it for a new one, or{" "}
-          <Link href="/signup">sign up without it</Link> and apply for an account.
+          <Link href="/signup">sign up without it</Link>.
         </p>
         <p className="text-sm text-muted">
           Already have a login? <Link href={signIn}>Sign in</Link>

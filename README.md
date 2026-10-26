@@ -22,7 +22,7 @@ In the app, a label or band is a **group**, and a person's login is an **account
 
 ## Signing up
 
-Anyone can create an account at `/signup`, then apply for a label or band group on `/welcome`. A site admin approves or rejects applications on the admin dashboard. People who sign up with a site admin's invite link, or who were invited into an existing group (**Directory → Who can sign in**), skip the application. There's no email service: invite and password-reset links are copied and sent by hand. Site admins are listed in `SITE_ADMIN_EMAILS`.
+Anyone can create an account at `/signup`, then set up a label or band group on `/welcome`. People invited into an existing group (**Directory → Who can sign in**) join it through the invite link. There's no email service, so email addresses aren't checked: invite and password-reset links are copied and sent by hand, and an invite is joined only through its link. Site admins are listed in `SITE_ADMIN_EMAILS` (a Worker secret on the live site; see DEPLOY.md). The admin dashboard's Applications tab holds the group applications made before anyone could set one up.
 
 ## How the money is calculated
 
@@ -54,7 +54,7 @@ To try a change in the real Cloudflare runtime against a throwaway database, run
 | `BETTER_AUTH_SECRET` | Signs sign-in sessions. Any long random string (`openssl rand -base64 32`). |
 | `BETTER_AUTH_URL` | The app's address (`http://localhost:3000`). Also used in invite links. |
 | `APP_ENCRYPTION_KEY` | Encrypts secrets stored in the database (each group's Bandcamp API secret). Without it they can't be read. |
-| `SITE_ADMIN_EMAILS` | Comma-separated emails of site admins (the admin dashboard, invite links, approving groups). |
+| `SITE_ADMIN_EMAILS` | Comma-separated emails of site admins (the admin dashboard, invite links, feature flags). |
 | `BANDCAMP_API` | Keep it `off` locally. Bandcamp allows one API sign-in per client, and the live site holds it. |
 | `OPENROUTER_API_KEY` | Abel's OpenRouter API key: Gemini, falling back to Claude when Gemini is busy. |
 | `DEEPSEEK_API_KEY` | Or Abel's DeepSeek API key (from platform.deepseek.com). |
@@ -102,7 +102,7 @@ src/
     (app)/        the signed-in app: dashboard, sales, orders, inventory, periods (payouts),
                   funds (and rules, its Rules tab), receipts, directory, bands/[id] (tabs, including
                   Money), catalog, projects, fans, me (my earnings), from-label, settings, account
-    (auth)/       sign-in, sign-up, password reset, invites, join links, welcome (apply)
+    (auth)/       sign-in, sign-up, password reset, invites, join links, welcome (set up a group)
     (admin)/      the site admin dashboard (admin.labelmaker.ing)
     api/          Better Auth, the hourly cron sync, sync status, catalog sync requests
   components/     React components, shared UI in ui.tsx
