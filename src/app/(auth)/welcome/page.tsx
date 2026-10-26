@@ -1,10 +1,8 @@
-import { and, eq, gt, sql } from "drizzle-orm";
 import Link from "next/link";
 import { signOut } from "@/server/account-actions";
 import { redirect } from "next/navigation";
 import { CreateAccountForm } from "@/components/auth-forms";
 import { DeleteLogin } from "@/components/delete-login";
-import { db, schema } from "@/db";
 import { accountsFor, getSession } from "@/server/context";
 
 export const metadata = { title: "welcome" };
@@ -14,32 +12,14 @@ export default async function WelcomePage() {
   const session = await getSession();
   if (!session) redirect("/login?next=/welcome");
   const { user } = session;
-  const [accounts, invites] = await Promise.all([
-    accountsFor(user.id),
-    db
-      .select({ id: schema.invitation.id, org: schema.organization.name })
-      .from(schema.invitation)
-      .innerJoin(schema.organization, eq(schema.organization.id, schema.invitation.organizationId))
-      .where(and(sql`lower(${schema.invitation.email}) = ${user.email.toLowerCase()}`, eq(schema.invitation.status, "pending"), gt(schema.invitation.expiresAt, new Date()))),
-  ]);
+  // (Invites aren't listed here by email: nobody's email is checked, so anyone could sign up with
+  // an invited person's. An invite is joined only through its link, which the admin sends them.)
+  const accounts = await accountsFor(user.id);
   const first = user.name.split(" ")[0];
 
   return (
     <div className="wide">
       <h1 className="mb-1 text-xl font-bold">Welcome, {first}</h1>
-
-      {invites.length > 0 && (
-        <div className="mb-5 rounded-md border border-border bg-surface-2 p-3 text-sm">
-          You’ve been invited to{" "}
-          {invites.map((i, n) => (
-            <span key={i.id}>
-              {n > 0 && ", "}
-              <Link href={`/invite/${i.id}`}>{i.org}</Link>
-            </span>
-          ))}
-          . Open the invite to join.
-        </div>
-      )}
 
       <p className="mb-5 text-sm text-muted">Set up your label or band.</p>
       <CreateAccountForm />
