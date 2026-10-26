@@ -30,13 +30,18 @@ const nextConfig: NextConfig = {
       beforeFiles: [{ source: "/", has: [{ type: "host", value: hostPattern(ADMIN_HOST) }], destination: "/admin" }],
     };
   },
-  // Basic protection for a site on the public internet: no framing (clickjacking), no MIME sniffing,
-  // no leaking page addresses to other sites, no camera/mic/location, and not in search engines.
+  // Basic protection for a site on the public internet: https only (browsers remember it for a year;
+  // they ignore it on http://localhost), no framing (clickjacking), no plugins or a changed base for
+  // links, no MIME sniffing, no leaking page addresses to other sites, no camera/mic/location, and
+  // not in search engines.
+  poweredByHeader: false,
   async headers() {
     return [
       {
         source: "/:path*",
         headers: [
+          { key: "Strict-Transport-Security", value: "max-age=31536000" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'; object-src 'none'; base-uri 'self'" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

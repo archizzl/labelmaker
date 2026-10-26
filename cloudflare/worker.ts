@@ -21,6 +21,14 @@ const stats = ((globalThis as unknown as { __requestDbStats?: WeakMap<object, Db
 let cold = true;
 
 async function timedFetch(request: Request, env: Env, ctx: Ctx): Promise<Response> {
+  // Plain http on the live site: to https before anything (a password typed there would travel
+  // unencrypted). Locally (workers:local) it's http on localhost, served as it is.
+  const { protocol, hostname } = new URL(request.url);
+  if (protocol === "http:" && hostname !== "localhost" && hostname !== "127.0.0.1") {
+    const secure = new URL(request.url);
+    secure.protocol = "https:";
+    return Response.redirect(secure.toString(), 301);
+  }
   // The Mac's catalog sync connecting for "Sync now" (cloudflare/catalog-hub.ts).
   if (env.CATALOG_HUB && new URL(request.url).pathname === "/api/catalog-sync/live") {
     return env.CATALOG_HUB.get(env.CATALOG_HUB.idFromName("mac")).fetch(request);
