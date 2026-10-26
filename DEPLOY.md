@@ -60,7 +60,7 @@ For Abel, the assistant, also set a key for its AI service: `OPENROUTER_API_KEY`
 npx wrangler secret put OPENROUTER_API_KEY
 ```
 
-`BETTER_AUTH_URL` and `SITE_ADMIN_EMAILS` are plain settings in `wrangler.jsonc` under `"vars"`. Set `BETTER_AUTH_URL` once you know the address (step 8).
+`BETTER_AUTH_URL` is a plain setting in `wrangler.jsonc` under `"vars"`. Set it once you know the address (step 8). The site admins' emails go in `.deploy.local` as `SITE_ADMIN_EMAILS=you@example.com` (comma-separated); `npm run deploy` sets them on the Worker as a secret when it hasn't got them. To change them later: `npx wrangler secret put SITE_ADMIN_EMAILS`.
 
 ## 5. Set up the database and copy your data
 ```bash
@@ -99,7 +99,7 @@ It then runs every 10 minutes while the Mac is on and awake, and straight away w
 Sign-ins are tied to that address, so use the custom domain from now on, not workers.dev.
 
 ## 9. Smoke test, then invite people
-Sign in as the site admin (`reactionfutureinstitute@gmail.com`), then open each tab: Dashboard, Sales, Orders, Payouts, Label funds, Receipts (add one with a photo), Fans. Then go to **Admin → Invite someone** to make invite links.
+Sign in as the site admin (the email in `SITE_ADMIN_EMAILS`), then open each tab: Dashboard, Sales, Orders, Payouts, Label funds, Receipts (add one with a photo), Fans. Then go to **Admin → Invite someone** to make invite links.
 
 ## Later
 - **Changes:** `npm run deploy`. It runs any new database migrations first.
