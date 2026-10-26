@@ -200,7 +200,7 @@ export function bandcampAddressProblem(address: string | null | undefined): stri
   if (!address?.trim()) return null;
   if (address.includes("@")) return "That’s an email address. Enter the Bandcamp page’s address (yourname.bandcamp.com).";
   const host = normalizeUrl(address).split("/")[0];
-  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(host)) return "That Bandcamp address doesn’t look right.";
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(host) || /^[\d.]+$/.test(host)) return "That Bandcamp address doesn’t look right.";
   if (host === "bandcamp.com") return "Enter your own page’s address (yourname.bandcamp.com).";
   if (NOT_BANDCAMP.some((d) => host === d || host.endsWith(`.${d}`))) return `${host} isn’t a Bandcamp page.`;
   return null;

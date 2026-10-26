@@ -23,6 +23,7 @@ import { emailFingerprint } from "./secrets";
 import { takeOnlineSales } from "./inventory";
 import { loadCatalog, reRouteAll } from "./data";
 import { alreadyInLabelBooks, labelReach, moveSalesToLabel } from "./own-books";
+import { fetchPublic } from "./public-fetch";
 
 /*
  * Bringing things in from Bandcamp: sales (through the API), and artists, releases and merch (from
@@ -176,10 +177,9 @@ export async function lookupLabelArtists(orgId: string, input: string): Promise<
   if (!url) return { error: "Enter your label's Bandcamp address." };
   let html: string;
   try {
-    const res = await fetch(url, {
+    const res = await fetchPublic(url, {
       headers: { "User-Agent": "Mozilla/5.0 (labelmaker; reading my own label's artist list)" },
       signal: AbortSignal.timeout(20000),
-      redirect: "follow",
     });
     if (res.status === 404) {
       return {
@@ -267,7 +267,7 @@ export async function refreshBandPhotos(orgId: string): Promise<number> {
     const subdomain = b.urlPatterns.find((p) => /^[a-z0-9-]+$/i.test(p));
     if (!subdomain) continue;
     if (b.imageUrl) {
-      const still = await fetch(b.imageUrl, { method: "HEAD", signal: AbortSignal.timeout(10000) }).then((r) => r.status !== 404, () => true);
+      const still = await fetchPublic(b.imageUrl, { method: "HEAD", signal: AbortSignal.timeout(10000) }).then((r) => r.status !== 404, () => true);
       if (still) continue;
     }
     const page = await fetchPage(`https://${subdomain.toLowerCase()}.bandcamp.com/`);

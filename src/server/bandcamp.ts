@@ -5,6 +5,7 @@ import { parseBandPhoto } from "@/lib/bandcamp-label";
 import type { ReleaseDetails } from "@/lib/bandcamp-release";
 import { matchesBandPattern, normalizeText, normalizeUrl } from "@/lib/routing";
 import { ownPhotoId } from "./merch-photos";
+import { fetchPublic } from "./public-fetch";
 
 const { bands, releases, tracks, outsideArtists } = schema;
 
@@ -26,7 +27,7 @@ export async function fetchPage(
   for (let attempt = 0; attempt < 3; attempt++) {
     let res: Response;
     try {
-      res = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(20000), redirect: "follow" });
+      res = await fetchPublic(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(20000) });
     } catch (e) {
       return { status: 0, error: `Couldn't reach ${url} (${(e as Error).message})` };
     }

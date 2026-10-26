@@ -15,5 +15,6 @@ describe("checking a Bandcamp address", () => {
     expect(bandcampAddressProblem("www.instagram.com/flagday")).toBe("instagram.com isn’t a Bandcamp page.");
     expect(bandcampAddressProblem("bandcamp.com")).toMatch(/your own page/);
     expect(bandcampAddressProblem("flag day")).toBe("That Bandcamp address doesn’t look right.");
+    expect(bandcampAddressProblem("http://192.168.1.1/music")).toBe("That Bandcamp address doesn’t look right.");
   });
 });
