@@ -2,17 +2,19 @@ import { eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db, schema } from "@/db";
 import { getSession } from "@/server/context";
+import { canSeePhotoOf } from "@/server/profile-photos";
 import { readStoredFile } from "@/server/receipt-store";
 
-/** Someone's profile photo (src/server/profile-photos.ts), for anyone signed in. */
+/** Someone's profile photo (src/server/profile-photos.ts), for them and the people in their groups. */
 export async function GET(_req: NextRequest, ctx: RouteContext<"/account/photo/[id]">) {
   const notFound = new Response("Not found", { status: 404 });
-  if (!(await getSession())) return notFound;
+  const session = await getSession();
+  if (!session) return notFound;
   const [photo] = await db
     .select()
     .from(schema.profilePhotos)
     .where(eq(schema.profilePhotos.id, Number((await ctx.params).id)));
-  if (!photo) return notFound;
+  if (!photo || !(await canSeePhotoOf(session.user.id, photo.userId))) return notFound;
   const body = await readStoredFile(photo);
   if (!body) return notFound;
   return new Response(body, {

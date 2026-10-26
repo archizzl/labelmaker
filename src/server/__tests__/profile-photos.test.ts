@@ -41,4 +41,41 @@ describe("profile photos", () => {
     expect(await rows()).toEqual([]);
     expect(discarded).toEqual([first.storageKey, second.storageKey]);
   });
+
+  it("are seen by the people in their groups, a label's band groups counting as one", async () => {
+    const login = async () => {
+      const id = randomUUID();
+      await db.insert(schema.user).values({ id, name: "Someone", email: `${id}@example.test`, emailVerified: false, createdAt: new Date(), updatedAt: new Date() });
+      return id;
+    };
+    const group = async (kind: "label" | "band") => {
+      const id = randomUUID();
+      await db.insert(schema.organization).values({ id, name: `Org ${id.slice(0, 4)}`, slug: `org-${id}`, createdAt: new Date(), kind });
+      return id;
+    };
+    const join = (organizationId: string, userId: string) =>
+      db.insert(schema.member).values({ id: randomUUID(), organizationId, userId, role: "member", createdAt: new Date() });
+    const linkBand = async (labelOrgId: string, bandOrgId: string) => {
+      const [band] = await db.insert(schema.bands).values({ orgId: labelOrgId, name: "A band" }).returning();
+      await db.insert(schema.accountLinks).values({ labelOrgId, labelBandId: band.id, bandOrgId, code: randomUUID(), status: "active", managed: true });
+    };
+
+    const [label, bandA, bandB, elsewhere] = [await group("label"), await group("band"), await group("band"), await group("label")];
+    await linkBand(label, bandA);
+    await linkBand(label, bandB);
+    const [labelAdmin, inBandA, inBandB, colleague, stranger] = [await login(), await login(), await login(), await login(), await login()];
+    await join(label, labelAdmin);
+    await join(label, colleague);
+    await join(bandA, inBandA);
+    await join(bandB, inBandB);
+    await join(elsewhere, stranger);
+
+    expect(await photos.canSeePhotoOf(stranger, stranger)).toBe(true);
+    expect(await photos.canSeePhotoOf(colleague, labelAdmin)).toBe(true);
+    expect(await photos.canSeePhotoOf(labelAdmin, inBandA)).toBe(true);
+    expect(await photos.canSeePhotoOf(inBandA, labelAdmin)).toBe(true);
+    expect(await photos.canSeePhotoOf(inBandA, inBandB)).toBe(true);
+    expect(await photos.canSeePhotoOf(stranger, labelAdmin)).toBe(false);
+    expect(await photos.canSeePhotoOf(inBandA, stranger)).toBe(false);
+  });
 });
