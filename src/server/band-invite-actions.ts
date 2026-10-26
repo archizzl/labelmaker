@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { subAccountFor } from "./band-accounts";
 import { connectableAccounts, hasSharedLogin, resetStandingLink, stamp, unclaimedMembers, unclaimedPeople, unusedBandAccount, usableInviteLink } from "./band-invite-links";
+import { assignMemberType } from "./member-types";
 import { applyMyDetails } from "./people";
 import { syncOwnPeople } from "./own-books";
 import { ownBand } from "./data";
@@ -90,6 +91,8 @@ export async function joinWithInviteLink(_: InviteLinkState, fd: FormData): Prom
     // The band's own login manages the account; everyone else's just uses it (a label's admins
     // choose roles under Who can sign in).
     await db.insert(schema.member).values({ id: randomUUID(), organizationId: org.id, userId, role: choice === "band" ? "admin" : "member", createdAt: new Date() });
+    // A label's link for one of its member types: they start with it.
+    if (link.memberTypeId && found.forLabel) await assignMemberType(org.id, userId, link.memberTypeId);
   }
   // What they filled in of their details (blank: left as it is).
   const opt = (k: string) => field(k) || undefined;

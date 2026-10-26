@@ -7,7 +7,7 @@ import { cancelInvite, removeAccountMember } from "@/server/account-actions";
 import type { Context } from "@/server/context";
 import { inviteMemberTypes, listMemberTypes, memberTypeOf } from "@/server/member-types";
 import { RolePicker } from "./role-picker";
-import { LoginEditToggle, LoginIdentity, StandingInviteLink } from "./band-invite-links";
+import { LoginEditToggle, LoginIdentity } from "./band-invite-links";
 import { bandMembers } from "@/server/band-member";
 import { bandLoginNames, bandLoginPersons } from "@/server/band-invite-links";
 
@@ -177,10 +177,7 @@ export async function WhoCanSignIn({ ctx }: { ctx: Context }) {
             </table>
           </div>
 
-          {/* One invite link, the same every time: whoever opens it signs up (or in) with their own email, says who they are and fills in their details. */}
-          <div className="mt-4">
-            <StandingInviteLink bandOrgId={orgId} createdBy={ctx.user.id} />
-          </div>
+          {/* Invite links are per member type, under Member types below. */}
         </Card>
   );
 }

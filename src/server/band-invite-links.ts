@@ -20,14 +20,16 @@ const NEVER = "9999-12-31 00:00:00";
 /**
  * A band account's standing invite link, the same every time: whoever has it can join, until the
  * link is reset. Made the first time it's needed (the newest open link, if there are older ones).
+ * `memberTypeId`: a label's link for one of its member types, which whoever joins with it gets.
  */
-export async function standingInviteLink(bandOrgId: string, createdByUserId: string | null): Promise<string> {
+export async function standingInviteLink(bandOrgId: string, createdByUserId: string | null, memberTypeId: number | null = null): Promise<string> {
   const [open] = await db
     .select({ id: schema.bandInviteLinks.id })
     .from(schema.bandInviteLinks)
     .where(
       and(
         eq(schema.bandInviteLinks.orgId, bandOrgId),
+        memberTypeId === null ? isNull(schema.bandInviteLinks.memberTypeId) : eq(schema.bandInviteLinks.memberTypeId, memberTypeId),
         isNull(schema.bandInviteLinks.usedAt),
         isNull(schema.bandInviteLinks.canceledAt),
         gt(schema.bandInviteLinks.expiresAt, stamp(new Date())),
@@ -37,7 +39,7 @@ export async function standingInviteLink(bandOrgId: string, createdByUserId: str
     .limit(1);
   if (open) return open.id;
   const id = randomUUID();
-  await db.insert(schema.bandInviteLinks).values({ id, orgId: bandOrgId, createdByUserId, expiresAt: NEVER });
+  await db.insert(schema.bandInviteLinks).values({ id, orgId: bandOrgId, createdByUserId, memberTypeId, expiresAt: NEVER });
   return id;
 }
 

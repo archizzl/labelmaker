@@ -6,11 +6,23 @@ import { standingInviteLink } from "@/server/band-invite-links";
 const base = () => process.env.BETTER_AUTH_URL ?? "";
 
 /**
- * A band account's standing invite link, the same every time: copy it to send. Reset makes the old
- * one stop working. `bandId` when the label manages it for one of its bands.
+ * A band account's standing invite link (or a label's, for one of its member types), the same every
+ * time: copy it to send. Reset makes the old one stop working. `bandId` when the label manages it for
+ * one of its bands.
  */
-export async function StandingInviteLink({ bandOrgId, createdBy = null, bandId }: { bandOrgId: string; createdBy?: string | null; bandId?: number }) {
-  const id = await standingInviteLink(bandOrgId, createdBy);
+export async function StandingInviteLink({
+  bandOrgId,
+  createdBy = null,
+  bandId,
+  memberTypeId = null,
+}: {
+  bandOrgId: string;
+  createdBy?: string | null;
+  bandId?: number;
+  /** A label's link for one of its member types. */
+  memberTypeId?: number | null;
+}) {
+  const id = await standingInviteLink(bandOrgId, createdBy, memberTypeId);
   return (
     <span className="flex flex-wrap items-center gap-2">
       <CopyButton text={`${base()}/join/${id}`} label="Copy invite link" />

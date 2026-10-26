@@ -975,6 +975,8 @@ export const bandInviteLinks = pgTable(
     id: text("id").primaryKey(),
     orgId: orgId(),
     personId: integer("person_id").references(() => people.id, { onDelete: "set null" }),
+    /** A label's link for one member type: whoever joins with it gets that type (deleting the type ends the link). */
+    memberTypeId: integer("member_type_id").references(() => memberTypes.id, { onDelete: "cascade" }),
     createdByUserId: text("created_by_user_id").references(() => user.id, { onDelete: "set null" }),
     createdAt: text("created_at").notNull().default(now),
     expiresAt: text("expires_at").notNull(),

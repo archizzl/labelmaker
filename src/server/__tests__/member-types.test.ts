@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { newAccount, testDb } from "../../../test/helpers/db";
 
@@ -90,5 +91,23 @@ describe("member types", () => {
     await expect(types.parseRoleChoice(orgB, `type:${t.id}`)).rejects.toThrow();
     expect(await types.parseRoleChoice(orgB, "admin")).toEqual({ role: "admin", memberTypeId: null });
     expect(await types.parseRoleChoice(orgB, "whatever")).toEqual({ role: "member", memberTypeId: null });
+  });
+});
+
+describe("a member type's invite link", () => {
+  it("is the same every time, one per type, apart from any other link, and ends with its type", async () => {
+    const links = await import("../band-invite-links");
+    const orgId = await newAccount();
+    const [manager] = await db.insert(schema.memberTypes).values({ orgId, name: "Manager", permissions: {} }).returning();
+    const [viewOnly] = await db.insert(schema.memberTypes).values({ orgId, name: "View-only", permissions: {} }).returning();
+
+    const managerLink = await links.standingInviteLink(orgId, null, manager.id);
+    expect(await links.standingInviteLink(orgId, null, manager.id)).toBe(managerLink);
+    expect(await links.standingInviteLink(orgId, null, viewOnly.id)).not.toBe(managerLink);
+    expect(await links.standingInviteLink(orgId, null)).not.toBe(managerLink);
+    expect((await links.usableInviteLink(managerLink))?.link.memberTypeId).toBe(manager.id);
+
+    await db.delete(schema.memberTypes).where(eq(schema.memberTypes.id, manager.id));
+    expect(await links.usableInviteLink(managerLink)).toBeNull();
   });
 });

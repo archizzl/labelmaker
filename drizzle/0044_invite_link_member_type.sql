@@ -1,0 +1,2 @@
+ALTER TABLE "band_invite_links" ADD COLUMN "member_type_id" integer;--> statement-breakpoint
+ALTER TABLE "band_invite_links" ADD CONSTRAINT "band_invite_links_member_type_id_member_types_id_fk" FOREIGN KEY ("member_type_id") REFERENCES "public"."member_types"("id") ON DELETE cascade ON UPDATE no action;
