@@ -20,6 +20,7 @@ import { bandcampAddressProblem, bandcampPattern } from "@/lib/routing";
 import { cleanCashtag, cleanVenmoHandle } from "@/lib/paypal-export";
 import { bandcampCredentials, forgetBandcampSignIn, myBands } from "./bandcamp-api";
 import { encryptSecret } from "./secrets";
+import { TOO_MANY_TRIES, tooManyTries } from "./rate-limit";
 import { photoFrom } from "./merch-photos";
 import { clearOldPhotos, removeProfilePhoto, setProfilePhoto } from "./profile-photos";
 
@@ -46,6 +47,7 @@ export async function signUp(_: FormState, fd: FormData): Promise<FormState> {
   const password = String(fd.get("password") ?? "");
   if (!name || !email) return { error: "Enter your name and email." };
   if (password.length < 8) return { error: "Use a password of at least 8 characters." };
+  if (await tooManyTries("sign-up")) return { error: TOO_MANY_TRIES };
   try {
     // The invite code goes along so Better Auth's check (src/server/auth.ts) lets this sign-up through.
     const h = new Headers(await headers());
@@ -61,6 +63,7 @@ export async function signUp(_: FormState, fd: FormData): Promise<FormState> {
 export async function signIn(_: FormState, fd: FormData): Promise<FormState> {
   const email = str(fd, "email").toLowerCase();
   const password = String(fd.get("password") ?? "");
+  if (await tooManyTries("sign-in")) return { error: TOO_MANY_TRIES };
   try {
     await auth.api.signInEmail({ body: { email, password }, headers: await headers() });
   } catch (e) {
@@ -620,6 +623,7 @@ export async function changeMyPassword(_: FormState, fd: FormData): Promise<Form
   if (!session) redirect("/login");
   const newPassword = String(fd.get("newPassword") ?? "");
   if (newPassword.length < 8) return { error: "Use a password of at least 8 characters." };
+  if (await tooManyTries("change-password")) return { error: TOO_MANY_TRIES };
   try {
     await auth.api.changePassword({ body: { currentPassword: String(fd.get("currentPassword") ?? ""), newPassword }, headers: await headers() });
   } catch {
