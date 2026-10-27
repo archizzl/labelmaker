@@ -27,14 +27,9 @@ export const MANUAL_KINDS = [
 ] as const;
 
 /** How it was paid. Cash is left out of payouts unless unticked: it's taken as already shared out. */
-export const PAYMENT_METHODS = [
-  "Card",
-  "Cash",
-  "Bank transfer",
-  "Other",
-] as const;
+export const PAYMENT_METHODS = ["Card", "Cash", "Bank transfer", "Other"] as const;
 
-/** What can be kept about a show, all optional: shown with the sale under these labels. */
+/** What can be kept about a show, all optional: asked for under these labels, and shown with the sale. */
 export const SHOW_DETAILS = [
   { name: "venue", label: "Venue" },
   { name: "city", label: "City" },

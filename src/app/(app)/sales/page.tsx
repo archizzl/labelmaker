@@ -3,14 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { ChartBoard } from "@/components/chart-board";
 import { SalesTabs } from "@/components/sales-tabs";
-import {
-  Badge,
-  buttonClass,
-  Card,
-  Empty,
-  Money,
-  PageHeader,
-} from "@/components/ui";
+import { Badge, buttonClass, Card, Empty, Money, PageHeader } from "@/components/ui";
 import { db, schema } from "@/db";
 import { type BoardChart, breakdownChart, seriesChart } from "@/lib/chart-data";
 import { formatCents } from "@/lib/money";
@@ -39,12 +32,7 @@ import {
 
 export const metadata = { title: "sales" };
 
-const TYPE_LABEL: Record<string, string> = {
-  album: "Album",
-  track: "Track",
-  merch: "Merch",
-  other: "Other",
-};
+const TYPE_LABEL: Record<string, string> = { album: "Album", track: "Track", merch: "Merch", other: "Other" };
 
 /** Every sale, filterable and sortable, with totals and breakdowns of what's filtered. */
 export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
@@ -58,36 +46,20 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
   const m = ctx.managedBy;
   const own = m ? await ownBooksOf(ctx) : ctx;
   const orgId = own.orgId;
-  const books: SalesBooks = m
-    ? { own: orgId, label: { orgId: m.labelOrgId, bandId: m.bandId } }
-    : orgId;
+  const books: SalesBooks = m ? { own: orgId, label: { orgId: m.labelOrgId, bandId: m.bandId } } : orgId;
   // A member type can limit this to their own bands' sales.
   const scope = m ? null : bandScope(access, "sales");
   const canEdit = can(own.access, "sales", "edit");
-  const [since, adder] = await Promise.all([
-    m ? onLabelSince(m.labelOrgId, m.bandId) : null,
-    saleAdder(),
-  ]);
+  const [since, adder] = await Promise.all([m ? onLabelSince(m.labelOrgId, m.bandId) : null, saleAdder()]);
   const canDelete = (s: { orgId: string; bandId: number | null }) =>
-    !!adder &&
-    ((s.orgId === orgId && adder.bands.some((b) => b.id === s.bandId)) ||
-      (!!m && s.orgId === m.labelOrgId));
-  const f = {
-    ...parseSalesFilter(await searchParams),
-    onlyBands: scope ?? undefined,
-    ...(m ? { band: undefined } : {}),
-  };
+    !!adder && ((s.orgId === orgId && adder.bands.some((b) => b.id === s.bandId)) || (!!m && s.orgId === m.labelOrgId));
+  const f = { ...parseSalesFilter(await searchParams), onlyBands: scope ?? undefined, ...(m ? { band: undefined } : {}) };
   const [page, summary, options, [{ unrouted }]] = await Promise.all([
     browseSales(books, f),
     summarizeSales(books, f),
     salesFilterOptions(books, scope ?? undefined),
     db
-      .select({
-        unrouted: db.$count(
-          schema.sales,
-          and(eq(schema.sales.orgId, orgId), isNull(schema.sales.bandId)),
-        ),
-      })
+      .select({ unrouted: db.$count(schema.sales, and(eq(schema.sales.orgId, orgId), isNull(schema.sales.bandId))) })
       .from(schema.organization)
       .where(eq(schema.organization.id, orgId)),
   ]);
@@ -112,187 +84,112 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
   const net = main?.net ?? 0;
   const typeLabel = (k: string) => TYPE_LABEL[k] ?? k;
   const charts: BoardChart[] = [
-    seriesChart(
-      "month",
-      "Net received by month",
-      summary.byMonth.map((m) => ({
-        month: m.month,
-        value: m.net,
-        units: m.units,
-      })),
-      { currency: cur },
-    ),
+    seriesChart("month", "Net received by month", summary.byMonth.map((m) => ({ month: m.month, value: m.net, units: m.units })), { currency: cur }),
     breakdownChart("item", "Top items", summary.byItem, {
       currency: cur,
       total: net,
       trend: summary.trends.item,
-      links: summary.byItem
-        .slice(0, 3)
-        .map((r) => ({
-          label: r.key,
-          href: filterQuery(f, { q: r.key, page: 1 }) || "/sales",
-        })),
+      links: summary.byItem.slice(0, 3).map((r) => ({ label: r.key, href: filterQuery(f, { q: r.key, page: 1 }) || "/sales" })),
     }),
-    breakdownChart("band", "By band", summary.byBand, {
+    breakdownChart("band", "By band", summary.byBand, { currency: cur, total: net, trend: summary.trends.band }),
+    breakdownChart("type", "By type", summary.byType.map((r) => ({ ...r, key: typeLabel(r.key) })), {
       currency: cur,
       total: net,
-      trend: summary.trends.band,
+      trend: { ...summary.trends.type, series: summary.trends.type.series.map((x) => ({ ...x, key: typeLabel(x.key) })) },
     }),
-    breakdownChart(
-      "type",
-      "By type",
-      summary.byType.map((r) => ({ ...r, key: typeLabel(r.key) })),
-      {
-        currency: cur,
-        total: net,
-        trend: {
-          ...summary.trends.type,
-          series: summary.trends.type.series.map((x) => ({
-            ...x,
-            key: typeLabel(x.key),
-          })),
-        },
-      },
-    ),
-    breakdownChart("country", "By country", summary.byCountry, {
-      currency: cur,
-      total: net,
-      trend: summary.trends.country,
-    }),
-    breakdownChart("source", "Where fans came from", summary.bySource, {
-      currency: cur,
-      total: net,
-      trend: summary.trends.source,
-    }),
+    breakdownChart("country", "By country", summary.byCountry, { currency: cur, total: net, trend: summary.trends.country }),
+    breakdownChart("source", "Where fans came from", summary.bySource, { currency: cur, total: net, trend: summary.trends.source }),
   ];
   const saved = await loadLayout("sales");
 
   // One sale's row (inOrder: how many items its order has, when it's shown under the order's row).
   const saleRow = (s: SaleRow, inOrder = 0) => (
-    <tr key={s.id} className={`align-top ${inOrder ? "bg-surface-2/40" : ""}`}>
-      <td className="whitespace-nowrap text-muted">{s.date}</td>
-      <td className={`min-w-48 ${inOrder ? "pl-7" : ""}`}>
-        <details>
-          <summary className="cursor-pointer">
-            {s.itemName || <span className="text-muted">(no name)</span>}
-            {s.packageName && (
-              <span className="text-xs text-muted"> · {s.packageName}</span>
-            )}
-          </summary>
-          <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
-            {Object.entries(s.raw)
-              .filter(([k]) => !["item name", "date"].includes(k))
-              .map(([k, v]) => (
-                <div key={k} className="contents">
-                  <dt className="text-muted">{k}</dt>
-                  <dd className="break-all">{v}</dd>
-                </div>
-              ))}
-          </dl>
-          {s.buyerKey ? (
-            <p className="mt-1 text-xs">
-              <span className="text-muted">buyer </span>
-              {s.fanEmail
-                ? `${s.fanName ? `${s.fanName} · ` : ""}${s.fanEmail} (on your mailing list)`
-                : "not on your mailing list"}
-              {s.buyerSales > 1 && !f.buyer && (
-                <>
-                  {" · "}
-                  <Link
-                    href={filterQuery(
-                      { ...f, q: undefined },
-                      { buyer: s.buyerKey, page: 1 },
-                    )}
-                  >
-                    all {s.buyerSales} sales to this buyer
-                  </Link>
-                </>
+        <tr key={s.id} className={`align-top ${inOrder ? "bg-surface-2/40" : ""}`}>
+          <td className="whitespace-nowrap text-muted">{s.date}</td>
+          <td className={`min-w-48 ${inOrder ? "pl-7" : ""}`}>
+            <details>
+              <summary className="cursor-pointer">
+                {s.itemName || <span className="text-muted">(no name)</span>}
+                {s.packageName && <span className="text-xs text-muted"> · {s.packageName}</span>}
+              </summary>
+              <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
+                {Object.entries(s.raw)
+                  .filter(([k]) => !["item name", "date"].includes(k))
+                  .map(([k, v]) => (
+                    <div key={k} className="contents">
+                      <dt className="text-muted">{k}</dt>
+                      <dd className="break-all">{v}</dd>
+                    </div>
+                  ))}
+              </dl>
+              {s.buyerKey ? (
+                <p className="mt-1 text-xs">
+                  <span className="text-muted">buyer </span>
+                  {s.fanEmail ? `${s.fanName ? `${s.fanName} · ` : ""}${s.fanEmail} (on your mailing list)` : "not on your mailing list"}
+                  {s.buyerSales > 1 && !f.buyer && (
+                    <>
+                      {" · "}
+                      <Link href={filterQuery({ ...f, q: undefined }, { buyer: s.buyerKey, page: 1 })}>all {s.buyerSales} sales to this buyer</Link>
+                    </>
+                  )}
+                </p>
+              ) : null}
+              {s.releaseId && (
+                <Link href={`/catalog/${s.releaseId}`} className="mt-1 inline-block text-xs">
+                  {s.releaseTitle ?? "Release"} in the catalog →
+                </Link>
               )}
-            </p>
-          ) : null}
-          {s.releaseId && (
-            <Link
-              href={`/catalog/${s.releaseId}`}
-              className="mt-1 inline-block text-xs"
-            >
-              {s.releaseTitle ?? "Release"} in the catalog →
-            </Link>
-          )}
-          {s.routedVia === MANUAL_VIA &&
-            s.payoutState === "none" &&
-            canDelete(s) && <DeleteManualSale id={s.id} orderItems={inOrder} />}
-        </details>
-      </td>
-      <td className="text-sm">
-        {m && s.bandId ? (
-          <>
-            {s.bandName}
-            {s.orgId === orgId && since && s.date < since && (
-              <div className="text-xs text-muted">before {m.labelName}</div>
+              {s.routedVia === MANUAL_VIA && s.payoutState === "none" && canDelete(s) && <DeleteManualSale id={s.id} orderItems={inOrder} />}
+            </details>
+          </td>
+          <td className="text-sm">
+            {m && s.bandId ? (
+              <>
+                {s.bandName}
+                {s.orgId === orgId && since && s.date < since && <div className="text-xs text-muted">before {m.labelName}</div>}
+              </>
+            ) : s.bandId ? (
+              <Link href={filterQuery(f, { band: s.bandId, page: 1 }) || "?"} className="hover:underline">
+                {s.bandName}
+              </Link>
+            ) : (
+              <Link href="/sales/import" className="text-bad">
+                not matched
+              </Link>
             )}
-          </>
-        ) : s.bandId ? (
-          <Link
-            href={filterQuery(f, { band: s.bandId, page: 1 }) || "?"}
-            className="hover:underline"
-          >
-            {s.bandName}
-          </Link>
-        ) : (
-          <Link href="/sales/import" className="text-bad">
-            not matched
-          </Link>
-        )}
-        {s.artist && s.artist !== s.bandName && (
-          <div className="text-xs text-muted">{s.artist}</div>
-        )}
-      </td>
-      <td className="text-sm">
-        <Link
-          href={filterQuery(f, { type: s.category, page: 1 })}
-          className="text-text hover:underline"
-        >
-          {s.itemType === "show"
-            ? "Show"
-            : (TYPE_LABEL[s.category] ?? s.category)}
-        </Link>
-      </td>
-      <td className="text-sm">
-        {s.country ? (
-          <Link
-            href={filterQuery(f, { country: s.country, page: 1 })}
-            className="text-text hover:underline"
-          >
-            {s.country}
-          </Link>
-        ) : (
-          <span className="text-muted">–</span>
-        )}
-      </td>
-      <td className="max-w-40 truncate text-sm" title={s.source}>
-        {s.source ? (
-          <Link
-            href={filterQuery(f, { source: s.source, page: 1 })}
-            className="text-text hover:underline"
-          >
-            {s.source}
-          </Link>
-        ) : (
-          <span className="text-muted">–</span>
-        )}
-      </td>
-      <td className="num">{s.quantity}</td>
-      <td className={`num ${s.netCents < 0 ? "text-bad" : ""}`}>
-        <Money cents={s.netCents} currency={s.currency} />
-      </td>
-      <td className="whitespace-nowrap text-sm">
-        <PayoutCell
-          state={s.payoutState}
-          periodId={s.periodId}
-          outside={s.outsidePayouts}
-        />
-      </td>
-    </tr>
+            {s.artist && s.artist !== s.bandName && <div className="text-xs text-muted">{s.artist}</div>}
+          </td>
+          <td className="text-sm">
+            <Link href={filterQuery(f, { type: s.category, page: 1 })} className="text-text hover:underline">
+              {s.itemType === "show" ? "Show" : (TYPE_LABEL[s.category] ?? s.category)}
+            </Link>
+          </td>
+          <td className="text-sm">
+            {s.country ? (
+              <Link href={filterQuery(f, { country: s.country, page: 1 })} className="text-text hover:underline">
+                {s.country}
+              </Link>
+            ) : (
+              <span className="text-muted">–</span>
+            )}
+          </td>
+          <td className="max-w-40 truncate text-sm" title={s.source}>
+            {s.source ? (
+              <Link href={filterQuery(f, { source: s.source, page: 1 })} className="text-text hover:underline">
+                {s.source}
+              </Link>
+            ) : (
+              <span className="text-muted">–</span>
+            )}
+          </td>
+          <td className="num">{s.quantity}</td>
+          <td className={`num ${s.netCents < 0 ? "text-bad" : ""}`}>
+            <Money cents={s.netCents} currency={s.currency} />
+          </td>
+          <td className="whitespace-nowrap text-sm">
+            <PayoutCell state={s.payoutState} periodId={s.periodId} outside={s.outsidePayouts} />
+          </td>
+        </tr>
   );
 
   return (
@@ -301,39 +198,19 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
         title="Sales"
         actions={
           page.count > 0 && (
-            <a
-              href={`/sales/export${filterQuery(f, { page: 1 })}`}
-              className={buttonClass("secondary")}
-              download
-            >
+            <a href={`/sales/export${filterQuery(f, { page: 1 })}`} className={buttonClass("secondary")} download>
               Export CSV
             </a>
           )
         }
       />
-      <SalesTabs
-        active="browse"
-        unrouted={unrouted}
-        canImport={canEdit}
-        canAdd={!!adder}
-      />
+      <SalesTabs active="browse" unrouted={unrouted} canImport={canEdit} canAdd={!!adder} />
 
-      <Card
-        title={
-          main
-            ? `${page.count.toLocaleString("en-US")} sale${page.count === 1 ? "" : "s"}`
-            : "Sales"
-        }
-      >
+      <Card title={main ? `${page.count.toLocaleString("en-US")} sale${page.count === 1 ? "" : "s"}` : "Sales"}>
         <Filters f={f} options={options} filtered={filtered} oneBand={!!m} />
         {f.buyer && (
           <p className="mb-3 text-sm">
-            Showing one buyer’s sales.{" "}
-            <Link
-              href={filterQuery(f, { buyer: undefined, page: 1 }) || "/sales"}
-            >
-              Show everyone’s
-            </Link>
+            Showing one buyer’s sales. <Link href={filterQuery(f, { buyer: undefined, page: 1 }) || "/sales"}>Show everyone’s</Link>
           </p>
         )}
         {!main ? (
@@ -344,11 +221,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
               </>
             ) : (
               <>
-                No sales yet.{" "}
-                <Link href="/sales/import">
-                  Import or sync them from Bandcamp
-                </Link>
-                .
+                No sales yet. <Link href="/sales/import">Import or sync them from Bandcamp</Link>.
               </>
             )}
           </Empty>
@@ -374,10 +247,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
                     order.length === 1 ? (
                       saleRow(order[0])
                     ) : (
-                      <SaleOrder
-                        key={`order-${order[0].id}`}
-                        head={<OrderCells order={order} />}
-                      >
+                      <SaleOrder key={`order-${order[0].id}`} head={<OrderCells order={order} />}>
                         {order.map((x) => saleRow(x, order.length))}
                       </SaleOrder>
                     ),
@@ -385,12 +255,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
                 </tbody>
               </table>
             </div>
-            <Pager
-              page={f.page}
-              per={f.per}
-              count={page.count}
-              href={(change) => filterQuery(f, change) || "/sales"}
-            />
+            <Pager page={f.page} per={f.per} count={page.count} href={(change) => filterQuery(f, change) || "/sales"} />
           </>
         )}
       </Card>
@@ -398,36 +263,16 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
       {main && (
         <>
           <h2 className="mt-10 mb-3 text-sm font-bold">
-            Totals and breakdowns{" "}
-            <span className="font-normal text-muted">
-              ({main.first} to {main.last})
-            </span>
+            Totals and breakdowns <span className="font-normal text-muted">({main.first} to {main.last})</span>
           </h2>
           <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Tile
-              label="Net received"
-              value={formatCents(main.net, main.currency)}
-            />
-            <Tile
-              label={`Sale${main.sales === 1 ? "" : "s"}`}
-              value={main.sales.toLocaleString("en-US")}
-              hint={`${main.units.toLocaleString("en-US")} items`}
-            />
-            <Tile
-              label="Average per sale"
-              value={formatCents(
-                Math.round(main.net / Math.max(1, main.sales)),
-                main.currency,
-              )}
-            />
+            <Tile label="Net received" value={formatCents(main.net, main.currency)} />
+            <Tile label={`Sale${main.sales === 1 ? "" : "s"}`} value={main.sales.toLocaleString("en-US")} hint={`${main.units.toLocaleString("en-US")} items`} />
+            <Tile label="Average per sale" value={formatCents(Math.round(main.net / Math.max(1, main.sales)), main.currency)} />
             <Tile
               label="Refunds"
               value={main.refunds.toLocaleString("en-US")}
-              hint={
-                main.refunds
-                  ? formatCents(main.refundCents, main.currency)
-                  : undefined
-              }
+              hint={main.refunds ? formatCents(main.refundCents, main.currency) : undefined}
             />
           </div>
           {summary.totals.length > 1 && (
@@ -435,10 +280,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
               Totals and charts are in {cur}. Also:{" "}
               {summary.totals
                 .slice(1)
-                .map(
-                  (t) =>
-                    `${formatCents(t.net, t.currency)} from ${t.sales} sale${t.sales === 1 ? "" : "s"}`,
-                )
+                .map((t) => `${formatCents(t.net, t.currency)} from ${t.sales} sale${t.sales === 1 ? "" : "s"}`)
                 .join(", ")}{" "}
               (currencies aren’t converted).
             </p>
@@ -451,10 +293,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
   );
 }
 
-const PAYOUT_LABEL = {
-  paid: "Paid out",
-  pending: "In a payout, not paid yet",
-} as const;
+const PAYOUT_LABEL = { paid: "Paid out", pending: "In a payout, not paid yet" } as const;
 const PAYOUT_TONE = { paid: "good", pending: "warn" } as const;
 
 function PayoutBadge({ state }: { state: keyof typeof PAYOUT_LABEL }) {
@@ -466,18 +305,9 @@ function PayoutBadge({ state }: { state: keyof typeof PAYOUT_LABEL }) {
  * money may never go out: some or all of it can be the label's, or the label account holder's).
  * Sales left out of payouts (cash already shared out) say so.
  */
-function PayoutCell({
-  state,
-  periodId,
-  outside,
-}: {
-  state: "paid" | "pending" | "none";
-  periodId: number | null;
-  outside?: boolean;
-}) {
+function PayoutCell({ state, periodId, outside }: { state: "paid" | "pending" | "none"; periodId: number | null; outside?: boolean }) {
   if (outside) return <span className="text-muted">Not in payouts</span>;
-  if (state === "none" || !periodId)
-    return <span className="text-muted">–</span>;
+  if (state === "none" || !periodId) return <span className="text-muted">–</span>;
   return (
     <Link href={`/periods/${periodId}`} className="hover:no-underline">
       <PayoutBadge state={state} />
@@ -497,17 +327,7 @@ function Filters({
   /** A band account: every sale is its band's, so no band to pick. */
   oneBand?: boolean;
 }) {
-  const narrowed = !!(
-    f.from ||
-    f.to ||
-    f.band ||
-    f.type ||
-    f.country !== undefined ||
-    f.source !== undefined ||
-    f.currency ||
-    f.refunds ||
-    f.payout
-  );
+  const narrowed = !!(f.from || f.to || f.band || f.type || f.country !== undefined || f.source !== undefined || f.currency || f.refunds || f.payout);
   return (
     <form action="/sales" className="mb-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -529,9 +349,7 @@ function Filters({
         )}
       </div>
       <details open={narrowed} className="mt-2">
-        <summary className="cursor-pointer text-sm text-link">
-          Filters{narrowed ? " (on)" : ""}
-        </summary>
+        <summary className="cursor-pointer text-sm text-link">Filters{narrowed ? " (on)" : ""}</summary>
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
           <label>
             <span className="mb-1 block text-xs text-muted">From</span>
@@ -551,9 +369,7 @@ function Filters({
                     {b.name}
                   </option>
                 ))}
-                {!f.onlyBands && (
-                  <option value="none">Not matched to a band</option>
-                )}
+                {!f.onlyBands && <option value="none">Not matched to a band</option>}
               </select>
             </label>
           )}
@@ -613,12 +429,7 @@ function Filters({
             </select>
           </label>
           <label className="flex items-center gap-2 self-end pb-2 text-sm">
-            <input
-              type="checkbox"
-              name="refunds"
-              value="1"
-              defaultChecked={f.refunds}
-            />
+            <input type="checkbox" name="refunds" value="1" defaultChecked={f.refunds} />
             Refunds only
           </label>
           <div className="flex items-end">
@@ -631,43 +442,21 @@ function Filters({
       {f.buyer && <input type="hidden" name="buyer" value={f.buyer} />}
       {f.sort !== "date" && <input type="hidden" name="sort" value={f.sort} />}
       {f.dir !== "desc" && <input type="hidden" name="dir" value={f.dir} />}
-      {f.per !== DEFAULT_PAGE_SIZE && (
-        <input type="hidden" name="per" value={f.per} />
-      )}
+      {f.per !== DEFAULT_PAGE_SIZE && <input type="hidden" name="per" value={f.per} />}
     </form>
   );
 }
 
 /** "Showing 26–50 of 102", page links, and how many rows to show per page. */
 
-function SortHeader({
-  f,
-  k,
-  label,
-  num = false,
-}: {
-  f: SalesFilter;
-  k: SortKey;
-  label: string;
-  num?: boolean;
-}) {
+function SortHeader({ f, k, label, num = false }: { f: SalesFilter; k: SortKey; label: string; num?: boolean }) {
   const on = f.sort === k;
   // Text columns start A→Z; dates and numbers start biggest/newest first.
-  const firstDir = ["item", "band", "type", "country", "source"].includes(k)
-    ? "asc"
-    : "desc";
+  const firstDir = ["item", "band", "type", "country", "source"].includes(k) ? "asc" : "desc";
   const dir = on ? (f.dir === "asc" ? "desc" : "asc") : firstDir;
   return (
-    <th
-      className={num ? "num" : ""}
-      aria-sort={
-        on ? (f.dir === "asc" ? "ascending" : "descending") : undefined
-      }
-    >
-      <Link
-        href={filterQuery(f, { sort: k, dir, page: 1 }) || "/sales"}
-        className={`whitespace-nowrap hover:no-underline ${on ? "text-text" : "text-muted hover:text-text"}`}
-      >
+    <th className={num ? "num" : ""} aria-sort={on ? (f.dir === "asc" ? "ascending" : "descending") : undefined}>
+      <Link href={filterQuery(f, { sort: k, dir, page: 1 }) || "/sales"} className={`whitespace-nowrap hover:no-underline ${on ? "text-text" : "text-muted hover:text-text"}`}>
         {label}
         <span aria-hidden className="ml-1 inline-block w-2">
           {on ? (f.dir === "asc" ? "↑" : "↓") : ""}
@@ -677,15 +466,7 @@ function SortHeader({
   );
 }
 
-function Tile({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
+function Tile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="border border-border bg-surface px-4 py-3">
       <div className="text-2xl font-bold tabular-nums">{value}</div>
@@ -706,53 +487,33 @@ function ordersOf(rows: SaleRow[]): SaleRow[][] {
   const out: SaleRow[][] = [];
   for (const r of rows) {
     const last = out.at(-1)?.[0];
-    if (
-      last &&
-      r.transactionId &&
-      last.transactionId === r.transactionId &&
-      last.orgId === r.orgId &&
-      last.currency === r.currency
-    )
-      out.at(-1)!.push(r);
+    if (last && r.transactionId && last.transactionId === r.transactionId && last.orgId === r.orgId && last.currency === r.currency) out.at(-1)!.push(r);
     else out.push([r]);
   }
   // An order's items in the order they were bought (or added).
   return out.map((o) => o.sort((a, b) => a.id - b.id));
 }
 
-const itemLabel = (s: SaleRow) =>
-  `${s.packageName ? `${s.itemName} ${s.packageName}` : s.itemName}${s.quantity > 1 ? ` ×${s.quantity}` : ""}`;
+const itemLabel = (s: SaleRow) => `${s.packageName ? `${s.itemName} ${s.packageName}` : s.itemName}${s.quantity > 1 ? ` ×${s.quantity}` : ""}`;
 
 /** An order's own row: what's in it and its totals. */
 function OrderCells({ order }: { order: SaleRow[] }) {
   const first = order[0];
-  const unique = (xs: (string | null)[]) => [
-    ...new Set(xs.filter((x): x is string => !!x)),
-  ];
+  const unique = (xs: (string | null)[]) => [...new Set(xs.filter((x): x is string => !!x))];
   const bandNames = unique(order.map((s) => s.bandName));
-  const types = unique(
-    order.map((s) =>
-      s.itemType === "show" ? "Show" : (TYPE_LABEL[s.category] ?? s.category),
-    ),
-  );
+  const types = unique(order.map((s) => (s.itemType === "show" ? "Show" : (TYPE_LABEL[s.category] ?? s.category))));
   const states = unique(order.map((s) => s.payoutState));
   const net = order.reduce((a, s) => a + s.netCents, 0);
   return (
     <>
       <td className="whitespace-nowrap text-muted">{first.date}</td>
       <td className="min-w-48">
-        <span className="mr-1 inline-block text-xs text-muted transition group-aria-expanded:rotate-90">
-          ▸
-        </span>
+        <span className="mr-1 inline-block text-xs text-muted transition group-aria-expanded:rotate-90">▸</span>
         {order.map(itemLabel).join(", ")}
       </td>
-      <td className="text-sm">
-        {bandNames.join(", ") || <span className="text-bad">not matched</span>}
-      </td>
+      <td className="text-sm">{bandNames.join(", ") || <span className="text-bad">not matched</span>}</td>
       <td className="text-sm">{types.join(", ")}</td>
-      <td className="text-sm">
-        {first.country ?? <span className="text-muted">–</span>}
-      </td>
+      <td className="text-sm">{first.country ?? <span className="text-muted">–</span>}</td>
       <td className="max-w-40 truncate text-sm" title={first.source}>
         {first.source || <span className="text-muted">–</span>}
       </td>
@@ -762,11 +523,7 @@ function OrderCells({ order }: { order: SaleRow[] }) {
       </td>
       <td className="whitespace-nowrap text-sm">
         {states.length === 1 ? (
-          <PayoutCell
-            state={first.payoutState}
-            periodId={first.periodId}
-            outside={order.every((s) => s.outsidePayouts)}
-          />
+          <PayoutCell state={first.payoutState} periodId={first.periodId} outside={order.every((s) => s.outsidePayouts)} />
         ) : (
           <span className="text-muted">partly</span>
         )}
