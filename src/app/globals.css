@@ -1,26 +1,26 @@
 @import "tailwindcss";
 
-/* Bandcamp-flavoured palette: white pages, #333 text, hairline grey rules,
-   teal for primary actions and blue for links. */
+/* Ink on paper, like the logo: warm off-white pages, near-black text and primary buttons, warm grey
+   rules, and one cobalt for links and focus. */
 :root {
-  --bg: #ffffff;
-  --surface: #ffffff;
-  --surface-2: #f3f3f3;
-  --border: #d9d9d9;
-  --text: #333333;
-  --muted: #7a7a7a;
-  --accent: #1da0c3;
-  --accent-fg: #ffffff;
-  --link: #0687f5;
-  --good: #3d8c40;
-  --good-bg: #eaf5ea;
-  --warn: #b86e00;
-  --warn-bg: #fff5e0;
-  --bad: #d23a3a;
-  --bad-bg: #fdeeee;
+  --bg: #f7f5f0;
+  --surface: #fdfcf9;
+  --surface-2: #eeebe3;
+  --border: #d8d3c7;
+  --text: #1b1a17;
+  --muted: #6e6a61;
+  --accent: #1b1a17;
+  --accent-fg: #fdfcf9;
+  --link: #2541b8;
+  --good: #2f7a3a;
+  --good-bg: #e6f0e1;
+  --warn: #a35f00;
+  --warn-bg: #f8ecd4;
+  --bad: #c2321f;
+  --bad-bg: #f9e4df;
   /* Charts. Categorical slots in fixed order (validated on these surfaces, light and dark);
-     single-series charts use the accent teal. */
-  --chart-accent: #1da0c3;
+     single-series charts use the link cobalt. */
+  --chart-accent: #2541b8;
   --series-1: #2a78d6;
   --series-2: #eb6834;
   --series-3: #1baf7a;
@@ -29,28 +29,28 @@
   --series-6: #008300;
   --series-7: #4a3aa7;
   --series-8: #e34948;
-  --chart-grid: #ebe9e4;
+  --chart-grid: #e6e2d8;
   --chart-baseline: #c3c2b7;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #161616;
-    --surface: #1e1e1e;
-    --surface-2: #272727;
-    --border: #3a3a3a;
-    --text: #e6e6e6;
-    --muted: #9a9a9a;
-    --accent: #2bb3d6;
-    --accent-fg: #ffffff;
-    --link: #4aa8ff;
+    --bg: #151513;
+    --surface: #1c1b19;
+    --surface-2: #262522;
+    --border: #3a3834;
+    --text: #ebe8e0;
+    --muted: #9b968b;
+    --accent: #ebe8e0;
+    --accent-fg: #151513;
+    --link: #8ea2ff;
     --good: #6cc070;
     --good-bg: #1f3320;
     --warn: #f0a847;
     --warn-bg: #3a2b14;
     --bad: #ff7b7b;
     --bad-bg: #3d1f1f;
-    --chart-accent: #1da0c3;
+    --chart-accent: #8ea2ff;
     --series-1: #3987e5;
     --series-2: #d95926;
     --series-3: #199e70;
@@ -65,7 +65,7 @@
 }
 
 @theme {
-  /* Bandcamp's UI is nearly square-cornered. */
+  /* Nearly square corners, like the label in the logo. */
   --radius-sm: 2px;
   --radius-md: 3px;
   --radius-lg: 4px;
@@ -88,7 +88,8 @@
   --color-bad: var(--bad);
   --color-bad-bg: var(--bad-bg);
   --color-chart-accent: var(--chart-accent);
-  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  /* Atkinson Hyperlegible Next, loaded in the root layout. */
+  --font-sans: var(--font-atkinson), sans-serif;
   --font-mono: ui-monospace, Menlo, monospace;
 }
 
@@ -98,12 +99,18 @@
     color: var(--text);
     font-family: var(--font-sans);
   }
-  /* Links are blue and underline on hover, like Bandcamp. Utility classes still win. */
+  /* Links are cobalt and underline on hover. Utility classes still win. */
   a {
     color: var(--link);
   }
   a:hover {
     text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.01em;
   }
 }
 
@@ -122,10 +129,11 @@ input:focus,
 select:focus,
 textarea:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+  border-color: var(--link);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--link) 22%, transparent);
 }
-input[type="checkbox"] {
+input[type="checkbox"],
+input[type="radio"] {
   accent-color: var(--accent);
 }
 

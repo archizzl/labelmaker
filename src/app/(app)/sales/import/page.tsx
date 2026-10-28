@@ -272,7 +272,7 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
             Optional. These use the band’s default or item-type split. Match them to a release or track if those have their own splits.
           </p> */}
           <details>
-            <summary className="text-sm font-medium text-accent">Show items</summary>
+            <summary className="text-sm font-medium text-link">Show items</summary>
             <ul className="mt-3 space-y-3">
               {noRelease.map((g) => (
                 <Group key={g.key} g={g} mode="no_release" catalog={catalog} />

@@ -6,7 +6,7 @@ export function PageHeader({ title, subtitle, actions }: { title: ReactNode; sub
   return (
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="text-[28px] leading-tight font-bold">{title}</h1>
+        <h1 className="text-[30px] leading-tight font-bold tracking-[-0.025em]">{title}</h1>
         {subtitle && <p className="mt-1 text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
@@ -30,15 +30,14 @@ export function Card({ title, actions, children, className = "" }: { title?: Rea
 }
 
 const buttonStyles = {
-  primary: "border border-accent bg-accent text-accent-fg hover:brightness-95",
+  primary: "border border-accent bg-accent text-accent-fg hover:opacity-85",
   secondary: "border border-border bg-surface text-text hover:border-muted",
   danger: "border border-border bg-surface text-bad hover:border-bad",
   ghost: "border border-transparent text-link hover:underline",
 };
 
 export function buttonClass(variant: keyof typeof buttonStyles = "secondary", size: "sm" | "md" = "md") {
-  // Bandcamp's controls speak in lowercase: "buy now", "share / embed".
-  return `inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-sm lowercase whitespace-nowrap transition hover:no-underline disabled:cursor-default disabled:opacity-50 ${
+  return `inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-sm whitespace-nowrap transition hover:no-underline disabled:cursor-default disabled:opacity-50 ${
     size === "sm" ? "px-2.5 py-[3px] text-xs" : "px-4 py-[7px] text-sm font-bold"
   } ${buttonStyles[variant]}`;
 }

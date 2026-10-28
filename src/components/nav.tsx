@@ -10,15 +10,25 @@ import { AbelButton } from "./abel/abel-panel";
 import { Avatar } from "./avatar";
 import { SyncIndicator } from "./sync-indicator";
 
-/** A small record, our own mark. */
-export function Mark() {
+/** Our mark: a hand-drawn label with a smiley and a note, in the text colour. */
+export function Logo({ className = "h-7" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0" aria-hidden>
-      <circle cx="12" cy="12" r="11" fill="var(--accent)" />
-      <circle cx="12" cy="12" r="7.5" fill="none" stroke="var(--accent-fg)" strokeOpacity="0.35" strokeWidth="0.8" />
-      <circle cx="12" cy="12" r="3.2" fill="var(--accent-fg)" />
-      <circle cx="12" cy="12" r="1" fill="var(--accent)" />
+    <svg viewBox="0 0 579 240" className={`w-auto shrink-0 ${className}`} fill="currentColor" aria-hidden>
+      <path
+        transform="translate(0 240) scale(1 -1)"
+        d="M265 229 l-260 -6 -1 -109 0 -109 15 0 c8 0 136 3 285 7 l271 8 -1 5 c0 2 -1 50 -3 105 -2 55 -3 102 -4 103 l0 2 -21 0 c-12 0 -138 -3 -281 -6z m298 -3 c0 -2 1 -48 3 -102 2 -55 3 -99 3 -99 0 -1 -545 -15 -554 -15 l-5 0 0 104 0 104 15 0 c8 0 123 3 256 6 133 3 251 6 262 6 l20 0 0 -4z M398 202 c-5 -1 -18 -3 -27 -5 -10 -2 -25 -6 -33 -8 -19 -7 -18 -6 -18 -31 0 -20 1 -28 8 -50 2 -7 4 -13 4 -13 0 0 -2 0 -4 1 -11 1 -18 -9 -15 -21 3 -10 24 -25 36 -25 7 0 11 3 12 11 0 4 -1 8 -8 28 -10 24 -19 53 -17 53 0 0 6 2 13 4 8 2 23 6 36 9 l22 5 0 -3 c1 -1 3 -11 5 -22 1 -11 3 -20 4 -21 0 -2 -1 -2 -6 -1 -11 1 -19 -4 -21 -13 -5 -20 20 -46 32 -34 9 9 9 19 2 82 -1 10 -2 25 -3 34 -2 24 -2 24 -22 20z M173 186 c-24 -4 -46 -24 -55 -48 -4 -12 -4 -36 0 -47 9 -25 31 -44 55 -49 46 -8 86 23 88 68 1 23 -6 41 -22 56 -9 9 -15 13 -28 18 -6 2 -30 4 -38 2z m40 -8 c54 -24 57 -99 4 -124 -38 -19 -86 3 -95 44 -8 34 9 67 41 80 8 3 12 4 28 4 13 -1 14 -1 22 -4z M202 149 c-6 -7 -2 -17 7 -17 10 0 14 14 5 19 -5 2 -8 1 -12 -2z M156 145 c-9 -5 -5 -19 6 -19 3 0 9 6 9 9 0 8 -8 13 -15 10z M213 93 c-9 -8 -21 -12 -36 -12 -11 0 -13 -1 -13 -4 0 -3 4 -4 16 -4 15 1 33 8 40 15 4 6 -1 9 -7 5z"
+      />
     </svg>
+  );
+}
+
+/** The mark and the name, as the header shows them. */
+export function Wordmark() {
+  return (
+    <span className="flex items-center gap-2.5 text-text">
+      <Logo />
+      <span className="text-[22px] leading-none font-bold tracking-[-0.03em] lowercase">labelmaker</span>
+    </span>
   );
 }
 
@@ -225,9 +235,8 @@ export function Nav({
   return (
     <header className="no-print border-b border-border bg-surface">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 pt-4 pb-3 md:px-8">
-        <Link href="/" className="flex items-center gap-2 text-text hover:no-underline">
-          <Mark />
-          <span className="text-xl font-bold tracking-tight lowercase">labelmaker</span>
+        <Link href="/" className="hover:no-underline">
+          <Wordmark />
         </Link>
         <div className="flex flex-wrap items-center gap-3">
           <SyncIndicator active={syncing} syncedAt={syncedAt} catalogBusy={catalogBusy} />
@@ -273,8 +282,8 @@ export function Nav({
               <li key={it.href}>
                 <Link
                   href={it.href}
-                  className={`flex items-center gap-1.5 border-b-[3px] pt-1 pb-2 whitespace-nowrap hover:no-underline ${
-                    active ? "border-accent font-bold text-text" : "border-transparent text-muted hover:text-text"
+                  className={`flex items-center gap-1.5 border-b-2 pt-1 pb-2 whitespace-nowrap hover:no-underline ${
+                    active ? "border-text text-text" : "border-transparent text-muted hover:text-text"
                   }`}
                 >
                   {it.label}
