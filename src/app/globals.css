@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
-/* Ink on paper, like the logo: warm off-white pages, near-black text and primary buttons, warm grey
+/* Black and white, like the logo: near-white pages, near-black text and primary buttons, neutral grey
    rules, and one cobalt for links and focus. */
 :root {
-  --bg: #f7f5f0;
-  --surface: #fdfcf9;
-  --surface-2: #eeebe3;
-  --border: #d8d3c7;
-  --text: #1b1a17;
-  --muted: #6e6a61;
-  --accent: #1b1a17;
-  --accent-fg: #fdfcf9;
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-2: #efefef;
+  --border: #d6d6d6;
+  --text: #111111;
+  --muted: #6b6b6b;
+  --accent: #111111;
+  --accent-fg: #ffffff;
   --link: #2541b8;
   --good: #2f7a3a;
-  --good-bg: #e6f0e1;
+  --good-bg: #e7f2e8;
   --warn: #a35f00;
-  --warn-bg: #f8ecd4;
+  --warn-bg: #fdf0d9;
   --bad: #c2321f;
-  --bad-bg: #f9e4df;
+  --bad-bg: #fbe6e3;
   /* Charts. Categorical slots in fixed order (validated on these surfaces, light and dark);
      single-series charts use the link cobalt. */
   --chart-accent: #2541b8;
@@ -29,20 +29,20 @@
   --series-6: #008300;
   --series-7: #4a3aa7;
   --series-8: #e34948;
-  --chart-grid: #e6e2d8;
-  --chart-baseline: #c3c2b7;
+  --chart-grid: #e8e8e8;
+  --chart-baseline: #c2c2c2;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #151513;
-    --surface: #1c1b19;
-    --surface-2: #262522;
-    --border: #3a3834;
-    --text: #ebe8e0;
-    --muted: #9b968b;
-    --accent: #ebe8e0;
-    --accent-fg: #151513;
+    --bg: #121212;
+    --surface: #1a1a1a;
+    --surface-2: #242424;
+    --border: #363636;
+    --text: #ededed;
+    --muted: #999999;
+    --accent: #ededed;
+    --accent-fg: #121212;
     --link: #8ea2ff;
     --good: #6cc070;
     --good-bg: #1f3320;
@@ -59,8 +59,8 @@
     --series-6: #008300;
     --series-7: #9085e9;
     --series-8: #e66767;
-    --chart-grid: #2c2c2a;
-    --chart-baseline: #444440;
+    --chart-grid: #2c2c2c;
+    --chart-baseline: #444444;
   }
 }
 
