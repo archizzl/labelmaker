@@ -19,7 +19,7 @@ export default async function FromLabelStatementPage({ params }: PageProps<"/fro
   return (
     <>
       <div className="no-print mb-6 flex flex-wrap items-center gap-3">
-        <Link href={`/from-label/${id}`} className="text-sm text-link hover:underline">
+        <Link href={`/from-label/${id}`} className="text-sm text-accent hover:underline">
           ← Back to {v.labelName}
         </Link>
         <PrintButton />

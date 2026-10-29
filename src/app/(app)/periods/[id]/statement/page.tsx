@@ -24,7 +24,7 @@ export default async function StatementPage({ params, searchParams }: PageProps<
   return (
     <>
       <div className="no-print mb-6 flex flex-wrap items-center gap-3">
-        <Link href={`/periods/${id}`} className="text-sm text-link hover:underline">
+        <Link href={`/periods/${id}`} className="text-sm text-accent hover:underline">
           ← Back to {period.name}
         </Link>
         <PrintButton />

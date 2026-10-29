@@ -1,4 +1,4 @@
-import { Wordmark } from "@/components/nav";
+import { Mark } from "@/components/nav";
 import { signOut } from "@/server/account-actions";
 import { requireSiteAdmin } from "@/server/site-admin";
 
@@ -13,8 +13,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/">) {
     <>
       <header className="no-print border-b border-border bg-surface">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4 md:px-8">
-          <div className="flex items-center gap-3">
-            <Wordmark />
+          <div className="flex items-center gap-2">
+            <Mark />
+            <span className="text-xl font-bold tracking-tight lowercase">labelmaker</span>
             <span className="rounded-sm bg-text px-1.5 py-0.5 text-xs font-bold tracking-wide text-bg uppercase">admin</span>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm">
