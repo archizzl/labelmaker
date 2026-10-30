@@ -31,7 +31,8 @@ const MAX_ROWS = 200;
 const PRIVATE = /email|buyer_name|address|phone|password|token|secret|user_agent/i;
 const isPrivate = (column) => PRIVATE.test(column) && !/_at$/i.test(column);
 
-const client = new pg.Client({ connectionString: url });
+// pg already treats these as verify-full; saying so outright keeps it from warning on every run.
+const client = new pg.Client({ connectionString: url.replace(/sslmode=(prefer|require|verify-ca)\b/, "sslmode=verify-full") });
 await client.connect();
 try {
   await client.query("begin read only");
