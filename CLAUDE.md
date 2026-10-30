@@ -39,7 +39,8 @@ npx vitest run
 
 - **If tests time out in their setup** ("Hook timed out"), the machine is busy: rerun with `npx vitest run --maxWorkers=2 --hookTimeout=60000`.
 - **Run tests with the shell's default Node (20).** `better-sqlite3` is built for it, and two import tests fail under Node 22.
-- **Lint:** about 6 old warnings in the catalog pages are expected. There should be no errors.
+- **Lint:** about 20 old unused-variable warnings (catalog, rules and a few components) are expected. There should be no errors.
+- **Agents:** `.claude/agents/` has `checker` (runs all three and reports only failures), `copy-reviewer` (checks interface text against the rules below) and `live-db-reader` (read-only questions about the live data).
 - **From the browser:** on a local copy (`npm run dev`), the admin dashboard (`/admin?tab=tests`) has a Tests tab that lists every test and runs all, one file or one test (`src/server/test-runner.ts`; results in `.test-runs/`). It's never on the live site.
 
 ## Try a change in the real Cloudflare runtime
@@ -88,7 +89,7 @@ Don't push unless asked.
 
 ## Reading the live database
 
-You may **read** the live database to check real data. Use the URL in `.deploy.local`, open a read-only transaction (`begin read only`), and roll back. Select only the columns you need, and leave out buyers' names, emails and addresses.
+You may **read** the live database to check real data. Use the URL in `.deploy.local`, open a read-only transaction (`begin read only`), and roll back. Select only the columns you need, and leave out buyers' names, emails and addresses. `node scripts/live-read.mjs "<sql>"` does all of this for one query, and the `live-db-reader` agent uses it.
 
 Never write to the live database by hand. Changes go through migrations and the app.
 
