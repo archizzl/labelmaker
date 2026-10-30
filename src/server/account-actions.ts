@@ -9,7 +9,7 @@ import { safePath } from "@/lib/safe-path";
 import { slugify } from "@/lib/slug";
 import { auth } from "./auth";
 import { accountContext, accountsFor, type Context, getSession, requireAdmin, VIEW_AS_COOKIE } from "./context";
-import { labelReachNote } from "./own-books";
+import { labelReachNote, syncJoinedPeople } from "./own-books";
 import { AREAS, type Area, normalizeBandAreas, normalizePermissions } from "@/lib/permissions";
 import { assignMemberType, memberTypeForInvite, parseRoleChoice, setInviteMemberType, setManagedBands } from "./member-types";
 import { applyMyDetails, normalizeEmail } from "./people";
@@ -165,6 +165,8 @@ export async function saveSetupMe(_: FormState, fd: FormData): Promise<FormState
     if (band) {
       const role = str(fd, "role");
       await db.insert(schema.bandMemberships).values({ orgId, bandId: band.id, personId: me.id, roles: role ? [role] : [] });
+      // A band that joined a label: they're in the label's books too.
+      await syncJoinedPeople(orgId);
     }
   }
   await applyMyDetails(user.id, details);

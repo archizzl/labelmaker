@@ -27,7 +27,7 @@ import { type PayoutScope, payoutName } from "./period-view";
 import { markSeen } from "./nav-badges";
 import { syncPeriodStatus } from "./period-status";
 import { autoMergeByEmail, findExistingPerson, mergePeople } from "./people";
-import { shareDetails, syncOwnPeopleForBand } from "./own-books";
+import { renameJoinedBand, shareDetails, syncOwnPeopleForBand, syncPeopleAcrossBooks } from "./own-books";
 
 /*
  * Every action here changes an account's books, so every one starts with requireAccess(section,
@@ -188,6 +188,8 @@ export async function saveBand(fd: FormData) {
   else await ensureBandAccounts(orgId);
   if (id && !access.lens && access.org.kind === "band") {
     await db.update(schema.organization).set({ name: values.name }).where(eq(schema.organization.id, orgId));
+    // A band that joined a label: the label's books call it by its new name too.
+    await renameJoinedBand(orgId, values.name);
   }
   await reRouteAll(orgId);
   done();
@@ -260,6 +262,8 @@ export async function savePerson(fd: FormData) {
         .values({ orgId, bandId: b.id, personId: personId!, roles: [] })
         .onConflictDoUpdate({ target: [bandMemberships.bandId, bandMemberships.personId], set: { active: true } });
     }
+    // Their bands' other books (a group the label made, or the label a band joined) have them too.
+    for (const b of ours) await syncOwnPeopleForBand(orgId, b.id);
   }
   if ((await autoMergeByEmail(orgId)).length) await syncAllPeriodStatuses(orgId);
   done();
@@ -274,6 +278,7 @@ export async function mergePeopleAction(fd: FormData) {
   // Limited to some bands: both people must be in them.
   for (const id of [intoId, ...fromIds]) await access.person(id);
   for (const from of fromIds) await mergePeople(orgId, intoId, from);
+  await syncPeopleAcrossBooks(orgId);
   await syncAllPeriodStatuses(orgId);
   done();
 }
@@ -294,7 +299,12 @@ export async function deletePerson(_: ActionState, fd: FormData): Promise<Action
   if (paidTo.length) {
     return { error: `This person is paid by the deduction “${paidTo[0].label}”. Change or delete it first (under Rules or on the band’s page).` };
   }
-  await db.delete(people).where(and(eq(people.orgId, orgId), eq(people.id, id)));
+  const [gone] = await db
+    .delete(people)
+    .where(and(eq(people.orgId, orgId), eq(people.id, id)))
+    .returning({ labelPersonId: people.labelPersonId });
+  // Their bands' other books follow (in a label's, they're a former member).
+  await syncPeopleAcrossBooks(orgId, gone?.labelPersonId ? [gone.labelPersonId] : []);
   done();
   return { ok: "Deleted" };
 }

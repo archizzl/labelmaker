@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { counterpartIds } from "./own-books";
+import { counterpartIds, shareDetails } from "./own-books";
 
 const { people, bandMemberships, splitShares, deductions, payouts, outsideArtists } = schema;
 
@@ -268,6 +268,8 @@ export async function applyMyDetails(userId: string, details: Partial<MyDetails>
     .update(people)
     .set(set)
     .where(inArray(people.id, mine.map((p) => p.id)));
+  // The same people in other books (a label's, or a band group's own): the same details there.
+  for (const p of mine) await shareDetails(p.id, set);
 }
 
 /** The details to start a form from: your login's name, and each field's first filled-in value across your records. */

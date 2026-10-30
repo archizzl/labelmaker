@@ -113,6 +113,30 @@ export async function syncOwnPeopleForBand(orgId: string, bandId: number) {
   await syncJoinedPeople(orgId);
 }
 
+/**
+ * People changed in a group's books (added, merged, deleted): the other books follow straight away.
+ * A label: the groups it made for its bands. A band's own group that joined a label: the label's.
+ * `deleted`: records in the label's books of people just deleted from a band's own books.
+ */
+export async function syncPeopleAcrossBooks(orgId: string, deleted: number[] = []) {
+  const subs = await db
+    .select({ bandOrgId: schema.accountLinks.bandOrgId })
+    .from(schema.accountLinks)
+    .where(and(eq(schema.accountLinks.labelOrgId, orgId), eq(schema.accountLinks.managed, true), eq(schema.accountLinks.status, "active")));
+  for (const s of subs) if (s.bandOrgId) await syncOwnPeople(s.bandOrgId);
+  await syncJoinedPeople(orgId, deleted);
+}
+
+/** A band's own group that joined a label was renamed: its band in the label's books is too (its old name kept as another spelling). */
+export async function renameJoinedBand(bandOrgId: string, name: string) {
+  const joined = await joinedLabel(bandOrgId);
+  if (!joined) return;
+  const [band] = await db.select({ name: bands.name, aliases: bands.aliases }).from(bands).where(eq(bands.id, joined.bandId));
+  if (!band || band.name === name) return;
+  const aliases = band.aliases.includes(band.name) ? band.aliases : [...band.aliases, band.name];
+  await db.update(bands).set({ name, aliases }).where(eq(bands.id, joined.bandId));
+}
+
 /** The label a band's own group joined (with the label's invite link for bands), if any. */
 export async function joinedLabel(bandOrgId: string): Promise<{ labelOrgId: string; bandId: number; linkId: number } | null> {
   const [row] = await db
@@ -148,9 +172,10 @@ export async function counterpartIn(labelOrgId: string, person: typeof people.$i
  * Each of its band's members is in the label's band too, the same person (people.labelPersonId),
  * with the same roles, current or not; someone taken off the band is a former member there. Their
  * names and how they're paid are kept the same both ways (shareDetails). People the label added to
- * the band itself are left alone. Does nothing for any other group.
+ * the band itself are left alone. Does nothing for any other group. Every change to the band's
+ * members calls this straight away: nothing waits for a sync.
  */
-export async function syncJoinedPeople(bandOrgId: string) {
+export async function syncJoinedPeople(bandOrgId: string, deleted: number[] = []) {
   const joined = await joinedLabel(bandOrgId);
   if (!joined) return;
   const band = await ownBandRow(bandOrgId);
@@ -183,8 +208,9 @@ export async function syncJoinedPeople(bandOrgId: string) {
       await db.update(bandMemberships).set({ roles, active }).where(eq(bandMemberships.id, there.id));
     }
   }
-  // Taken off the band in its own books: a former member in the label's.
-  const mirrored = new Set(linked.map((l) => l.labelPersonId!));
+  // Taken off the band in its own books (or deleted there: `deleted`, their records in the label's
+  // books): a former member in the label's.
+  const mirrored = new Set([...linked.map((l) => l.labelPersonId!), ...deleted]);
   const gone = theirs.filter((m) => m.active && mirrored.has(m.personId) && !kept.has(m.personId)).map((m) => m.id);
   if (gone.length) await db.update(bandMemberships).set({ active: false }).where(inArray(bandMemberships.id, gone));
 }

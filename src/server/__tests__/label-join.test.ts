@@ -280,3 +280,36 @@ describe("a band that joined, later on", () => {
     await expect(bandPay.markBandPayout(fd)).rejects.toThrow();
   });
 });
+
+describe("a joined band's changes reach the label straight away", () => {
+  it("someone deleted from the band's books is a former member in the label's", async () => {
+    const { labelOrgId, bandOrgId, ana } = await setup();
+    const { bandId } = await join.joinLabel(labelOrgId, bandOrgId, null);
+    const [mine] = await db.select().from(schema.people).where(eq(schema.people.id, ana.id));
+    await db.delete(schema.people).where(eq(schema.people.id, ana.id));
+    await own.syncPeopleAcrossBooks(bandOrgId, [mine.labelPersonId!]);
+    const [there] = await db
+      .select({ active: schema.bandMemberships.active })
+      .from(schema.bandMemberships)
+      .where(and(eq(schema.bandMemberships.bandId, bandId), eq(schema.bandMemberships.personId, mine.labelPersonId!)));
+    expect(there.active).toBe(false);
+  });
+
+  it("a renamed band is renamed in the label's books, its old name kept as another spelling", async () => {
+    const { labelOrgId, bandOrgId } = await setup();
+    const { bandId } = await join.joinLabel(labelOrgId, bandOrgId, null);
+    await own.renameJoinedBand(bandOrgId, "Glass Harbour");
+    const [band] = await db.select().from(schema.bands).where(eq(schema.bands.id, bandId));
+    expect(band).toMatchObject({ name: "Glass Harbour", aliases: ["Glass Harbor"] });
+  });
+
+  it("someone's own details (from Account) are the label's too", async () => {
+    const { labelOrgId, bandOrgId, admin, ana } = await setup();
+    await db.update(schema.people).set({ userId: admin }).where(eq(schema.people.id, ana.id));
+    await join.joinLabel(labelOrgId, bandOrgId, null);
+    await (await import("../people")).applyMyDetails(admin, { paypalMe: "ana-new" });
+    const [mine] = await db.select().from(schema.people).where(eq(schema.people.id, ana.id));
+    const [there] = await db.select().from(schema.people).where(eq(schema.people.id, mine.labelPersonId!));
+    expect(there.paypalMe).toBe("ana-new");
+  });
+});

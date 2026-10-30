@@ -5,7 +5,7 @@ import { db, schema } from "@/db";
 import { artistsFromApi, merchFromApi, releasesFromSales } from "./api-catalog";
 import { type BandcampAccountBand, bandcampCredentials, myBands } from "./bandcamp-api";
 import { ensureBandAccounts, managingLabel } from "./band-accounts";
-import { moveBandGroupsSales, syncJoinedPeople, syncOwnPeople } from "./own-books";
+import { moveBandGroupsSales, syncOwnPeople } from "./own-books";
 import { reRouteAll } from "./data";
 import { loadOpenOrders } from "./merch-orders";
 import { addArtists, importReleases, lookupLabelArtists, lookupLabelReleases, refreshBandPhotos, type ReleaseImportRow, runSalesSync } from "./sync";
@@ -225,10 +225,8 @@ export async function syncAccount(orgId: string, { force = false } = {}): Promis
       if (moved) found.push(plural(moved, "sale") + " from band groups");
     });
   }
-  // A band's own books: its members, as the label has them now. (A band that joined a label: the
-  // label's books, as the band has them.)
+  // A band's own books: its members, as the label has them now.
   if (managed) await step("Members", () => syncOwnPeople(orgId));
-  else if (org?.kind === "band") await step("Members", () => syncJoinedPeople(orgId));
   const summary = found.length ? `Brought in ${found.join(", ")}.` : UP_TO_DATE;
   await db
     .update(accountSettings)
