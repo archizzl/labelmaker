@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { acceptInvite, createAccount, type FormState, resetPassword, saveSetupLinks, saveSetupMe, signIn, signUp } from "@/server/account-actions";
-import { connectExistingAccount, joinWithInviteLink } from "@/server/band-invite-actions";
+import { connectExistingAccount, joinLabelAsBand, joinWithInviteLink } from "@/server/band-invite-actions";
 import { buttonClass, Field } from "./ui";
 
 function Result({ state }: { state: FormState }) {
@@ -351,6 +351,42 @@ export function ConnectExistingForm({ id, accounts, labelName }: { id: string; a
       <button type="submit" disabled={pending} className={`${buttonClass("secondary")} w-full justify-center`}>
         {pending ? "…" : `Connect ${name}`}
       </button>
+    </form>
+  );
+}
+
+/**
+ * A label's invite link for bands: pick one of the band groups you run (ones that can't join say
+ * why) and join the label with it.
+ */
+export function JoinLabelForm({ id, groups, labelName }: { id: string; groups: { id: string; name: string; why: string | null }[]; labelName: string }) {
+  const [state, action, pending] = useActionState(joinLabelAsBand, null);
+  const [orgId, setOrgId] = useState(groups.find((g) => !g.why)?.id ?? "");
+  const name = groups.find((g) => g.id === orgId)?.name ?? "";
+  return (
+    <form
+      action={action}
+      onSubmit={(e) => {
+        if (!confirm(`Join ${labelName} as ${name}? From today, ${name}’s sales go into ${labelName}’s books to be split and paid out there.`)) e.preventDefault();
+      }}
+      className="space-y-3"
+    >
+      <input type="hidden" name="id" value={id} />
+      {groups.length > 1 ? (
+        <Field label="Your band">
+          <select name="orgId" value={orgId} onChange={(e) => setOrgId(e.target.value)}>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id} disabled={!!g.why}>
+                {g.why ? `${g.name} (${g.why})` : g.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      ) : (
+        <input type="hidden" name="orgId" value={orgId} />
+      )}
+      <Result state={state} />
+      <Submit pending={pending}>{`Join as ${name}`}</Submit>
     </form>
   );
 }

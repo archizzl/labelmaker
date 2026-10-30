@@ -1,7 +1,17 @@
 import "server-only";
 import { z } from "zod";
 import { schema } from "@/db";
-import { deleteLabelTransfer, releaseUnpaidSales, saveLabelTransfer, setLabelAccountHolder, setPayoutStatus, undoFinalize } from "../../actions";
+import {
+  deleteBandRemittance,
+  deleteLabelTransfer,
+  releaseUnpaidSales,
+  saveBandRemittance,
+  saveLabelTransfer,
+  setBandPaidTo,
+  setLabelAccountHolder,
+  setPayoutStatus,
+  undoFinalize,
+} from "../../actions";
 import { actionTool } from "../tool";
 import { amount, current, currency, date, id, or, toAmount } from "./shared";
 
@@ -102,4 +112,32 @@ const accountHolder = actionTool({
   action: (fd) => setLabelAccountHolder(fd),
 });
 
-export const MONEY_TOOLS = [payoutLineStatus, undoPayout, releaseUnpaid, saveSendOut, deleteSendOut, accountHolder];
+const bandPaidTo = actionTool({
+  name: "set_band_paid_to",
+  label: "Set who Bandcamp pays for a band",
+  description:
+    "Set who Bandcamp pays for a band's sales: the label, or the band itself (a band on the label but not on its Bandcamp). When it's the band, the band pays its members their part of each payout and sends the label its share. Finalized payouts stay as they are.",
+  params: z.object({ bandId: id, paidTo: z.enum(["label", "band"]) }),
+  needs: { area: "payouts", level: "edit" },
+  action: (fd) => setBandPaidTo(fd),
+});
+
+const saveRemittance = actionTool({
+  name: "record_band_remittance",
+  label: "Record money a band sent the label",
+  description: "Record money a band sent the label: its share of sales Bandcamp paid the band for (label_funds shows what each such band still holds).",
+  params: z.object({ bandId: id, amount, currency: currency.optional(), date, note: z.string().max(500).optional() }),
+  needs: { area: "funds", level: "edit" },
+  action: (fd) => saveBandRemittance(null, fd),
+});
+
+const deleteRemittance = actionTool({
+  name: "delete_band_remittance",
+  label: "Delete a record of money a band sent",
+  description: "Delete a record of money a band sent the label (label_funds lists them with their ids).",
+  params: z.object({ id }),
+  needs: { area: "funds", level: "edit" },
+  action: (fd) => deleteBandRemittance(fd),
+});
+
+export const MONEY_TOOLS = [payoutLineStatus, undoPayout, releaseUnpaid, saveSendOut, deleteSendOut, accountHolder, bandPaidTo, saveRemittance, deleteRemittance];

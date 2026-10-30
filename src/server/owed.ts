@@ -11,6 +11,7 @@ import { previewView } from "./period-view";
  *  - receipts: approved receipts people paid for themselves, that the label pays back directly;
  *  - raised: money kept for a cause (e.g. a fundraiser) and not sent on yet.
  * People whose money stays in the label's bank account are left out: nothing has to be sent to them.
+ * So is what a band pays its own members, from sales Bandcamp paid the band for (bands.paidTo).
  */
 
 export type OwedPerson = { name: string; cents: number };
@@ -86,7 +87,7 @@ export async function owedByBand(orgId: string, info?: OwedInfo): Promise<OwedRo
 
   // Finalized payouts not paid yet.
   for (const p of pending) {
-    if (!sendsTo(p.personId)) continue;
+    if (!sendsTo(p.personId) || p.paidByBandId !== null) continue;
     for (const [b, cents] of Object.entries(p.byBand)) {
       const r = rowFor(Number(b) || null, p.currency);
       r.finalized += cents;
@@ -99,7 +100,7 @@ export async function owedByBand(orgId: string, info?: OwedInfo): Promise<OwedRo
     const view = await previewView(orgId, { bandId: null, startDate: range.first, endDate: range.last });
     if (info) Object.assign(info, { hasSales: true, stuck: view.problems.unrouted + view.problems.noRule });
     for (const line of view.lines) {
-      if (line.holdsLabelAccount) continue;
+      if (line.holdsLabelAccount || line.paidByBandId !== null) continue;
       for (const { bandId, cents } of line.byBand) {
         const r = rowFor(bandId || null, line.currency);
         r.unpaid += cents;

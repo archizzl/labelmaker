@@ -31,6 +31,7 @@ export async function standingInviteLink(bandOrgId: string, createdByUserId: str
       and(
         eq(schema.bandInviteLinks.orgId, bandOrgId),
         memberTypeId === null ? isNull(schema.bandInviteLinks.memberTypeId) : eq(schema.bandInviteLinks.memberTypeId, memberTypeId),
+        eq(schema.bandInviteLinks.forBands, false),
         isNull(schema.bandInviteLinks.usedAt),
         isNull(schema.bandInviteLinks.canceledAt),
         gt(schema.bandInviteLinks.expiresAt, stamp(new Date())),
@@ -49,8 +50,82 @@ export async function resetStandingLink(bandOrgId: string, createdByUserId: stri
   await db
     .update(schema.bandInviteLinks)
     .set({ canceledAt: stamp(new Date()) })
-    .where(and(eq(schema.bandInviteLinks.orgId, bandOrgId), isNull(schema.bandInviteLinks.usedAt), isNull(schema.bandInviteLinks.canceledAt)));
+    .where(
+      and(
+        eq(schema.bandInviteLinks.orgId, bandOrgId),
+        eq(schema.bandInviteLinks.forBands, false),
+        isNull(schema.bandInviteLinks.usedAt),
+        isNull(schema.bandInviteLinks.canceledAt),
+      ),
+    );
   return standingInviteLink(bandOrgId, createdByUserId);
+}
+
+/**
+ * A label's standing invite link for bands, the same every time: a band's admin opens it and their
+ * band's group joins the label (src/server/label-join.ts). Made the first time it's needed.
+ */
+export async function bandsInviteLink(labelOrgId: string, createdByUserId: string | null): Promise<string> {
+  const [open] = await db
+    .select({ id: schema.bandInviteLinks.id })
+    .from(schema.bandInviteLinks)
+    .where(and(eq(schema.bandInviteLinks.orgId, labelOrgId), eq(schema.bandInviteLinks.forBands, true), isNull(schema.bandInviteLinks.canceledAt)))
+    .orderBy(desc(schema.bandInviteLinks.createdAt))
+    .limit(1);
+  if (open) return open.id;
+  const id = randomUUID();
+  await db.insert(schema.bandInviteLinks).values({ id, orgId: labelOrgId, createdByUserId, forBands: true, expiresAt: NEVER });
+  return id;
+}
+
+/** Reset the label's invite link for bands: the old one stops working (bands that joined stay). */
+export async function resetBandsInviteLink(labelOrgId: string, createdByUserId: string | null) {
+  await db
+    .update(schema.bandInviteLinks)
+    .set({ canceledAt: stamp(new Date()) })
+    .where(and(eq(schema.bandInviteLinks.orgId, labelOrgId), eq(schema.bandInviteLinks.forBands, true), isNull(schema.bandInviteLinks.canceledAt)));
+  return bandsInviteLink(labelOrgId, createdByUserId);
+}
+
+/** A label's invite link for bands that can still be used, with the label, or null. */
+export async function usableBandsLink(id: string) {
+  const [row] = await db
+    .select({ link: schema.bandInviteLinks, label: schema.organization })
+    .from(schema.bandInviteLinks)
+    .innerJoin(schema.organization, eq(schema.organization.id, schema.bandInviteLinks.orgId))
+    .where(eq(schema.bandInviteLinks.id, id));
+  if (!row?.link.forBands || row.label.kind !== "label" || row.link.canceledAt || row.link.expiresAt <= stamp(new Date())) return null;
+  return row;
+}
+
+/**
+ * The band groups a login runs (owner or admin), for joining a label with its invite link for bands,
+ * each with why it can't, if it can't: it's already on this label, a label made it (it's that
+ * label's already), or it joined another label (its sales can only go to one).
+ */
+export async function groupsToJoinWith(userId: string, labelOrgId: string) {
+  const mine = await db
+    .select({ id: schema.organization.id, name: schema.organization.name })
+    .from(schema.member)
+    .innerJoin(schema.organization, eq(schema.organization.id, schema.member.organizationId))
+    .where(and(eq(schema.member.userId, userId), eq(schema.organization.kind, "band"), inArray(schema.member.role, ["owner", "admin"])))
+    .orderBy(asc(schema.organization.name));
+  if (!mine.length) return [];
+  const links = await db
+    .select({ bandOrgId: schema.accountLinks.bandOrgId, labelOrgId: schema.accountLinks.labelOrgId, managed: schema.accountLinks.managed, joined: schema.accountLinks.joined })
+    .from(schema.accountLinks)
+    .where(and(inArray(schema.accountLinks.bandOrgId, mine.map((m) => m.id)), eq(schema.accountLinks.status, "active")));
+  return mine.map((g) => {
+    const its = links.filter((l) => l.bandOrgId === g.id);
+    const why = its.some((l) => l.labelOrgId === labelOrgId)
+      ? "already on this label"
+      : its.some((l) => l.managed)
+        ? "made by another label"
+        : its.some((l) => l.joined)
+          ? "on another label"
+          : null;
+    return { ...g, why };
+  });
 }
 
 /** A link that can still be used, with its band account and label, or null. */
@@ -61,7 +136,7 @@ export async function usableInviteLink(id: string) {
     .innerJoin(schema.organization, eq(schema.organization.id, schema.bandInviteLinks.orgId))
     .leftJoin(schema.people, eq(schema.people.id, schema.bandInviteLinks.personId))
     .where(eq(schema.bandInviteLinks.id, id));
-  if (!row || row.link.usedAt || row.link.canceledAt || row.link.expiresAt <= stamp(new Date())) return null;
+  if (!row || row.link.forBands || row.link.usedAt || row.link.canceledAt || row.link.expiresAt <= stamp(new Date())) return null;
   const own = { link: row.link, band: row.org, personName: row.personName, labelName: null, labelOrgId: row.org.id, bandId: null, forLabel: true as const };
   // A label's own invite link (or a band that runs its own account): whoever opens it becomes one of
   // its members, in its own books.

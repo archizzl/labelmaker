@@ -5,7 +5,9 @@ import { ChartBoard } from "@/components/chart-board";
 import { LabelFunds } from "@/components/label-funds";
 import { PAGE_SIZES, Pager } from "@/components/pager";
 import Link from "next/link";
-import { buttonClass, Card, Empty, MoneyList, PageHeader } from "@/components/ui";
+import { buttonClass, Card, Disclosure, Empty, Field, Money, MoneyList, PageHeader } from "@/components/ui";
+import { ActionForm, SubmitButton } from "@/components/client";
+import { deleteBandRemittance, saveBandRemittance } from "@/server/actions";
 import { type BoardChart, breakdownChart, seriesChart } from "@/lib/chart-data";
 import { formatCents } from "@/lib/money";
 import { plural } from "@/lib/plural";
@@ -149,6 +151,10 @@ export default async function FundsPage({ searchParams }: PageProps<"/funds">) {
 
       <ChartBoard boardId="funds" charts={charts} saved={saved} />
 
+      {inc.heldByBands.length > 0 && (
+        <HeldByBands held={inc.heldByBands} remittances={inc.remittances} bandName={(id) => names.band.get(id) ?? `Band #${id}`} editable={can(ctx.access, "funds", "edit")} />
+      )}
+
       <Card title="Where it came from">
         <form action="/funds#came-from" id="came-from" className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-6">
           {f.per !== PER_PAGE && <input type="hidden" name="per" value={f.per} />}
@@ -268,6 +274,113 @@ export default async function FundsPage({ searchParams }: PageProps<"/funds">) {
         )}
       </Card>
     </>
+  );
+}
+
+/**
+ * Bands Bandcamp pays itself (bands.paidTo): the label's share of their sales, what each has sent the
+ * label, and what it still holds. Money a band sends is recorded here.
+ */
+function HeldByBands({
+  held,
+  remittances,
+  bandName,
+  editable,
+}: {
+  held: Awaited<ReturnType<typeof labelIncome>>["heldByBands"];
+  remittances: Awaited<ReturnType<typeof labelIncome>>["remittances"];
+  bandName: (id: number) => string;
+  editable: boolean;
+}) {
+  const today = new Date().toLocaleDateString("en-CA");
+  const rows = held.flatMap((h) => [...new Set([...h.share.keys(), ...h.received.keys()])].map((cur) => ({ ...h, cur })));
+  return (
+    <Card title="Held by bands">
+      <div className="overflow-x-auto">
+        <table className="data">
+          <thead>
+            <tr>
+              <th>Band</th>
+              <th className="num">The label’s share</th>
+              <th className="num">Sent to the label</th>
+              <th className="num">Still with the band</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={`${r.bandId}|${r.cur}`}>
+                <td className="font-medium">
+                  <Link href={`/bands/${r.bandId}?tab=money`}>{bandName(r.bandId)}</Link>
+                </td>
+                <td className="num">
+                  <Money cents={r.share.get(r.cur) ?? 0} currency={r.cur} />
+                </td>
+                <td className="num">
+                  <Money cents={r.received.get(r.cur) ?? 0} currency={r.cur} />
+                </td>
+                <td className="num font-medium">
+                  <Money cents={r.held.get(r.cur) ?? 0} currency={r.cur} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {remittances.some((r) => held.some((h) => h.bandId === r.bandId)) && (
+        <ul className="mt-4 space-y-1 text-sm">
+          {remittances
+            .filter((r) => held.some((h) => h.bandId === r.bandId))
+            .map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center gap-x-3">
+                <span className="text-muted">{r.date}</span>
+                <span>{bandName(r.bandId)}</span>
+                <Money cents={r.amountCents} currency={r.currency} />
+                {r.note && <span className="text-xs text-muted">{r.note}</span>}
+                {editable && (
+                  <form action={deleteBandRemittance} className="ml-auto">
+                    <input type="hidden" name="id" value={r.id} />
+                    <SubmitButton variant="ghost" size="sm" confirm={`Delete the ${formatCents(r.amountCents, r.currency)} from ${bandName(r.bandId)}?`}>
+                      Delete
+                    </SubmitButton>
+                  </form>
+                )}
+              </li>
+            ))}
+        </ul>
+      )}
+      {editable && (
+        <div className="mt-4">
+          <Disclosure summary="+ Record money a band sent">
+            <ActionForm action={saveBandRemittance} className="grid gap-4 sm:grid-cols-4">
+              <Field label="Band">
+                <select name="bandId" required>
+                  {held.map((h) => (
+                    <option key={h.bandId} value={h.bandId}>
+                      {bandName(h.bandId)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Amount">
+                <span className="flex gap-2">
+                  <input name="amount" required inputMode="decimal" placeholder="250.00" />
+                  <input name="currency" defaultValue={rows[0]?.cur ?? "USD"} className="!w-20" aria-label="Currency" />
+                </span>
+              </Field>
+              <Field label="Date it came in">
+                <input name="date" type="date" required defaultValue={today} />
+              </Field>
+              <Field label="Note (optional)">
+                <input name="note" />
+              </Field>
+              <div className="sm:col-span-4">
+                <SubmitButton>Save</SubmitButton>
+              </div>
+            </ActionForm>
+          </Disclosure>
+        </div>
+      )}
+    </Card>
   );
 }
 

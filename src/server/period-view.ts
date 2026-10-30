@@ -3,7 +3,8 @@ import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { PayoutLine } from "@/lib/paypal-export";
 import { periodName } from "@/lib/dates";
-import { computePayoutPeriod, nameMaps, strandedSales } from "./data";
+import { splitByPayer } from "@/lib/payers";
+import { bandsPayingOwn, computePayoutPeriod, nameMaps, strandedSales } from "./data";
 import { expenseDeductions, projectReleaseMap } from "./expenses";
 
 /** What a payout covers: one band (or the whole label) over a date range. */
@@ -24,6 +25,8 @@ export type PersonLine = {
   amountCents: number;
   byBand: { bandId: number; cents: number }[];
   payoutId: number | null;
+  /** A band that pays this itself, from money Bandcamp paid it (bands.paidTo); null: the label sends it. */
+  paidByBandId: number | null;
   status: "pending" | "paid" | "kept" | null;
   paidAt: string | null;
   reference: string | null;
@@ -69,7 +72,7 @@ export function previewView(orgId: string, scope: PayoutScope) {
 }
 
 async function buildView(orgId: string, scope: PayoutScope, period: Period | null) {
-  const [live, names, peopleList, payoutRows, deductionRows, expenseRows, projectReleases] = await Promise.all([
+  const [live, names, peopleList, payoutRows, deductionRows, expenseRows, projectReleases, bandPays] = await Promise.all([
     computePayoutPeriod(orgId, { id: period?.id ?? 0, ...scope }),
     nameMaps(orgId),
     db.select().from(schema.people).where(eq(schema.people.orgId, orgId)),
@@ -82,6 +85,7 @@ async function buildView(orgId: string, scope: PayoutScope, period: Period | nul
     db.select().from(schema.deductions).where(eq(schema.deductions.orgId, orgId)),
     db.select().from(schema.expenses).where(eq(schema.expenses.orgId, orgId)),
     projectReleaseMap(orgId),
+    bandsPayingOwn(orgId),
   ]);
   const peopleRows = new Map(peopleList.map((p) => [p.id, p]));
   const person = (id: number) => peopleRows.get(id);
@@ -89,22 +93,26 @@ async function buildView(orgId: string, scope: PayoutScope, period: Period | nul
   const liveLines: PersonLine[] = [];
   for (const cur of live.summary.currencies) {
     for (const [personId, p] of live.summary.byCurrency[cur].byPerson) {
-      liveLines.push({
-        personId,
-        name: person(personId)?.name ?? `#${personId}`,
-        email: person(personId)?.email ?? null,
-        paypalMe: person(personId)?.paypalMe ?? null,
-        venmo: person(personId)?.venmo ?? null,
-        cashtag: person(personId)?.cashtag ?? null,
-        holdsLabelAccount: person(personId)?.holdsLabelAccount ?? false,
-        currency: cur,
-        amountCents: p.total,
-        byBand: [...p.byBand].map(([bandId, cents]) => ({ bandId, cents })),
-        payoutId: null,
-        status: null,
-        paidAt: null,
-        reference: null,
-      });
+      // One line for what the label sends, and one for each band that pays its own (bands.paidTo).
+      for (const part of splitByPayer(p.byBand, bandPays)) {
+        liveLines.push({
+          personId,
+          name: person(personId)?.name ?? `#${personId}`,
+          email: person(personId)?.email ?? null,
+          paypalMe: person(personId)?.paypalMe ?? null,
+          venmo: person(personId)?.venmo ?? null,
+          cashtag: person(personId)?.cashtag ?? null,
+          holdsLabelAccount: person(personId)?.holdsLabelAccount ?? false,
+          currency: cur,
+          amountCents: part.total,
+          byBand: [...part.byBand].map(([bandId, cents]) => ({ bandId, cents })),
+          payoutId: null,
+          paidByBandId: part.paidByBandId,
+          status: null,
+          paidAt: null,
+          reference: null,
+        });
+      }
     }
   }
 
@@ -122,12 +130,13 @@ async function buildView(orgId: string, scope: PayoutScope, period: Period | nul
         amountCents: r.amountCents,
         byBand: Object.entries(r.byBand).map(([b, cents]) => ({ bandId: Number(b), cents })),
         payoutId: r.id,
+        paidByBandId: r.paidByBandId,
         status: r.status,
         paidAt: r.paidAt,
         reference: r.reference,
       }))
     : liveLines.filter((l) => l.amountCents !== 0);
-  lines.sort((a, b) => a.name.localeCompare(b.name) || a.currency.localeCompare(b.currency));
+  lines.sort((a, b) => a.name.localeCompare(b.name) || a.currency.localeCompare(b.currency) || (a.paidByBandId ?? 0) - (b.paidByBandId ?? 0));
 
   // Did rules or sales change after finalizing? A cent here or there with the same totals is only
   // rounding (e.g. a tie broken differently), not a change worth flagging.
@@ -181,9 +190,11 @@ export function changedSinceFinalized(
   locked: { personId: number; currency: string; amountCents: number }[],
   live: { personId: number; currency: string; amountCents: number }[],
 ) {
+  // Someone can have more than one line (one for each band that pays its own): compare their totals.
   const key = (l: { personId: number; currency: string }) => `${l.personId}|${l.currency}`;
-  const was = new Map(locked.map((l) => [key(l), l.amountCents]));
-  const now = new Map(live.map((l) => [key(l), l.amountCents]));
+  const sum = (lines: typeof locked) => lines.reduce((m, l) => m.set(key(l), (m.get(key(l)) ?? 0) + l.amountCents), new Map<string, number>());
+  const was = sum(locked);
+  const now = sum(live);
   if (was.size !== now.size || [...was.keys()].some((k) => !now.has(k))) return true;
   if ([...was].some(([k, cents]) => Math.abs(cents - now.get(k)!) > 1)) return true;
   const total = (m: Map<string, number>, cur: string) => [...m].filter(([k]) => k.endsWith(`|${cur}`)).reduce((a, [, c]) => a + c, 0);
@@ -201,8 +212,9 @@ export function payoutNote(periodName: string, line: PersonLine, bandName: (id: 
 
 export function toPayoutLines(view: NonNullable<Awaited<ReturnType<typeof periodView>>>): PayoutLine[] {
   const bandName = (id: number) => view.names.band.get(id) ?? "Unknown band";
+  // What the label sends: a band that pays its own members sends theirs.
   return view.lines
-    .filter((l) => l.status === "pending")
+    .filter((l) => l.status === "pending" && l.paidByBandId === null)
     .map((l) => ({
       personName: l.name,
       email: l.email,

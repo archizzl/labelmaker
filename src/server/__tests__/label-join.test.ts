@@ -1,0 +1,188 @@
+import { randomUUID } from "node:crypto";
+import { and, eq } from "drizzle-orm";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import { newAccount, testDb } from "../../../test/helpers/db";
+
+let orgId = "";
+vi.mock("../context", () => ({
+  requireAccess: async () => ({ orgId, org: { kind: "label" } }),
+  requireAdmin: async () => ({ orgId }),
+  getContext: async () => ({ orgId }),
+  accountContext: async () => ({ orgId }),
+}));
+vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+vi.mock("next/navigation", () => ({
+  redirect: (to: string) => {
+    throw Object.assign(new Error("redirect"), { to });
+  },
+}));
+
+let db: Awaited<ReturnType<typeof testDb>>["db"];
+let schema: Awaited<ReturnType<typeof testDb>>["schema"];
+let links: typeof import("../band-invite-links");
+let join: typeof import("../label-join");
+let data: typeof import("../data");
+let actions: typeof import("../actions");
+
+beforeAll(async () => {
+  ({ db, schema } = await testDb());
+  links = await import("../band-invite-links");
+  join = await import("../label-join");
+  data = await import("../data");
+  actions = await import("../actions");
+});
+
+async function login() {
+  const id = randomUUID();
+  await db.insert(schema.user).values({ id, name: "Ana", email: `${id}@example.test`, emailVerified: true, createdAt: new Date(), updatedAt: new Date() });
+  return id;
+}
+
+const today = new Date().toISOString().slice(0, 10);
+
+async function sale(org: string, key: string, date: string, bandId: number | null, netCents = 1000) {
+  const [imp] = await db.insert(schema.imports).values({ orgId: org, filename: "t", rowCount: 1, addedCount: 1, duplicateCount: 0 }).returning();
+  await db.insert(schema.sales).values({
+    orgId: org,
+    importId: imp.id,
+    dedupeKey: key,
+    date,
+    itemType: "album",
+    category: "album",
+    itemName: key,
+    artist: "",
+    itemUrl: "",
+    packageName: "",
+    currency: "USD",
+    netCents,
+    transactionId: key,
+    routingKey: key,
+    bandId,
+    raw: {},
+  });
+}
+
+/** A label, and a band's own group (run by `admin`) with two members and its own band. */
+async function setup() {
+  const labelOrgId = await newAccount("Collective");
+  const bandOrgId = await newAccount("Glass Harbor", "band");
+  const admin = await login();
+  await db.insert(schema.member).values({ id: randomUUID(), organizationId: bandOrgId, userId: admin, role: "owner", createdAt: new Date() });
+  const [own] = await db.insert(schema.bands).values({ orgId: bandOrgId, name: "Glass Harbor", urlPatterns: ["glassharbor"] }).returning();
+  const [ana, ben] = await db
+    .insert(schema.people)
+    .values([
+      { orgId: bandOrgId, name: "Ana", paypalMe: "ana" },
+      { orgId: bandOrgId, name: "Ben" },
+    ])
+    .returning();
+  await db.insert(schema.bandMemberships).values([
+    { orgId: bandOrgId, bandId: own.id, personId: ana.id, roles: ["drums"] },
+    { orgId: bandOrgId, bandId: own.id, personId: ben.id, roles: [], active: false },
+  ]);
+  return { labelOrgId, bandOrgId, admin, own, ana };
+}
+
+describe("a label's invite link for bands", () => {
+  it("is its own link: not the label's link for people", async () => {
+    const labelOrgId = await newAccount();
+    const forBands = await links.bandsInviteLink(labelOrgId, null);
+    expect(await links.bandsInviteLink(labelOrgId, null)).toBe(forBands);
+    expect(await links.standingInviteLink(labelOrgId, null)).not.toBe(forBands);
+    expect(await links.usableInviteLink(forBands)).toBeNull();
+    expect((await links.usableBandsLink(forBands))?.label.id).toBe(labelOrgId);
+
+    const fresh = await links.resetBandsInviteLink(labelOrgId, null);
+    expect(fresh).not.toBe(forBands);
+    expect(await links.usableBandsLink(forBands)).toBeNull();
+  });
+
+  it("offers the band groups someone runs, saying why one can't join", async () => {
+    const { labelOrgId, bandOrgId, admin } = await setup();
+    expect(await links.groupsToJoinWith(admin, labelOrgId)).toEqual([{ id: bandOrgId, name: "Glass Harbor", why: null }]);
+    await join.joinLabel(labelOrgId, bandOrgId, null);
+    expect((await links.groupsToJoinWith(admin, labelOrgId))[0].why).toBe("already on this label");
+    expect((await links.groupsToJoinWith(admin, await newAccount("Other label")))[0].why).toBe("on another label");
+  });
+});
+
+describe("joining a label", () => {
+  it("puts the band and its current members in the label's books, Bandcamp paying the band", async () => {
+    const { labelOrgId, bandOrgId, ana } = await setup();
+    const { bandId } = await join.joinLabel(labelOrgId, bandOrgId, null);
+
+    const [band] = await db.select().from(schema.bands).where(eq(schema.bands.id, bandId));
+    expect(band).toMatchObject({ orgId: labelOrgId, name: "Glass Harbor", paidTo: "band", urlPatterns: ["glassharbor"] });
+    const [link] = await db.select().from(schema.accountLinks).where(eq(schema.accountLinks.labelBandId, bandId));
+    expect(link).toMatchObject({ bandOrgId, status: "active", managed: false, joined: true });
+
+    const members = await db
+      .select({ person: schema.people, roles: schema.bandMemberships.roles })
+      .from(schema.bandMemberships)
+      .innerJoin(schema.people, eq(schema.people.id, schema.bandMemberships.personId))
+      .where(and(eq(schema.bandMemberships.orgId, labelOrgId), eq(schema.bandMemberships.bandId, bandId)));
+    expect(members).toMatchObject([{ person: { name: "Ana", paypalMe: "ana" }, roles: ["drums"] }]);
+    // The same person in both books.
+    const [mine] = await db.select().from(schema.people).where(eq(schema.people.id, ana.id));
+    expect(mine.labelPersonId).toBe(members[0].person.id);
+  });
+
+  it("sends the band's sales from then on to the label's books, and keeps the ones from before", async () => {
+    const { labelOrgId, bandOrgId, own } = await setup();
+    await sale(bandOrgId, "before", "2020-01-01", own.id);
+    const { bandId } = await join.joinLabel(labelOrgId, bandOrgId, null);
+    await sale(bandOrgId, "after", today, own.id);
+    expect(await (await import("../own-books")).moveSalesToLabel(bandOrgId)).toBe(1);
+
+    const rows = await db.select({ key: schema.sales.dedupeKey, orgId: schema.sales.orgId, bandId: schema.sales.bandId }).from(schema.sales);
+    expect(rows.find((r) => r.key === "before")).toMatchObject({ orgId: bandOrgId, bandId: own.id });
+    expect(rows.find((r) => r.key === "after")).toMatchObject({ orgId: labelOrgId, bandId });
+  });
+});
+
+describe("a band Bandcamp pays itself", () => {
+  /** A label with a 20% cut; its band is paid by Bandcamp directly. One $10 sale. */
+  async function paidBand() {
+    orgId = await newAccount();
+    const [band] = await db.insert(schema.bands).values({ orgId, name: "Glass Harbor", paidTo: "band" }).returning();
+    const [other] = await db.insert(schema.bands).values({ orgId, name: "Flag Day" }).returning();
+    const [ana] = await db.insert(schema.people).values({ orgId, name: "Ana" }).returning();
+    for (const b of [band, other]) {
+      const [rule] = await db.insert(schema.splitRules).values({ orgId, scope: "band_default", bandId: b.id }).returning();
+      await db.insert(schema.splitShares).values({ orgId, ruleId: rule.id, personId: ana.id, bps: 10000 });
+    }
+    await db.insert(schema.deductions).values({ orgId, label: "Label cut", kind: "percent", percentBps: 2000, destination: "label" });
+    await sale(orgId, `gh-${orgId}`, "2026-01-10", band.id);
+    await sale(orgId, `fd-${orgId}`, "2026-01-10", other.id);
+    return { band, other, ana };
+  }
+
+  it("pays its members its part of a payout, on a line of its own", async () => {
+    const { band, ana } = await paidBand();
+    const fd = new FormData();
+    fd.set("startDate", "2026-01-01");
+    fd.set("endDate", "2026-01-31");
+    await actions.finalizePayout(null, fd).catch(() => {});
+    const lines = await db.select().from(schema.payouts).where(eq(schema.payouts.orgId, orgId));
+    expect(lines.map((l) => ({ personId: l.personId, cents: l.amountCents, by: l.paidByBandId })).sort((a, b) => (a.by ?? 0) - (b.by ?? 0))).toEqual([
+      { personId: ana.id, cents: 800, by: null },
+      { personId: ana.id, cents: 800, by: band.id },
+    ]);
+  });
+
+  it("holds the label's share until it sends it", async () => {
+    const { band } = await paidBand();
+    let funds = await data.labelFunds(orgId);
+    expect(funds.kept.get("USD")).toBe(400);
+    expect(funds.balance.get("USD")).toBe(200);
+    expect(funds.heldByBands).toMatchObject([{ bandId: band.id }]);
+    expect(funds.heldByBands[0].held.get("USD")).toBe(200);
+
+    const fd = new FormData();
+    for (const [k, v] of Object.entries({ bandId: String(band.id), amount: "1.50", currency: "USD", date: "2026-02-01" })) fd.set(k, v);
+    expect(await actions.saveBandRemittance(null, fd)).toEqual({ ok: "Saved" });
+    funds = await data.labelFunds(orgId);
+    expect(funds.balance.get("USD")).toBe(350);
+    expect(funds.heldByBands[0].held.get("USD")).toBe(50);
+  });
+});

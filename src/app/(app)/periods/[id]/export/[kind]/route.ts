@@ -39,6 +39,7 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/periods/[id]/ex
       currency: l.currency,
       amount: centsToDecimal(l.amountCents),
       bands: l.byBand.map((b) => `${band(b.bandId)}: ${centsToDecimal(b.cents)}`).join("; "),
+      paid_by: l.paidByBandId === null ? "label" : band(l.paidByBandId),
       status: l.status ?? "preview",
       paid_at: l.paidAt ?? "",
       reference: l.reference ?? "",

@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { ConnectExistingForm, JoinBandForm } from "@/components/auth-forms";
+import { ConnectExistingForm, JoinBandForm, JoinLabelForm } from "@/components/auth-forms";
 import { LinkButton } from "@/components/ui";
-import { claimablePeople, connectableAccounts, hasSharedLogin, unusedBandAccount, usableInviteLink } from "@/server/band-invite-links";
+import { claimablePeople, connectableAccounts, groupsToJoinWith, hasSharedLogin, unusedBandAccount, usableBandsLink, usableInviteLink } from "@/server/band-invite-links";
 import { myDetails } from "@/server/people";
 import { getSession, groupPhotos } from "@/server/context";
 import { joinPreview } from "@/lib/join-preview";
@@ -9,7 +9,10 @@ import { signOut } from "@/server/account-actions";
 
 /** The link's preview where it's sent (a message, an email): join the group, with its photo. */
 export async function generateMetadata({ params }: PageProps<"/join/[id]">) {
-  const found = await usableInviteLink((await params).id);
+  const id = (await params).id;
+  const forBands = await usableBandsLink(id);
+  if (forBands) return joinPreview(forBands.label.name, (await groupPhotos([{ id: forBands.label.id, kind: "label" }])).get(forBands.label.id));
+  const found = await usableInviteLink(id);
   if (!found) return { title: "join" };
   const kind = found.band.kind === "band" ? ("band" as const) : ("label" as const);
   return joinPreview(found.band.name, (await groupPhotos([{ id: found.band.id, kind }])).get(found.band.id));
@@ -21,7 +24,8 @@ export async function generateMetadata({ params }: PageProps<"/join/[id]">) {
  */
 export default async function JoinPage({ params, searchParams }: PageProps<"/join/[id]">) {
   const id = (await params).id;
-  const [found, session] = await Promise.all([usableInviteLink(id), getSession()]);
+  const [found, forBands, session] = await Promise.all([usableInviteLink(id), usableBandsLink(id), getSession()]);
+  if (forBands) return <JoinLabelAsBand id={id} label={forBands.label} session={session} />;
   if (!found) {
     return (
       <>
@@ -92,6 +96,57 @@ export default async function JoinPage({ params, searchParams }: PageProps<"/joi
             Already have one? <Link href={`/login?next=${encodeURIComponent(after)}`}>Sign in</Link>
           </p>
         </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * A label's invite link for bands: whoever runs a band's group here signs in and joins the label
+ * with it (not as a person: the band does).
+ */
+async function JoinLabelAsBand({ id, label, session }: { id: string; label: { id: string; name: string }; session: Awaited<ReturnType<typeof getSession>> }) {
+  const groups = session ? await groupsToJoinWith(session.user.id, label.id) : [];
+  const next = encodeURIComponent(`/join/${id}`);
+  return (
+    <>
+      <h1 className="mb-2 text-xl font-bold">Join {label.name}</h1>
+      <p className="mb-5 text-sm text-muted">
+        {!session ? "Sign in to the account that runs your band here. " : groups.length > 1 ? "Choose your band. " : ""}Its sales from today go into{" "}
+        {label.name}’s books, to be split and paid out there.
+      </p>
+      {session && (
+        <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded border border-border px-3 py-2 text-sm">
+          <span>
+            Signed in as <b>{session.user.email}</b>.
+          </span>
+          <form action={signOut}>
+            <input type="hidden" name="next" value={`/join/${id}`} />
+            <button type="submit" className="cursor-pointer text-(--link) hover:underline">
+              Use a different account
+            </button>
+          </form>
+        </div>
+      )}
+      {!session ? (
+        <div className="space-y-3">
+          <LinkButton href={`/login?next=${next}`} variant="primary" className="w-full">
+            Sign in
+          </LinkButton>
+          <p className="text-center text-sm text-muted">
+            Your band isn’t here yet? <Link href="/signup">Create an account</Link>, set up the band, then open
+            this link again.
+          </p>
+        </div>
+      ) : groups.some((g) => !g.why) ? (
+        <JoinLabelForm id={id} groups={groups} labelName={label.name} />
+      ) : (
+        <p className="text-sm">
+          {groups.length
+            ? groups.map((g) => `${g.name} is ${g.why}.`).join(" ")
+            : "You don’t run a band here yet."}{" "}
+          <Link href="/welcome">Set up your band</Link>, then open this link again.
+        </p>
       )}
     </>
   );

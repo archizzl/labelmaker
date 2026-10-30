@@ -93,6 +93,12 @@ export const bands = pgTable(
     location: text("location"),
     /** The label itself: releases under the label's own name (label tapes, compilations). */
     isLabel: boolean("is_label").notNull().default(false),
+    /**
+     * Who Bandcamp pays for this band's sales: the label, or the band itself (a band on the label but
+     * not on the label's Bandcamp). Then the band pays its members their part of each payout, and
+     * sends the label its share (bandRemittances).
+     */
+    paidTo: text("paid_to", { enum: ["label", "band"] }).notNull().default("label"),
     active: boolean("active").notNull().default(true),
     createdAt: text("created_at").notNull().default(now),
   },
@@ -425,8 +431,31 @@ export const payouts = pgTable(
     status: text("status", { enum: ["pending", "paid", "kept"] }).notNull().default("pending"),
     paidAt: text("paid_at"),
     reference: text("reference"),
+    /** The band pays this part itself, from money Bandcamp paid it (bands.paidTo): the label sends nothing. */
+    paidByBandId: integer("paid_by_band_id").references(() => bands.id, { onDelete: "set null" }),
   },
   (t) => [index("payouts_org").on(t.orgId), index("payouts_person").on(t.personId)],
+);
+
+/**
+ * Money a band sent the label: its share of sales Bandcamp paid the band for (bands.paidTo), which
+ * the band holds until it's sent.
+ */
+export const bandRemittances = pgTable(
+  "band_remittances",
+  {
+    id: id(),
+    orgId: orgId(),
+    bandId: integer("band_id")
+      .notNull()
+      .references(() => bands.id, { onDelete: "cascade" }),
+    date: text("date").notNull(),
+    currency: text("currency").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    note: text("note"),
+    createdAt: text("created_at").notNull().default(now),
+  },
+  (t) => [index("band_remittances_org").on(t.orgId)],
 );
 
 /**
@@ -598,6 +627,11 @@ export const accountLinks = pgTable(
     acceptedAt: text("accepted_at"),
     /** The label made this band account for the band (a sub-account), rather than the band linking its own. */
     managed: boolean("managed").notNull().default(false),
+    /**
+     * The band's own group joined the label with the label's invite link for bands: as with a group
+     * the label made, its sales from then on go into the label's books (src/server/own-books.ts).
+     */
+    joined: boolean("joined").notNull().default(false),
     /** A label-made band account's shared login opens as this member until whoever's using it picks someone else. */
     defaultPersonId: integer("default_person_id").references(() => people.id, { onDelete: "set null" }),
   },
@@ -979,6 +1013,8 @@ export const bandInviteLinks = pgTable(
     personId: integer("person_id").references(() => people.id, { onDelete: "set null" }),
     /** A label's link for one member type: whoever joins with it gets that type (deleting the type ends the link). */
     memberTypeId: integer("member_type_id").references(() => memberTypes.id, { onDelete: "cascade" }),
+    /** A label's link for bands: a band's group joins the label with it, instead of a person joining (src/server/label-join.ts). */
+    forBands: boolean("for_bands").notNull().default(false),
     createdByUserId: text("created_by_user_id").references(() => user.id, { onDelete: "set null" }),
     createdAt: text("created_at").notNull().default(now),
     expiresAt: text("expires_at").notNull(),

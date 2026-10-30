@@ -114,6 +114,8 @@ export async function deleteSubAccount(labelOrgId: string, bandId: number) {
 export type BandAccountSummary = {
   /** The label made it (a sub-account), or the band linked an account it had already. */
   managed: boolean;
+  /** The band joined the label with its own account, using the label's invite link for bands. */
+  joined: boolean;
   name: string;
   /** People who sign in to it, and invites waiting. */
   logins: number;
@@ -127,7 +129,7 @@ export type BandAccountSummary = {
 /** Each of a label's bands' accounts, by band id: for the directory. */
 export async function bandAccountSummaries(labelOrgId: string): Promise<Map<number, BandAccountSummary>> {
   const links = await db
-    .select({ bandId: accountLinks.labelBandId, orgId: accountLinks.bandOrgId, managed: accountLinks.managed, name: organization.name })
+    .select({ bandId: accountLinks.labelBandId, orgId: accountLinks.bandOrgId, managed: accountLinks.managed, joined: accountLinks.joined, name: organization.name })
     .from(accountLinks)
     .innerJoin(organization, eq(organization.id, accountLinks.bandOrgId))
     .where(and(eq(accountLinks.labelOrgId, labelOrgId), eq(accountLinks.status, "active")));
@@ -149,6 +151,7 @@ export async function bandAccountSummaries(labelOrgId: string): Promise<Map<numb
         l.bandId,
         {
           managed: l.managed,
+          joined: l.joined,
           name: l.name,
           logins: members.filter((m) => m.orgId === l.orgId).length,
           invited: open.length,

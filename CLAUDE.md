@@ -122,6 +122,7 @@ Never write to the live database by hand. Changes go through migrations and the 
   - `data.ts`: payout calculations.
   - `auto-sync.ts`, `sync.ts`, `bandcamp-api.ts`: syncing with Bandcamp.
   - `band-accounts.ts`, `links.ts`, `own-books.ts`: band groups a label made, label links, and a band group's own books.
+  - `label-join.ts`: a band's own group joining a label with the label's invite link for bands (no Bandcamp label account needed). `bands.paidTo` says who Bandcamp pays; a band paid directly pays its members (`payouts.paidByBandId`) and sends the label its share (`band_remittances`).
   - `signup-invites.ts`: site admins' sign-up invite links. `applications.ts`: group applications from before anyone could set one up (the admin dashboard still lists them).
 - **`src/lib`:** pure logic. `splits.ts` is the split engine, `routing.ts` matches sales to bands, `feature-flags.ts` lists flagged features.
 - **`src/db/schema.ts`:** the schema; `drizzle/` holds the migrations.

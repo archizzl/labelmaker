@@ -11,7 +11,7 @@ import { saleInPayout } from "./sales-browse";
 import { merchSources, saleAdder } from "./manual-sales";
 import { putBackStock, takeStock } from "./inventory";
 import { importNamed } from "./import-rows";
-import { onLabelSince } from "./own-books";
+import { moveSalesToLabel, onLabelSince } from "./own-books";
 
 export type ManualSaleState = { ok?: string; error?: string } | null;
 
@@ -144,6 +144,8 @@ export async function addManualSale(_: ManualSaleState, fd: FormData): Promise<M
       if (l.stock) await takeStock(tx, l.stock, "sold", l.quantity, { saleId: added[i].id, userId: user.id, note: `From a sale on ${date}` });
     }
   });
+  // A band's group that joined a label: the label's books take it from here.
+  if (!managedBy && books.orgId === orgId) await moveSalesToLabel(orgId);
   revalidatePath("/", "layout");
   if (lines.length > 1) return { ok: `Added ${plural(lines.length, "sale")}.` };
   return { ok: `Added ${lines[0].format ? `${lines[0].itemName}, ${lines[0].format}` : lines[0].itemName}.` };

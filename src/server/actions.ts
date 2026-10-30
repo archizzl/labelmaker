@@ -13,6 +13,7 @@ import { cleanCashtag, cleanVenmoHandle } from "@/lib/paypal-export";
 import { bandScope, can } from "@/lib/permissions";
 import { plural, possessive } from "@/lib/plural";
 import { summarize } from "@/lib/splits";
+import { splitByPayer } from "@/lib/payers";
 import { deleteSubAccount, ensureBandAccounts, renameSubAccount } from "./band-accounts";
 import { fetchPage, upsertRelease } from "./bandcamp";
 import { bandcampCredentials } from "./bandcamp-api";
@@ -21,7 +22,7 @@ import { syncAccount, syncCatalog, UP_TO_DATE } from "./auto-sync";
 import { getContext, ownBooksOf, requireAccess, requireAdmin } from "./context";
 import { prepare, runSalesSync, saveSales } from "./sync";
 import { putBackStock } from "./inventory";
-import { computePayoutPeriod, reRouteAll, strandedSales } from "./data";
+import { bandsPayingOwn, computePayoutPeriod, reRouteAll, strandedSales } from "./data";
 import { type PayoutScope, payoutName } from "./period-view";
 import { markSeen } from "./nav-badges";
 import { autoMergeByEmail, findExistingPerson, mergePeople } from "./people";
@@ -1001,6 +1002,7 @@ export async function finalizePayout(_: ActionState, fd: FormData): Promise<Acti
     ).map((p) => p.id),
   );
   const name = str(fd, "name") || (await payoutName(orgId, scope));
+  const bandPays = await bandsPayingOwn(orgId);
   const id = await db.transaction(async (tx) => {
     const [{ id }] = await tx
       .insert(periods)
@@ -1026,22 +1028,26 @@ export async function finalizePayout(_: ActionState, fd: FormData): Promise<Acti
         },
       })
       .returning({ id: periods.id });
+    // One line per person for what the label sends, and one for each band that pays its own (bands.paidTo).
     const lines = summary.currencies.flatMap((cur) =>
-      [...summary.byCurrency[cur].byPerson]
-        .filter(([, p]) => p.total !== 0)
-        .map(([personId, p]) => {
-          // The label account holder's share is already in the label's account: record it, don't send it.
-          const kept = holders.has(personId) && p.total > 0;
-          return {
-            orgId,
-            periodId: id,
-            personId,
-            currency: cur,
-            amountCents: p.total,
-            byBand: Object.fromEntries([...p.byBand].map(([b, c]) => [String(b), c])),
-            ...(kept ? { status: "kept" as const, paidAt: now } : {}),
-          };
-        }),
+      [...summary.byCurrency[cur].byPerson].flatMap(([personId, p]) =>
+        splitByPayer(p.byBand, bandPays)
+          .filter((part) => part.total !== 0)
+          .map((part) => {
+            // The label account holder's share is already in the label's account: record it, don't send it.
+            const kept = holders.has(personId) && part.total > 0 && part.paidByBandId === null;
+            return {
+              orgId,
+              periodId: id,
+              personId,
+              currency: cur,
+              amountCents: part.total,
+              byBand: Object.fromEntries([...part.byBand].map(([b, c]) => [String(b), c])),
+              paidByBandId: part.paidByBandId,
+              ...(kept ? { status: "kept" as const, paidAt: now } : {}),
+            };
+          }),
+      ),
     );
     if (lines.length) await tx.insert(payouts).values(lines);
     // Remember exactly which sales this payout paid.
@@ -1149,6 +1155,50 @@ export async function setLabelAccountHolder(fd: FormData) {
       .where(and(eq(payouts.personId, personId), eq(payouts.status, "pending"), gt(payouts.amountCents, 0)));
   });
   await syncAllPeriodStatuses(orgId);
+  done();
+}
+
+// ---------- bands Bandcamp pays directly ----------
+
+/**
+ * Who Bandcamp pays for a band's sales: the label, or the band (a band on the label but not on its
+ * Bandcamp). The band then pays its members their part of each payout, and sends the label its share.
+ * Payouts finalized already stay as they are.
+ */
+export async function setBandPaidTo(fd: FormData) {
+  const { orgId, org } = await requireAccess("payouts", "edit");
+  if (org.kind !== "label") throw new Error("Only a label has bands that Bandcamp pays.");
+  const bandId = int(fd, "bandId");
+  await owned(orgId, bands, bandId);
+  const paidTo = str(fd, "paidTo") === "band" ? "band" : "label";
+  await db.update(bands).set({ paidTo }).where(and(eq(bands.orgId, orgId), eq(bands.id, bandId)));
+  done();
+}
+
+/** Record money a band sent the label: its share of sales Bandcamp paid the band for. */
+export async function saveBandRemittance(_: ActionState, fd: FormData): Promise<ActionState> {
+  const { orgId } = await requireAccess("funds", "edit");
+  const bandId = int(fd, "bandId");
+  await owned(orgId, bands, bandId);
+  const date = isoDate(optStr(fd, "date"));
+  const amountCents = parseCents(str(fd, "amount"));
+  if (!date) return { error: "Pick the date it came in" };
+  if (!(amountCents > 0)) return { error: "Enter the amount received" };
+  await db.insert(schema.bandRemittances).values({
+    orgId,
+    bandId,
+    date,
+    amountCents,
+    currency: (str(fd, "currency") || "USD").toUpperCase(),
+    note: optStr(fd, "note"),
+  });
+  done();
+  return { ok: "Saved" };
+}
+
+export async function deleteBandRemittance(fd: FormData) {
+  const { orgId } = await requireAccess("funds", "edit");
+  await db.delete(schema.bandRemittances).where(and(eq(schema.bandRemittances.orgId, orgId), eq(schema.bandRemittances.id, int(fd, "id"))));
   done();
 }
 

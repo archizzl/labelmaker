@@ -9,7 +9,7 @@ import { Badge, Card, Disclosure, Empty, Field, MoneyList, PageHeader, RolesList
 import { ViewAsButton } from "@/components/viewing-as";
 import { type AccountLogin, LoginControls } from "@/components/login-controls";
 import { listMemberTypes, memberTypeOf } from "@/server/member-types";
-import { StandingInviteLink } from "@/components/band-invite-links";
+import { BandsInviteLink, StandingInviteLink } from "@/components/band-invite-links";
 import { db, schema } from "@/db";
 import { payHandlesSummary } from "@/lib/paypal-export";
 import { bandScope } from "@/lib/permissions";
@@ -344,6 +344,7 @@ export default async function DirectoryPage() {
               <BandFields />
             </Disclosure>
           )}
+          {showAccounts && <BandsInviteLink labelOrgId={orgId} createdBy={ctx.user.id} />}
         </div>
       )}
 
@@ -389,7 +390,7 @@ function BandAccountLine({
         <Link href={manage}>manage sign-ins</Link>
       ) : (
         <>
-          <span>Linked to their own group, “{a.name}”.</span>
+          <span>{a.joined ? `Joined with their own group, “${a.name}”.` : `Linked to their own group, “${a.name}”.`}</span>
           <Link href={manage}>manage</Link>
         </>
       )}

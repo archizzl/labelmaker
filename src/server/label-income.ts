@@ -4,13 +4,14 @@ import { db, schema } from "@/db";
 import { buildTrend } from "@/lib/chart-data";
 import { LABEL_RELEASES_SOURCE, SHIPPING_SOURCE } from "@/lib/label-sources";
 import { parseCents } from "@/lib/money";
-import { computeAllTime, labelFunds } from "./data";
+import { bandsPayingOwn, computeAllTime, labelFunds } from "./data";
 
 /*
  * Where the label's money comes from, piece by piece: each withholding that goes to the label (its
  * cut, CD costs, a fundraiser…), its own share of label releases, and the shipping fans paid (never
  * split: it stays with the label for postage). Also the label account holder's own share, which sits
- * in the same account but is theirs, not the label's.
+ * in the same account but is theirs, not the label's. A band that Bandcamp pays itself (bands.paidTo)
+ * holds the label's share of its sales until it sends it, and keeps its own postage.
  */
 
 export type Totals = Map<string, number>;
@@ -21,7 +22,7 @@ const add = (m: Totals, cur: string, cents: number) => m.set(cur, (m.get(cur) ??
 export { LABEL_RELEASES_SOURCE, SHIPPING_SOURCE } from "@/lib/label-sources";
 
 export async function labelIncome(orgId: string) {
-  const [{ results, saleById }, funds, holders, bandRows] = await Promise.all([
+  const [{ results, saleById }, funds, holders, bandRows, bandPays] = await Promise.all([
     computeAllTime(orgId),
     labelFunds(orgId),
     db
@@ -29,6 +30,7 @@ export async function labelIncome(orgId: string) {
       .from(schema.people)
       .where(and(eq(schema.people.orgId, orgId), eq(schema.people.holdsLabelAccount, true))),
     db.select({ id: schema.bands.id, name: schema.bands.name }).from(schema.bands).where(eq(schema.bands.orgId, orgId)),
+    bandsPayingOwn(orgId),
   ]);
   const holderIds = new Set(holders.map((h) => h.id));
   const bandName = new Map(bandRows.map((b) => [b.id, b.name]));
@@ -70,7 +72,7 @@ export async function labelIncome(orgId: string) {
       credit(d.deductionId === 0 ? LABEL_RELEASES_SOURCE : d.label, r.currency, d.cents, r.bandId, sale.date, sale);
     }
     const raw = sale.raw.shipping;
-    if (raw) credit(SHIPPING_SOURCE, r.currency, Math.abs(parseCents(raw)) * (Math.sign(r.netCents) || 1), r.bandId, sale.date, sale);
+    if (raw && !(r.bandId !== null && bandPays.has(r.bandId))) credit(SHIPPING_SOURCE, r.currency, Math.abs(parseCents(raw)) * (Math.sign(r.netCents) || 1), r.bandId, sale.date, sale);
     for (const s of r.shares) if (holderIds.has(s.personId)) add(holderShare, r.currency, s.cents);
   }
 
@@ -83,9 +85,12 @@ export async function labelIncome(orgId: string) {
     sentBySource.set(t.source, m);
   }
 
+  // The label's share that bands Bandcamp pays still hold.
+  const held: Totals = new Map();
+  for (const h of funds.heldByBands) for (const [cur, cents] of h.held) add(held, cur, cents);
   const balance: Totals = new Map();
-  for (const cur of new Set([...income.keys(), ...funds.sent.keys(), ...funds.spent.keys()])) {
-    balance.set(cur, (income.get(cur) ?? 0) - (funds.sent.get(cur) ?? 0) - (funds.spent.get(cur) ?? 0));
+  for (const cur of new Set([...income.keys(), ...funds.sent.keys(), ...funds.spent.keys(), ...held.keys()])) {
+    balance.set(cur, (income.get(cur) ?? 0) - (funds.sent.get(cur) ?? 0) - (funds.spent.get(cur) ?? 0) - (held.get(cur) ?? 0));
   }
   const currencies = [...new Set([...income.keys(), ...balance.keys()])].sort((a, b) => Math.abs(income.get(b) ?? 0) - Math.abs(income.get(a) ?? 0));
 
@@ -103,6 +108,9 @@ export async function labelIncome(orgId: string) {
     spent: funds.spent,
     spending: funds.spending,
     balance,
+    held,
+    heldByBands: funds.heldByBands,
+    remittances: funds.remittances,
     holderShare,
     holderName: holders.length === 1 ? holders[0].name : null,
     bySource,

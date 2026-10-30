@@ -1,7 +1,7 @@
 import { ActionForm, CopyButton, SaveWhenChanged, SubmitButton } from "@/components/client";
 import { buttonClass } from "@/components/ui";
-import { resetInviteLink, setLoginIdentity } from "@/server/band-invite-actions";
-import { standingInviteLink } from "@/server/band-invite-links";
+import { resetBandsLink, resetInviteLink, setLoginIdentity } from "@/server/band-invite-actions";
+import { bandsInviteLink, standingInviteLink } from "@/server/band-invite-links";
 
 const base = () => process.env.BETTER_AUTH_URL ?? "";
 
@@ -32,6 +32,24 @@ export async function StandingInviteLink({
         {/* <SubmitButton variant="ghost" size="sm" confirm="Reset the invite link? The old one stops working; anyone who already joined stays.">
           Reset link
         </SubmitButton> */}
+      </form>
+    </span>
+  );
+}
+
+/**
+ * A label's standing invite link for bands: whoever runs a band's group opens it, and the band
+ * joins the label. Reset makes the old one stop working.
+ */
+export async function BandsInviteLink({ labelOrgId, createdBy }: { labelOrgId: string; createdBy: string }) {
+  const id = await bandsInviteLink(labelOrgId, createdBy);
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <CopyButton text={`${base()}/join/${id}`} label="Copy invite link for bands" />
+      <form action={resetBandsLink}>
+        <SubmitButton variant="ghost" size="sm" confirm="Reset the invite link for bands? The old one stops working; bands that joined stay.">
+          Reset link
+        </SubmitButton>
       </form>
     </span>
   );

@@ -7,7 +7,20 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { subAccountFor } from "./band-accounts";
-import { claimablePeople, connectableAccounts, hasSharedLogin, resetStandingLink, stamp, unclaimedMembers, unusedBandAccount, usableInviteLink } from "./band-invite-links";
+import {
+  claimablePeople,
+  connectableAccounts,
+  groupsToJoinWith,
+  hasSharedLogin,
+  resetBandsInviteLink,
+  resetStandingLink,
+  stamp,
+  unclaimedMembers,
+  unusedBandAccount,
+  usableBandsLink,
+  usableInviteLink,
+} from "./band-invite-links";
+import { joinLabel } from "./label-join";
 import { assignMemberType } from "./member-types";
 import { applyMyDetails } from "./people";
 import { syncOwnPeople } from "./own-books";
@@ -193,6 +206,34 @@ export async function connectExistingAccount(_: InviteLinkState, fd: FormData): 
   await auth.api.setActiveOrganization({ body: { organizationId: bandOrgId }, headers: await headers() });
   revalidatePath("/", "layout");
   redirect(`/from-label/${link.id}`);
+}
+
+/** Label admin: reset the label's invite link for bands. The old one stops working; bands that joined stay. */
+export async function resetBandsLink() {
+  const ctx = await requireAdmin();
+  if (ctx.org.kind !== "label") throw new Error("Only a label has an invite link for bands.");
+  await resetBandsInviteLink(ctx.orgId, ctx.user.id);
+  revalidatePath("/directory");
+}
+
+/**
+ * Use a label's invite link for bands: one of the band groups the signed-in login runs joins the
+ * label (src/server/label-join.ts), and they go to what the label has for it.
+ */
+export async function joinLabelAsBand(_: InviteLinkState, fd: FormData): Promise<InviteLinkState> {
+  const id = String(fd.get("id") ?? "");
+  const session = await getSession();
+  if (!session) redirect(`/login?next=${encodeURIComponent(`/join/${id}`)}`);
+  const found = await usableBandsLink(id);
+  if (!found) return { error: "This invite link has been reset. Ask the label for a new one." };
+  const bandOrgId = String(fd.get("orgId") ?? "");
+  const group = (await groupsToJoinWith(session.user.id, found.label.id)).find((g) => g.id === bandOrgId);
+  if (!group) return { error: "That isn’t a band you run here." };
+  if (group.why) return { error: `${group.name} is ${group.why}.` };
+  const { linkId } = await joinLabel(found.label.id, bandOrgId, found.link.createdByUserId);
+  await auth.api.setActiveOrganization({ body: { organizationId: bandOrgId }, headers: await headers() });
+  revalidatePath("/", "layout");
+  redirect(`/from-label/${linkId}`);
 }
 
 /**

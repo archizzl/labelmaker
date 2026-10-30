@@ -270,14 +270,29 @@ export async function onLabelSince(labelOrgId: string, bandId: number): Promise<
 }
 
 /**
- * A band account the label made: its sales from its time on the label (imported, synced or added
- * by hand) go into the label's books for its band, to be split and paid out there. Ones the label's
- * books already have (from the label's own Bandcamp) are dropped instead, and ones its own payouts
- * paid stay. In the label's catalog, a sale is matched as usual if that finds the band; otherwise
- * it's the band's with no release. Returns how many moved.
+ * The label a band group's sales go to, from its time there: the one that made it, or the one it
+ * joined with the label's invite link for bands (src/server/label-join.ts). Null for any other group.
+ */
+export async function salesLabelOf(bandOrgId: string): Promise<{ labelOrgId: string; bandId: number } | null> {
+  const m = await managingLabel(bandOrgId);
+  if (m) return m;
+  const [joined] = await db
+    .select({ labelOrgId: schema.accountLinks.labelOrgId, bandId: schema.accountLinks.labelBandId })
+    .from(schema.accountLinks)
+    .where(and(eq(schema.accountLinks.bandOrgId, bandOrgId), eq(schema.accountLinks.joined, true), eq(schema.accountLinks.status, "active")))
+    .limit(1);
+  return joined ?? null;
+}
+
+/**
+ * A band account the label made, or one that joined it: its sales from its time on the label
+ * (imported, synced or added by hand) go into the label's books for its band, to be split and paid
+ * out there. Ones the label's books already have (from the label's own Bandcamp) are dropped
+ * instead, and ones its own payouts paid stay. In the label's catalog, a sale is matched as usual if
+ * that finds the band; otherwise it's the band's with no release. Returns how many moved.
  */
 export async function moveSalesToLabel(bandOrgId: string): Promise<number> {
-  const m = await managingLabel(bandOrgId);
+  const m = await salesLabelOf(bandOrgId);
   if (!m) return 0;
   const since = await onLabelSince(m.labelOrgId, m.bandId);
   const rows = await db
@@ -341,7 +356,7 @@ export async function moveSalesToLabel(bandOrgId: string): Promise<number> {
 }
 
 /**
- * A label's band groups that still have sales of their own: what's from their time on the label
+ * A label's band groups (ones it made, and ones that joined it) that still have sales of their own: what's from their time on the label
  * comes in (for the hourly sync; new ones come in as they're added). Returns how many moved.
  */
 export async function moveBandGroupsSales(labelOrgId: string): Promise<number> {
@@ -349,7 +364,13 @@ export async function moveBandGroupsSales(labelOrgId: string): Promise<number> {
     .selectDistinct({ orgId: sales.orgId })
     .from(schema.accountLinks)
     .innerJoin(sales, eq(sales.orgId, schema.accountLinks.bandOrgId))
-    .where(and(eq(schema.accountLinks.labelOrgId, labelOrgId), eq(schema.accountLinks.managed, true), eq(schema.accountLinks.status, "active")));
+    .where(
+      and(
+        eq(schema.accountLinks.labelOrgId, labelOrgId),
+        or(eq(schema.accountLinks.managed, true), eq(schema.accountLinks.joined, true)),
+        eq(schema.accountLinks.status, "active"),
+      ),
+    );
   let moved = 0;
   for (const g of groups) moved += await moveSalesToLabel(g.orgId);
   return moved;

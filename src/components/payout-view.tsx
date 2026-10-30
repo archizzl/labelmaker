@@ -47,6 +47,8 @@ export async function PayoutView({
   const bandName = (bid: number | null) => (bid === null ? "No band yet" : (names.band.get(bid) ?? `#${bid}`));
   const currencies = live.summary.currencies;
   const pending = lines.filter((l) => l.status === "pending" && l.amountCents > 0);
+  // What the label sends (a band that pays its own members sends theirs).
+  const labelSends = pending.filter((l) => l.paidByBandId === null);
   const ctx = await getContext();
   const { orgId } = ctx;
   const [outside, labelBandRows, canSync, [settings]] = await Promise.all([
@@ -76,7 +78,7 @@ export async function PayoutView({
   // One-click payment links (PayPal.me, Venmo, Cash App) with the amount and a note filled in.
   const methodsFor = (l: (typeof lines)[number]) =>
     payMethods(l, l.amountCents, l.currency, period ? payoutNote(period.name, l, (b) => bandName(b)) : name);
-  const queue: QueueItem[] = pending
+  const queue: QueueItem[] = labelSends
     .filter((l) => l.payoutId !== null)
     .map((l) => ({
       payoutId: l.payoutId!,
@@ -85,7 +87,7 @@ export async function PayoutView({
       email: l.email,
       methods: methodsFor(l),
     }));
-  const holderLine = lines.find((l) => l.holdsLabelAccount && l.amountCents > 0 && (!finalized || l.status === "kept"));
+  const holderLine = lines.find((l) => l.holdsLabelAccount && l.paidByBandId === null && l.amountCents > 0 && (!finalized || l.status === "kept"));
 
   return (
     <>
@@ -385,14 +387,15 @@ export async function PayoutView({
               </thead>
               <tbody>
                 {lines.map((l) => (
-                  <tr key={`${l.personId}|${l.currency}`}>
+                  <tr key={`${l.personId}|${l.currency}|${l.paidByBandId}`}>
                     <td>
                       <div className="font-medium">{l.name}</div>
                       <div className="text-xs text-muted">
-                        {l.holdsLabelAccount && !finalized && l.amountCents > 0
+                        {l.holdsLabelAccount && !finalized && l.amountCents > 0 && l.paidByBandId === null
                           ? "stays in the label’s account"
                           : [l.email, payHandlesSummary(l)].filter(Boolean).join(" · ") || "no payment details"}
                       </div>
+                      {l.paidByBandId !== null && <div className="text-xs font-medium">{bandName(l.paidByBandId)} pays this</div>}
                     </td>
                     <td className="text-xs">
                       {l.byBand.map((b) => (
@@ -473,12 +476,12 @@ export async function PayoutView({
           </p>
         )}
 
-        {id !== null && pending.length > 0 && (
+        {id !== null && labelSends.length > 0 && (
           <div className="mt-4 space-y-3 border-t border-border pt-4 text-sm">
             <p className="text-muted">
               <b>Paying everyone at once:</b> with a PayPal Business account that has Payouts turned on, go to PayPal → Pay &amp; Get
-              Paid → Payouts → upload the <i>PayPal bulk payout file</i>. It includes {pending.filter((l) => l.email).length} of{" "}
-              {pending.length} unpaid people (the ones with an email). Otherwise, use <b>Pay next</b> above to go through everyone.
+              Paid → Payouts → upload the <i>PayPal bulk payout file</i>. It includes {labelSends.filter((l) => l.email).length} of{" "}
+              {labelSends.length} unpaid people (the ones with an email). Otherwise, use <b>Pay next</b> above to go through everyone.
             </p>
             <form action={markAllPaid} className="flex flex-wrap items-center gap-2">
               <input type="hidden" name="periodId" value={id} />

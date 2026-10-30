@@ -24,7 +24,7 @@ import { ensureBandAccounts } from "@/server/band-accounts";
 import { linkForLabelBand } from "@/server/links";
 import { LabelFunds } from "@/components/label-funds";
 import { ExpenseForm, ExpenseTable } from "@/components/receipts";
-import { deleteBand, removeMember, saveRelease, updateMembership } from "@/server/actions";
+import { deleteBand, removeMember, saveRelease, setBandPaidTo, updateMembership } from "@/server/actions";
 import { bandScope, can } from "@/lib/permissions";
 import { getContext, ownBooksOf, requireAccess } from "@/server/context";
 import { projectsEnabled } from "@/server/features";
@@ -437,6 +437,27 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
               ownSplits={[...releaseRules.values()].filter(Boolean).length}
             />
           </Card>
+          {ctx.org.kind === "label" && !band.isLabel && (
+            <Card title="Bandcamp pays">
+              {can(ctx.access, "payouts", "edit") ? (
+                <form action={setBandPaidTo} className="flex flex-wrap items-center gap-2">
+                  <input type="hidden" name="bandId" value={id} />
+                  <select key={band.paidTo} name="paidTo" defaultValue={band.paidTo} className="!w-64" aria-label="Who Bandcamp pays for this band’s sales">
+                    <option value="label">The label</option>
+                    <option value="band">{band.name}</option>
+                  </select>
+                  <SaveWhenChanged>
+                    <SubmitButton variant="secondary">Save</SubmitButton>
+                  </SaveWhenChanged>
+                </form>
+              ) : (
+                <p className="text-sm">{band.paidTo === "band" ? band.name : "The label"}</p>
+              )}
+              {band.paidTo === "band" && (
+                <p className="mt-2 text-sm text-muted">{band.name} pays its members their part of each payout, and sends the label its share.</p>
+              )}
+            </Card>
+          )}
           <div id="default-split" />
           <Card title={`${possessive(band.name)} split`}>
             {/* <p className="mb-3 text-sm text-muted">Used for every sale of this band unless a release, track or item-type split below applies.</p> */}

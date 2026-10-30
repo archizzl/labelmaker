@@ -299,6 +299,13 @@ const funds = abelTool({
       cameInByBand: ranked(inc.byBand),
       ...(inc.holderName && [...inc.holderShare.values()].some((c) => c) ? { accountHolderOwnShare: `${inc.holderName}: ${money(inc.holderShare)} of their own pay sits in the same account` } : {}),
       sendOuts: f.transfers.slice(0, 30).map((t) => ({ id: t.id, date: t.date, amount: formatCents(t.amountCents, t.currency), to: t.recipient, source: t.source, note: t.note })),
+      // Bands Bandcamp pays itself: the label's share they hold, and what they've sent (not in leftInAccount until sent).
+      ...(f.heldByBands.length
+        ? {
+            heldByBands: f.heldByBands.map((h) => ({ bandId: h.bandId, labelShare: money(h.share), sentToLabel: money(h.received), stillWithBand: money(h.held) })),
+            sentByBands: f.remittances.slice(0, 30).map((r) => ({ id: r.id, bandId: r.bandId, date: r.date, amount: formatCents(r.amountCents, r.currency), note: r.note })),
+          }
+        : {}),
       link: "/funds",
     };
   },

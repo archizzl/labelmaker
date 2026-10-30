@@ -285,6 +285,15 @@ export async function strandedSales(orgId: string, period: PeriodScope) {
  */
 export const computeAllTime = cache((orgId: string) => computePeriod(orgId, "0000-01-01", "9999-12-31"));
 
+/** A label's bands whose sales Bandcamp pays to the band itself (bands.paidTo): they pay their own members. */
+export async function bandsPayingOwn(orgId: string): Promise<Set<number>> {
+  const rows = await db
+    .select({ id: bands.id })
+    .from(bands)
+    .where(and(eq(bands.orgId, orgId), eq(bands.paidTo, "band")));
+  return new Set(rows.map((r) => r.id));
+}
+
 /** A band account's own band (the first that isn't the label itself): band accounts have one. */
 export const ownBand = cache(async (orgId: string) => {
   const [band] = await db
@@ -468,18 +477,30 @@ const addTo = (m: Totals, currency: string, cents: number) => m.set(currency, (m
 export type FundCause = { bandId: number | null; releaseId: number | null };
 const causeKey = (c: FundCause) => (c.releaseId ? `r${c.releaseId}` : c.bandId ? `b${c.bandId}` : "");
 
+/** A band Bandcamp pays directly (bands.paidTo): the label's share of its sales, what it has sent the label, and what it still holds. */
+export type HeldByBand = { bandId: number; share: Totals; received: Totals; held: Totals };
+
 /**
  * The label's own money: everything it kept from sales (its cut, its share of label releases,
  * fundraisers routed to it), what it has sent on to others, and what's left. Also, for each band
  * and release that transfers were made for, how much it raised for the label and how much went out.
+ * The label's share of sales Bandcamp paid a band for is in its balance once the band sends it.
  */
 export async function labelFunds(orgId: string) {
-  const [{ results, saleById }, transferRows, expenseRows] = await Promise.all([
+  const [{ results, saleById }, transferRows, expenseRows, bandPays, remittances] = await Promise.all([
     computeAllTime(orgId),
     db.select().from(schema.labelTransfers).where(eq(schema.labelTransfers.orgId, orgId)),
     db.select().from(schema.expenses).where(and(eq(schema.expenses.orgId, orgId), eq(schema.expenses.status, "approved"))),
+    bandsPayingOwn(orgId),
+    db.select().from(schema.bandRemittances).where(eq(schema.bandRemittances.orgId, orgId)),
   ]);
   const kept: Totals = new Map();
+  const heldBy = new Map<number, HeldByBand>();
+  const heldFor = (bandId: number) => {
+    const h = heldBy.get(bandId) ?? { bandId, share: new Map(), received: new Map(), held: new Map() };
+    heldBy.set(bandId, h);
+    return h;
+  };
   // cause key → income source → what the label kept from that cause's sales. A send-out tied to a
   // source (e.g. "Triple Single Fundraiser") is measured against that source only, not everything
   // the label kept from the release (its CD costs aren't the fundraiser's).
@@ -497,6 +518,7 @@ export async function labelFunds(orgId: string) {
     for (const d of r.deductions) {
       if (d.destination !== "label" || !d.cents) continue;
       addTo(kept, r.currency, d.cents);
+      if (r.bandId !== null && bandPays.has(r.bandId)) addTo(heldFor(r.bandId).share, r.currency, d.cents);
       for (const key of keys) credit(key, d.deductionId === 0 ? LABEL_RELEASES_SOURCE : d.label, r.currency, d.cents);
     }
     const shipping = sale?.raw.shipping ? Math.abs(parseCents(sale.raw.shipping)) * (Math.sign(r.netCents) || 1) : 0;
@@ -542,9 +564,21 @@ export async function labelFunds(orgId: string) {
       spending.push(e);
     }
   }
+  // What bands Bandcamp pays still hold of the label's share. (Once a band's sales are paid to the
+  // label again, all its share counts as in the label's account, so what it sent isn't counted twice.)
+  for (const r of remittances) if (bandPays.has(r.bandId)) addTo(heldFor(r.bandId).received, r.currency, r.amountCents);
+  const stillHeld: Totals = new Map();
+  for (const h of heldBy.values()) {
+    for (const cur of new Set([...h.share.keys(), ...h.received.keys()])) {
+      const left = (h.share.get(cur) ?? 0) - (h.received.get(cur) ?? 0);
+      h.held.set(cur, left);
+      addTo(stillHeld, cur, left);
+    }
+  }
+
   const balance: Totals = new Map();
   for (const cur of new Set([...kept.keys(), ...sent.keys(), ...spent.keys()])) {
-    balance.set(cur, (kept.get(cur) ?? 0) - (sent.get(cur) ?? 0) - (spent.get(cur) ?? 0));
+    balance.set(cur, (kept.get(cur) ?? 0) - (sent.get(cur) ?? 0) - (spent.get(cur) ?? 0) - (stillHeld.get(cur) ?? 0));
   }
 
   return {
@@ -554,6 +588,9 @@ export async function labelFunds(orgId: string) {
     /** The expenses behind `spent`: ones the label paid, and receipts it paid people back for. */
     spending,
     balance,
+    /** Bands Bandcamp pays directly, with the label's share they still hold. */
+    heldByBands: [...heldBy.values()],
+    remittances: remittances.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id),
     transfers,
     causes: [...causes.values()],
     raisedBy: (c: FundCause) => raised.get(causeKey(c)),

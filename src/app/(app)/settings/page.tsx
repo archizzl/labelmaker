@@ -108,8 +108,12 @@ export default async function SettingsPage() {
                   {!link.managed && (
                     <form action={unlink} className="ml-auto">
                       <input type="hidden" name="id" value={link.id} />
-                      <SubmitButton variant="ghost" size="sm" confirm={`Unlink ${label.name}?`}>
-                        Unlink
+                      <SubmitButton
+                        variant="ghost"
+                        size="sm"
+                        confirm={link.joined ? `Leave ${label.name}? Sales from now on stay in your own books; ones it has already stay in its.` : `Unlink ${label.name}?`}
+                      >
+                        {link.joined ? "Leave" : "Unlink"}
                       </SubmitButton>
                     </form>
                   )}

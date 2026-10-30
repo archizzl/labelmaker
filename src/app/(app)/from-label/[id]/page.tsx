@@ -7,7 +7,7 @@ import { SalesSection } from "@/components/sales-section";
 import { BandPayouts } from "@/components/band-payouts";
 import { Card, MoneyList, PageHeader } from "@/components/ui";
 import { db, schema } from "@/db";
-import { computePayoutPeriod, nameMaps } from "@/server/data";
+import { computePayoutPeriod, labelFunds, nameMaps } from "@/server/data";
 import { accountExpenses, expenseFileList } from "@/server/expenses";
 import { requireLinkedView } from "@/server/links";
 import { projectsEnabled } from "@/server/features";
@@ -52,6 +52,8 @@ export default async function FromLabelPage({ params, searchParams }: PageProps<
         </Card>
       )}
 
+      <BandSends labelOrgId={labelOrgId} bandId={bandId} labelName={v.labelName} />
+
       <SalesSection
         boardId="label-sales"
         orgId={labelOrgId}
@@ -84,6 +86,59 @@ export default async function FromLabelPage({ params, searchParams }: PageProps<
         />
       </Card>
     </>
+  );
+}
+
+/**
+ * When Bandcamp pays the band itself (bands.paidTo): what it sends, its members' part of the label's
+ * payouts and the label's share of its sales. Nothing otherwise.
+ */
+async function BandSends({ labelOrgId, bandId, labelName }: { labelOrgId: string; bandId: number; labelName: string }) {
+  const [[band], lines, funds] = await Promise.all([
+    db
+      .select({ paidTo: schema.bands.paidTo })
+      .from(schema.bands)
+      .where(and(eq(schema.bands.orgId, labelOrgId), eq(schema.bands.id, bandId))),
+    db
+      .select({ name: schema.people.name, currency: schema.payouts.currency, amountCents: schema.payouts.amountCents })
+      .from(schema.payouts)
+      .innerJoin(schema.people, eq(schema.people.id, schema.payouts.personId))
+      .where(and(eq(schema.payouts.orgId, labelOrgId), eq(schema.payouts.paidByBandId, bandId), eq(schema.payouts.status, "pending"))),
+    labelFunds(labelOrgId),
+  ]);
+  if (band?.paidTo !== "band") return null;
+  const held = new Map([...(funds.heldByBands.find((h) => h.bandId === bandId)?.held ?? [])].filter(([, c]) => c > 0));
+  const owed = new Map<string, { name: string; currency: string; cents: number }>();
+  for (const l of lines) {
+    if (l.amountCents <= 0) continue;
+    const k = `${l.name}|${l.currency}`;
+    const e = owed.get(k) ?? { name: l.name, currency: l.currency, cents: 0 };
+    e.cents += l.amountCents;
+    owed.set(k, e);
+  }
+  return (
+    <Card title="What you send">
+      <p className="mb-3 text-sm">
+        {held.size ? (
+          <>
+            To {labelName}, its share: <MoneyList totals={held} />
+          </>
+        ) : (
+          `Nothing to send to ${labelName}.`
+        )}
+      </p>
+      {owed.size === 0 ? (
+        <p className="text-sm text-muted">No payouts for your members to send.</p>
+      ) : (
+        <ul className="space-y-1 text-sm">
+          {[...owed.values()].map((o) => (
+            <li key={`${o.name}|${o.currency}`}>
+              {o.name}: <MoneyList totals={new Map([[o.currency, o.cents]])} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }
 

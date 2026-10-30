@@ -17,7 +17,7 @@ import {
   setMemberRole,
   testBandcampConnection,
 } from "../../account-actions";
-import { resetInviteLink } from "../../band-invite-actions";
+import { resetBandsLink, resetInviteLink } from "../../band-invite-actions";
 import { myDetails } from "../../people";
 import { projectsEnabled } from "../../features";
 import { cancelBandAccountInvite, inviteToBandAccount, unlink } from "../../link-actions";
@@ -231,6 +231,15 @@ const resetLink = actionTool({
   action: (fd) => resetInviteLink(fd),
 });
 
+const resetBandsLinkTool = actionTool({
+  name: "reset_bands_invite_link",
+  label: "Reset the label's invite link for bands",
+  description: "Make a new invite link for bands to join the label with their own groups (the old one stops working; bands that joined stay).",
+  params: z.object({}),
+  needs: "admin",
+  action: () => resetBandsLink(),
+});
+
 const unlinkTool = actionTool({
   name: "unlink_groups",
   label: "End a link between a label and a band",
@@ -308,6 +317,7 @@ export const SETTINGS_TOOLS = [
   inviteBand,
   cancelBandInvite,
   resetLink,
+  resetBandsLinkTool,
   unlinkTool,
   saveProjectTool,
   deleteProjectTool,
