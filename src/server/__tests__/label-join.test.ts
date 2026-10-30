@@ -6,7 +6,7 @@ import { newAccount, testDb } from "../../../test/helpers/db";
 let orgId = "";
 vi.mock("../context", () => ({
   requireAccess: async () => ({ orgId, org: { kind: "label" } }),
-  requireAdmin: async () => ({ orgId }),
+  requireAdmin: async () => ({ orgId, org: { kind: "band" }, managedBy: null }),
   getContext: async () => ({ orgId }),
   accountContext: async () => ({ orgId }),
 }));
@@ -311,5 +311,38 @@ describe("a joined band's changes reach the label straight away", () => {
     const [mine] = await db.select().from(schema.people).where(eq(schema.people.id, ana.id));
     const [there] = await db.select().from(schema.people).where(eq(schema.people.id, mine.labelPersonId!));
     expect(there.paypalMe).toBe("ana-new");
+  });
+});
+
+describe("a band's Bandcamp address", () => {
+  it("is the label's in the band's group too: filled in, changed with it, and the group's own kept", async () => {
+    const ba = await import("../band-accounts");
+    const labelOrgId = await newAccount("Label");
+    const [band] = await db.insert(schema.bands).values({ orgId: labelOrgId, name: "Glass Harbor", urlPatterns: ["glassharbor"] }).returning();
+    await ba.ensureBandAccounts(labelOrgId);
+    const groupId = (await ba.subAccountFor(labelOrgId, band.id))!.org.id;
+    const address = async () => (await db.select().from(schema.accountSettings).where(eq(schema.accountSettings.orgId, groupId)))[0]?.bandcampUrl;
+
+    await ba.shareBandAddresses(labelOrgId);
+    expect(await address()).toBe("glassharbor.bandcamp.com");
+    // The label changes it: the group's follows.
+    await db.update(schema.bands).set({ urlPatterns: ["glass-harbor"] }).where(eq(schema.bands.id, band.id));
+    await ba.shareBandAddress(labelOrgId, band.id, ["glassharbor"]);
+    expect(await address()).toBe("glass-harbor.bandcamp.com");
+    // One the group set itself stays.
+    await db.update(schema.accountSettings).set({ bandcampUrl: "glassharborband.com" }).where(eq(schema.accountSettings.orgId, groupId));
+    await ba.shareBandAddress(labelOrgId, band.id, ["glass-harbor"]);
+    expect(await address()).toBe("glassharborband.com");
+  });
+
+  it("a band that joined: its own address is the label's for it too", async () => {
+    const { labelOrgId, bandOrgId } = await setup();
+    const { bandId } = await join.joinLabel(labelOrgId, bandOrgId, null);
+    orgId = bandOrgId;
+    const fd = new FormData();
+    for (const [k, v] of Object.entries({ name: "Glass Harbor", aliases: "", bandcampUrl: "https://glassharbor-new.bandcamp.com" })) fd.set(k, v);
+    expect(await (await import("../account-actions")).saveBandSettings(null, fd)).toEqual({ ok: "Saved" });
+    const [there] = await db.select().from(schema.bands).where(eq(schema.bands.id, bandId));
+    expect(there.urlPatterns).toContain("glassharbor-new.bandcamp.com");
   });
 });

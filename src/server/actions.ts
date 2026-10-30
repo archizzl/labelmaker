@@ -14,7 +14,7 @@ import { bandScope, can } from "@/lib/permissions";
 import { plural, possessive } from "@/lib/plural";
 import { summarize } from "@/lib/splits";
 import { splitByPayer } from "@/lib/payers";
-import { deleteSubAccount, ensureBandAccounts, renameSubAccount } from "./band-accounts";
+import { deleteSubAccount, ensureBandAccounts, renameSubAccount, shareBandAddress } from "./band-accounts";
 import { fetchPage, upsertRelease } from "./bandcamp";
 import { bandcampCredentials } from "./bandcamp-api";
 import { requestCatalogSync } from "./catalog-requests";
@@ -180,12 +180,15 @@ export async function saveBand(fd: FormData) {
     if (before && before.name !== values.name && !values.aliases.includes(before.name)) values.aliases.push(before.name);
   }
   let bandId = id;
+  const [was] = id ? await db.select({ urlPatterns: bands.urlPatterns }).from(bands).where(and(eq(bands.orgId, orgId), eq(bands.id, id))) : [];
   if (id) await db.update(bands).set(values).where(and(eq(bands.orgId, orgId), eq(bands.id, id)));
   else [{ id: bandId }] = await db.insert(bands).values({ ...values, orgId }).returning({ id: bands.id });
   // Its account from the label: made for a new band, renamed with it. A band that runs its own
   // account: the account is the band, so it takes the name too.
   if (id) await renameSubAccount(orgId, id, values.name);
   else await ensureBandAccounts(orgId);
+  // Its group (one the label made, or its own that joined) shows its Bandcamp address as the label has it.
+  if (id && !access.lens && access.org.kind === "label") await shareBandAddress(orgId, id, was?.urlPatterns ?? []);
   if (id && !access.lens && access.org.kind === "band") {
     await db.update(schema.organization).set({ name: values.name }).where(eq(schema.organization.id, orgId));
     // A band that joined a label: the label's books call it by its new name too.

@@ -1,7 +1,8 @@
 import "server-only";
 import { randomBytes, randomUUID } from "node:crypto";
-import { and, eq, inArray, TransactionRollbackError } from "drizzle-orm";
+import { and, eq, inArray, or, TransactionRollbackError } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { normalizeUrl } from "@/lib/routing";
 import { slugify } from "@/lib/slug";
 
 /*
@@ -161,4 +162,52 @@ export async function bandAccountSummaries(labelOrgId: string): Promise<Map<numb
       ];
     }),
   );
+}
+
+/** A band's Bandcamp address from its addresses in a label's books (its first page, not a release's): "glassharbor" → glassharbor.bandcamp.com. */
+export function bandcampAddressOf(urlPatterns: string[]): string | null {
+  const page = urlPatterns.find((p) => p && !p.includes("/"));
+  return page ? (page.includes(".") ? page : `${page}.bandcamp.com`) : null;
+}
+
+/**
+ * A band's group on a label (one the label made, or one that joined it) shows the band's Bandcamp
+ * address as the label has it: filled in when the group has none, or (`was`, the label's addresses
+ * before a change) changed when it was the label's old one. The group's own other address stays.
+ */
+export async function shareBandAddress(labelOrgId: string, bandId: number, was: string[] = []) {
+  const [row] = await db
+    .select({ bandOrgId: accountLinks.bandOrgId, urlPatterns: bands.urlPatterns, url: schema.accountSettings.bandcampUrl })
+    .from(accountLinks)
+    .innerJoin(bands, eq(bands.id, accountLinks.labelBandId))
+    .leftJoin(schema.accountSettings, eq(schema.accountSettings.orgId, accountLinks.bandOrgId))
+    .where(and(eq(accountLinks.labelOrgId, labelOrgId), eq(accountLinks.labelBandId, bandId), eq(accountLinks.status, "active")));
+  if (!row?.bandOrgId) return;
+  const address = bandcampAddressOf(row.urlPatterns);
+  const before = bandcampAddressOf(was);
+  const same = (a: string | null, b: string | null) => !!a && !!b && normalizeUrl(a) === normalizeUrl(b);
+  if (!address || same(row.url, address) || (row.url && !same(row.url, before))) return;
+  await db
+    .insert(schema.accountSettings)
+    .values({ orgId: row.bandOrgId, bandcampUrl: address })
+    .onConflictDoUpdate({ target: schema.accountSettings.orgId, set: { bandcampUrl: address } });
+}
+
+/** Every band's group on a label: its Bandcamp address as the label has it, where the group has none. */
+export async function shareBandAddresses(labelOrgId: string) {
+  const links = await db
+    .select({ bandId: accountLinks.labelBandId })
+    .from(accountLinks)
+    .where(and(eq(accountLinks.labelOrgId, labelOrgId), eq(accountLinks.status, "active")));
+  for (const l of links) await shareBandAddress(labelOrgId, l.bandId);
+}
+
+/** A band's group on a label: the label and its band there, for its address (none: not on a label). */
+export async function labelBandOf(bandOrgId: string) {
+  const [row] = await db
+    .select({ labelOrgId: accountLinks.labelOrgId, bandId: accountLinks.labelBandId })
+    .from(accountLinks)
+    .where(and(eq(accountLinks.bandOrgId, bandOrgId), eq(accountLinks.status, "active"), or(eq(accountLinks.managed, true), eq(accountLinks.joined, true))))
+    .limit(1);
+  return row ?? null;
 }

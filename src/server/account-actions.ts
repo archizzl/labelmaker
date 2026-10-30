@@ -9,7 +9,7 @@ import { safePath } from "@/lib/safe-path";
 import { slugify } from "@/lib/slug";
 import { auth } from "./auth";
 import { accountContext, accountsFor, type Context, getSession, requireAdmin, VIEW_AS_COOKIE } from "./context";
-import { labelReachNote, syncJoinedPeople } from "./own-books";
+import { joinedLabel, labelReachNote, renameJoinedBand, syncJoinedPeople } from "./own-books";
 import { AREAS, type Area, normalizeBandAreas, normalizePermissions } from "@/lib/permissions";
 import { assignMemberType, memberTypeForInvite, parseRoleChoice, setInviteMemberType, setManagedBands } from "./member-types";
 import { applyMyDetails, normalizeEmail } from "./people";
@@ -276,6 +276,17 @@ export async function saveBandSettings(_: FormState, fd: FormData): Promise<Form
   await db.update(schema.bands).set({ name, aliases, urlPatterns }).where(eq(schema.bands.id, band.id));
   if (m) await renameSubAccount(booksId, bandId, name);
   else await db.update(schema.organization).set({ name }).where(eq(schema.organization.id, ctx.orgId));
+  // A band that joined a label: its address is the label's for it too (how the label matches its sales).
+  const joined = m ? null : await joinedLabel(ctx.orgId);
+  if (joined) {
+    const [there] = await db.select({ urlPatterns: schema.bands.urlPatterns }).from(schema.bands).where(eq(schema.bands.id, joined.bandId));
+    if (there) {
+      const patterns = [...there.urlPatterns.filter((p) => p !== oldPattern && p !== newPattern), ...(newPattern ? [newPattern] : [])];
+      await db.update(schema.bands).set({ urlPatterns: patterns }).where(eq(schema.bands.id, joined.bandId));
+      await reRouteAll(joined.labelOrgId);
+    }
+    await renameJoinedBand(ctx.orgId, name);
+  }
   await reRouteAll(booksId);
   revalidatePath("/", "layout");
   return { ok: "Saved" };

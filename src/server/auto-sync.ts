@@ -4,7 +4,7 @@ import { cache } from "react";
 import { db, schema } from "@/db";
 import { artistsFromApi, merchFromApi, releasesFromSales } from "./api-catalog";
 import { type BandcampAccountBand, bandcampCredentials, myBands } from "./bandcamp-api";
-import { ensureBandAccounts, managingLabel } from "./band-accounts";
+import { ensureBandAccounts, managingLabel, shareBandAddresses } from "./band-accounts";
 import { moveBandGroupsSales, syncOwnPeople } from "./own-books";
 import { reRouteAll } from "./data";
 import { loadOpenOrders } from "./merch-orders";
@@ -219,7 +219,11 @@ export async function syncAccount(orgId: string, { force = false } = {}): Promis
 
   // New artists get their band accounts, and the sales their groups have from their time on the label come in.
   if (org?.kind === "label") {
-    await step("Band groups", () => ensureBandAccounts(orgId).then(() => undefined));
+    await step("Band groups", async () => {
+      await ensureBandAccounts(orgId);
+      // Each band's group shows its Bandcamp address as the label has it, where it has none.
+      await shareBandAddresses(orgId);
+    });
     await step("Bands' sales", async () => {
       const moved = await moveBandGroupsSales(orgId);
       if (moved) found.push(plural(moved, "sale") + " from band groups");

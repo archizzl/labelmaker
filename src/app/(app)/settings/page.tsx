@@ -1,4 +1,5 @@
 import { and, asc, eq } from "drizzle-orm";
+import { labelBandOf, shareBandAddress } from "@/server/band-accounts";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
@@ -26,6 +27,9 @@ export default async function SettingsPage() {
   await connection();
   const own = await accountContext();
   if (!own.isAdmin) redirect("/account");
+  // A band's group on a label: its Bandcamp address as the label has it, if it has none yet.
+  const onLabel = own.org.kind === "band" ? await labelBandOf(own.orgId) : null;
+  if (onLabel) await shareBandAddress(onLabel.labelOrgId, onLabel.bandId);
   if (own.managedBy) return <SubAccountSettings ctx={own} />;
   const ctx = await requireAdmin();
   const { orgId } = ctx;
