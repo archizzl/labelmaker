@@ -330,6 +330,13 @@
       "when": 1793315200723,
       "tag": "0046_label_join_for_bands",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1793334830518,
+      "tag": "0047_list_columns",
+      "breakpoints": true
     }
   ]
 }

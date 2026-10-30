@@ -1000,6 +1000,24 @@ export const accountApplications = pgTable(
 );
 
 /**
+ * The columns a person hides in a list of sales (the Sales page, Funds, a payout…), in the group they're
+ * in as itself. Hidden ones are kept, so a column added later shows until it's hidden.
+ */
+export const listColumns = pgTable(
+  "list_columns",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    orgId: orgId(),
+    listId: text("list_id").notNull(),
+    hidden: jsonb("hidden").$type<string[]>().notNull().default([]),
+    updatedAt: text("updated_at").notNull().default(now),
+  },
+  (t) => [uniqueIndex("list_columns_pk").on(t.userId, t.orgId, t.listId)],
+);
+
+/**
  * A single-use link to join a label-made band account, made without knowing the joiner's email:
  * whoever opens it signs in (or signs up with any email) and becomes one of the band's logins.
  * `orgId` is the band's account. With `personId` (a member in the label's books), that login is

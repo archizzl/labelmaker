@@ -18,6 +18,8 @@ import { SaleOrder } from "@/components/sale-order";
 import { Pager } from "@/components/pager";
 import { MANUAL_VIA } from "@/lib/manual-sales";
 import { markSeen } from "@/server/nav-badges";
+import { loadHiddenColumns } from "@/server/list-columns";
+import { ColumnsMenu } from "@/components/columns-menu";
 import {
   browseSales,
   filterQuery,
@@ -68,7 +70,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
   const canDelete = (s: { orgId: string; bandId: number | null }) =>
     !!adder && ((s.orgId === orgId && adder.bands.some((b) => b.id === s.bandId)) || labels.some((l) => l.orgId === s.orgId && (l.managed || joinedTo === l.orgId)));
   const f = { ...parseSalesFilter(await searchParams), onlyBands: scope ?? undefined, ...(labels.length ? { band: undefined } : {}) };
-  const [page, summary, options, [{ unrouted }]] = await Promise.all([
+  const [page, summary, options, [{ unrouted }], hiddenColumns] = await Promise.all([
     browseSales(books, f),
     summarizeSales(books, f),
     salesFilterOptions(books, scope ?? undefined),
@@ -76,6 +78,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
       .select({ unrouted: db.$count(schema.sales, and(eq(schema.sales.orgId, orgId), isNull(schema.sales.bandId))) })
       .from(schema.organization)
       .where(eq(schema.organization.id, orgId)),
+    loadHiddenColumns("sales"),
   ]);
   const filtered = !!(
     f.q ||
@@ -119,7 +122,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
   // One sale's row (inOrder: how many items its order has, when it's shown under the order's row).
   const saleRow = (s: SaleRow, inOrder = 0) => (
         <tr key={s.id} className={`align-top ${inOrder ? "bg-surface-2/40" : ""}`}>
-          <td className="whitespace-nowrap text-muted">{s.date}</td>
+          <td data-col="date" className="whitespace-nowrap text-muted">{s.date}</td>
           <td className={`min-w-48 ${inOrder ? "pl-7" : ""}`}>
             <details>
               <summary className="cursor-pointer">
@@ -156,7 +159,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
               {s.routedVia === MANUAL_VIA && s.payoutState === "none" && canDelete(s) && <DeleteManualSale id={s.id} orderItems={inOrder} />}
             </details>
           </td>
-          <td className="text-sm">
+          <td data-col="band" className="text-sm">
             {labels.length && s.bandId ? (
               <>
                 {s.bandName}
@@ -173,12 +176,12 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
             )}
             {s.artist && s.artist !== s.bandName && <div className="text-xs text-muted">{s.artist}</div>}
           </td>
-          <td className="text-sm">
+          <td data-col="type" className="text-sm">
             <Link href={filterQuery(f, { type: s.category, page: 1 })} className="text-text hover:underline">
               {s.itemType === "show" ? "Show" : (TYPE_LABEL[s.category] ?? s.category)}
             </Link>
           </td>
-          <td className="text-sm">
+          <td data-col="country" className="text-sm">
             {s.country ? (
               <Link href={filterQuery(f, { country: s.country, page: 1 })} className="text-text hover:underline">
                 {s.country}
@@ -187,7 +190,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
               <span className="text-muted">–</span>
             )}
           </td>
-          <td className="max-w-40 truncate text-sm" title={s.source}>
+          <td data-col="source" className="max-w-40 truncate text-sm" title={s.source}>
             {s.source ? (
               <Link href={filterQuery(f, { source: s.source, page: 1 })} className="text-text hover:underline">
                 {s.source}
@@ -196,18 +199,18 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
               <span className="text-muted">–</span>
             )}
           </td>
-          <td className="num">{s.quantity}</td>
-          <td className={`num ${s.netCents < 0 ? "text-bad" : ""}`}>
+          <td data-col="qty" className="num">{s.quantity}</td>
+          <td data-col="net" className={`num ${s.netCents < 0 ? "text-bad" : ""}`}>
             <Money cents={s.netCents} currency={s.currency} />
           </td>
           {showPaidTo && (
-            <td className="text-sm">
+            <td data-col="paidTo" className="text-sm">
               {paidTo(s)}
               {/* The band was paid, but the sale is split in a label's books: which one. */}
               {s.orgId !== orgId && s.paidTo === "band" && <div className="text-xs text-muted">through {labels.find((l) => l.orgId === s.orgId)?.name}</div>}
             </td>
           )}
-          <td className="whitespace-nowrap text-sm">
+          <td data-col="payout" className="whitespace-nowrap text-sm">
             <PayoutCell state={s.payoutState} periodId={s.periodId} outside={s.outsidePayouts} />
           </td>
         </tr>
@@ -228,7 +231,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
       <SalesTabs active="browse" unrouted={unrouted} canImport={canEdit} canAdd={!!adder} />
 
       <Card title={main ? `${page.count.toLocaleString("en-US")} sale${page.count === 1 ? "" : "s"}` : "Sales"}>
-        <Filters f={f} options={options} filtered={filtered} oneBand={labels.length > 0} />
+        <Filters f={f} options={options} filtered={filtered} oneBand={labels.length > 0} columns={<ColumnsMenu list="sales" hidden={hiddenColumns} without={showPaidTo ? [] : ["paidTo"]} />} />
         {f.buyer && (
           <p className="mb-3 text-sm">
             Showing one buyer’s sales. <Link href={filterQuery(f, { buyer: undefined, page: 1 }) || "/sales"}>Show everyone’s</Link>
@@ -248,7 +251,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
           </Empty>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" data-cols="sales">
               <table className="data">
                 <thead>
                   <tr>
@@ -260,7 +263,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
                     <SortHeader f={f} k="source" label="From" />
                     <SortHeader f={f} k="qty" label="Qty" num />
                     <SortHeader f={f} k="net" label="Net" num />
-                    {showPaidTo && <th>Paid to</th>}
+                    {showPaidTo && <th data-col="paidTo">Paid to</th>}
                     <SortHeader f={f} k="payout" label="Paid out" />
                   </tr>
                 </thead>
@@ -342,12 +345,15 @@ function Filters({
   options,
   filtered,
   oneBand = false,
+  columns,
 }: {
   f: SalesFilter;
   options: Awaited<ReturnType<typeof salesFilterOptions>>;
   filtered: boolean;
   /** A band account: every sale is its band's, so no band to pick. */
   oneBand?: boolean;
+  /** Which columns to show, beside Filters. */
+  columns?: React.ReactNode;
 }) {
   const narrowed = !!(f.from || f.to || f.band || f.type || f.country !== undefined || f.source !== undefined || f.currency || f.refunds || f.payout);
   return (
@@ -370,97 +376,100 @@ function Filters({
           </Link>
         )}
       </div>
-      <details open={narrowed} className="mt-2">
-        <summary className="cursor-pointer text-sm text-link">Filters{narrowed ? " (on)" : ""}</summary>
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-          <label>
-            <span className="mb-1 block text-xs text-muted">From</span>
-            <input name="from" type="date" defaultValue={f.from} />
-          </label>
-          <label>
-            <span className="mb-1 block text-xs text-muted">To</span>
-            <input name="to" type="date" defaultValue={f.to} />
-          </label>
-          {!oneBand && (
+      <div className="mt-2 flex items-start gap-4">
+        <details open={narrowed} className="min-w-0 flex-1">
+          <summary className="cursor-pointer text-sm text-link">Filters{narrowed ? " (on)" : ""}</summary>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
             <label>
-              <span className="mb-1 block text-xs text-muted">Band</span>
-              <select name="band" defaultValue={f.band ? String(f.band) : ""}>
-                <option value="">All</option>
-                {options.bands.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-                {!f.onlyBands && <option value="none">Not matched to a band</option>}
-              </select>
+              <span className="mb-1 block text-xs text-muted">From</span>
+              <input name="from" type="date" defaultValue={f.from} />
             </label>
-          )}
-          <label>
-            <span className="mb-1 block text-xs text-muted">Type</span>
-            <select name="type" defaultValue={f.type ?? ""}>
-              <option value="">All</option>
-              {Object.entries(TYPE_LABEL).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span className="mb-1 block text-xs text-muted">Country</span>
-            <select name="country" defaultValue={f.country ?? ""}>
-              <option value="">All</option>
-              {options.countries.map((c) => (
-                <option key={c || "(none)"} value={c || "(none)"}>
-                  {c || "Not given"}
-                </option>
-              ))}
-            </select>
-          </label>
-          {options.sources.some(Boolean) && (
             <label>
-              <span className="mb-1 block text-xs text-muted">Came from</span>
-              <select name="source" defaultValue={f.source ?? ""}>
+              <span className="mb-1 block text-xs text-muted">To</span>
+              <input name="to" type="date" defaultValue={f.to} />
+            </label>
+            {!oneBand && (
+              <label>
+                <span className="mb-1 block text-xs text-muted">Band</span>
+                <select name="band" defaultValue={f.band ? String(f.band) : ""}>
+                  <option value="">All</option>
+                  {options.bands.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                  {!f.onlyBands && <option value="none">Not matched to a band</option>}
+                </select>
+              </label>
+            )}
+            <label>
+              <span className="mb-1 block text-xs text-muted">Type</span>
+              <select name="type" defaultValue={f.type ?? ""}>
                 <option value="">All</option>
-                {options.sources.map((s) => (
-                  <option key={s || "(direct)"} value={s || "(direct)"}>
-                    {s || "Direct / unknown"}
+                {Object.entries(TYPE_LABEL).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
                   </option>
                 ))}
               </select>
             </label>
-          )}
-          {options.currencies.length > 1 && (
             <label>
-              <span className="mb-1 block text-xs text-muted">Currency</span>
-              <select name="currency" defaultValue={f.currency ?? ""}>
+              <span className="mb-1 block text-xs text-muted">Country</span>
+              <select name="country" defaultValue={f.country ?? ""}>
                 <option value="">All</option>
-                {options.currencies.map((c) => (
-                  <option key={c}>{c}</option>
+                {options.countries.map((c) => (
+                  <option key={c || "(none)"} value={c || "(none)"}>
+                    {c || "Not given"}
+                  </option>
                 ))}
               </select>
             </label>
-          )}
-          <label>
-            <span className="mb-1 block text-xs text-muted">Paid out?</span>
-            <select name="payout" defaultValue={f.payout ?? ""}>
-              <option value="">All</option>
-              <option value="paid">Paid out</option>
-              <option value="pending">In a payout, not paid yet</option>
-              <option value="none">Not in any payout</option>
-            </select>
-          </label>
-          <label className="flex items-center gap-2 self-end pb-2 text-sm">
-            <input type="checkbox" name="refunds" value="1" defaultChecked={f.refunds} />
-            Refunds only
-          </label>
-          <div className="flex items-end">
-            <button type="submit" className={buttonClass("secondary")}>
-              Apply
-            </button>
+            {options.sources.some(Boolean) && (
+              <label>
+                <span className="mb-1 block text-xs text-muted">Came from</span>
+                <select name="source" defaultValue={f.source ?? ""}>
+                  <option value="">All</option>
+                  {options.sources.map((s) => (
+                    <option key={s || "(direct)"} value={s || "(direct)"}>
+                      {s || "Direct / unknown"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {options.currencies.length > 1 && (
+              <label>
+                <span className="mb-1 block text-xs text-muted">Currency</span>
+                <select name="currency" defaultValue={f.currency ?? ""}>
+                  <option value="">All</option>
+                  {options.currencies.map((c) => (
+                    <option key={c}>{c}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label>
+              <span className="mb-1 block text-xs text-muted">Paid out?</span>
+              <select name="payout" defaultValue={f.payout ?? ""}>
+                <option value="">All</option>
+                <option value="paid">Paid out</option>
+                <option value="pending">In a payout, not paid yet</option>
+                <option value="none">Not in any payout</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-2 self-end pb-2 text-sm">
+              <input type="checkbox" name="refunds" value="1" defaultChecked={f.refunds} />
+              Refunds only
+            </label>
+            <div className="flex items-end">
+              <button type="submit" className={buttonClass("secondary")}>
+                Apply
+              </button>
+            </div>
           </div>
-        </div>
-      </details>
+        </details>
+        {columns}
+      </div>
       {f.buyer && <input type="hidden" name="buyer" value={f.buyer} />}
       {f.sort !== "date" && <input type="hidden" name="sort" value={f.sort} />}
       {f.dir !== "desc" && <input type="hidden" name="dir" value={f.dir} />}
@@ -477,7 +486,7 @@ function SortHeader({ f, k, label, num = false }: { f: SalesFilter; k: SortKey; 
   const firstDir = ["item", "band", "type", "country", "source"].includes(k) ? "asc" : "desc";
   const dir = on ? (f.dir === "asc" ? "desc" : "asc") : firstDir;
   return (
-    <th className={num ? "num" : ""} aria-sort={on ? (f.dir === "asc" ? "ascending" : "descending") : undefined}>
+    <th data-col={k} className={num ? "num" : ""} aria-sort={on ? (f.dir === "asc" ? "ascending" : "descending") : undefined}>
       <Link href={filterQuery(f, { sort: k, dir, page: 1 }) || "/sales"} className={`whitespace-nowrap hover:no-underline ${on ? "text-text" : "text-muted hover:text-text"}`}>
         {label}
         <span aria-hidden className="ml-1 inline-block w-2">
@@ -528,23 +537,23 @@ function OrderCells({ order, paidTo }: { order: SaleRow[]; paidTo?: (s: SaleRow)
   const net = order.reduce((a, s) => a + s.netCents, 0);
   return (
     <>
-      <td className="whitespace-nowrap text-muted">{first.date}</td>
+      <td data-col="date" className="whitespace-nowrap text-muted">{first.date}</td>
       <td className="min-w-48">
         <span className="mr-1 inline-block text-xs text-muted transition group-aria-expanded:rotate-90">▸</span>
         {order.map(itemLabel).join(", ")}
       </td>
-      <td className="text-sm">{bandNames.join(", ") || <span className="text-bad">not matched</span>}</td>
-      <td className="text-sm">{types.join(", ")}</td>
-      <td className="text-sm">{first.country ?? <span className="text-muted">–</span>}</td>
-      <td className="max-w-40 truncate text-sm" title={first.source}>
+      <td data-col="band" className="text-sm">{bandNames.join(", ") || <span className="text-bad">not matched</span>}</td>
+      <td data-col="type" className="text-sm">{types.join(", ")}</td>
+      <td data-col="country" className="text-sm">{first.country ?? <span className="text-muted">–</span>}</td>
+      <td data-col="source" className="max-w-40 truncate text-sm" title={first.source}>
         {first.source || <span className="text-muted">–</span>}
       </td>
-      <td className="num">{order.reduce((a, s) => a + s.quantity, 0)}</td>
-      <td className={`num ${net < 0 ? "text-bad" : ""}`}>
+      <td data-col="qty" className="num">{order.reduce((a, s) => a + s.quantity, 0)}</td>
+      <td data-col="net" className={`num ${net < 0 ? "text-bad" : ""}`}>
         <Money cents={net} currency={first.currency} />
       </td>
-      {paidTo && <td className="text-sm">{[...new Set(order.map(paidTo))].join(", ")}</td>}
-      <td className="whitespace-nowrap text-sm">
+      {paidTo && <td data-col="paidTo" className="text-sm">{[...new Set(order.map(paidTo))].join(", ")}</td>}
+      <td data-col="payout" className="whitespace-nowrap text-sm">
         {states.length === 1 ? (
           <PayoutCell state={first.payoutState} periodId={first.periodId} outside={order.every((s) => s.outsidePayouts)} />
         ) : (

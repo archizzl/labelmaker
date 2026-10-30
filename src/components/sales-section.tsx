@@ -7,6 +7,8 @@ import { getContext } from "@/server/context";
 import { salesReport } from "@/server/sales-report";
 import { type BoardChart, breakdownChart, seriesChart } from "@/lib/chart-data";
 import { loadLayout } from "@/server/chart-layouts";
+import { ColumnsMenu } from "@/components/columns-menu";
+import { loadHiddenColumns } from "@/server/list-columns";
 import { ChartBoard } from "./chart-board";
 import type { Segment } from "./charts";
 import { Card, Money } from "./ui";
@@ -114,7 +116,7 @@ export async function SalesSection({
         note: report.shipping > 0 ? `Includes ${formatCents(report.shipping, cur)} of shipping, which stays with the label.` : undefined,
       },
     });
-  const saved = await loadLayout(boardId);
+  const [saved, hiddenColumns] = await Promise.all([loadLayout(boardId), showItems ? loadHiddenColumns("items") : []]);
 
   return (
     <Card
@@ -168,19 +170,22 @@ export async function SalesSection({
 
           {showItems && report.items.length > 0 && (
             <div>
-              <h3 className="mb-2 text-sm font-bold">by release and item</h3>
-              <div className="overflow-x-auto">
+              <div className="mb-2 flex items-baseline justify-between gap-4">
+                <h3 className="text-sm font-bold">by release and item</h3>
+                <ColumnsMenu list="items" hidden={hiddenColumns} />
+              </div>
+              <div className="overflow-x-auto" data-cols="items">
                 <table className="data">
                   <thead>
                     <tr>
                       <th>item</th>
-                      <th className="num">sold</th>
-                      <th className="num">digital</th>
-                      <th className="num">physical / merch</th>
-                      <th className="num">= fans paid</th>
-                      <th className="num">− fees, tax &amp; shipping</th>
-                      <th className="num">= net</th>
-                      <th className="num">to people</th>
+                      <th data-col="sold" className="num">sold</th>
+                      <th data-col="digital" className="num">digital</th>
+                      <th data-col="physical" className="num">physical / merch</th>
+                      <th data-col="paid" className="num">= fans paid</th>
+                      <th data-col="fees" className="num">− fees, tax &amp; shipping</th>
+                      <th data-col="net" className="num">= net</th>
+                      <th data-col="people" className="num">to people</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -198,42 +203,42 @@ export async function SalesSection({
                             <span className="text-xs text-muted">{it.kind === "unmatched" ? "not in catalog" : it.kind === "track" ? "single" : it.kind === "merch" ? "merch" : ""}</span>
                           </div>
                         </td>
-                        <td className="num">{it.units}</td>
-                        <td className="num text-muted">{it.digitalGross ? <Money cents={it.digitalGross} currency={cur} /> : "—"}</td>
-                        <td className="num text-muted">{it.physicalGross ? <Money cents={it.physicalGross} currency={cur} /> : "—"}</td>
-                        <td className="num">
+                        <td data-col="sold" className="num">{it.units}</td>
+                        <td data-col="digital" className="num text-muted">{it.digitalGross ? <Money cents={it.digitalGross} currency={cur} /> : "—"}</td>
+                        <td data-col="physical" className="num text-muted">{it.physicalGross ? <Money cents={it.physicalGross} currency={cur} /> : "—"}</td>
+                        <td data-col="paid" className="num">
                           <Money cents={it.gross} currency={cur} />
                         </td>
-                        <td className="num text-muted">
+                        <td data-col="fees" className="num text-muted">
                           <Money cents={-it.feesAndTax} currency={cur} />
                         </td>
-                        <td className="num font-bold">
+                        <td data-col="net" className="num font-bold">
                           <Money cents={it.net} currency={cur} />
                         </td>
-                        <td className="num">
+                        <td data-col="people" className="num">
                           <Money cents={it.toPeople} currency={cur} />
                         </td>
                       </tr>
                     ))}
                     <tr>
                       <td className="font-bold">Total</td>
-                      <td className="num font-bold">{report.units}</td>
-                      <td className="num text-muted">
+                      <td data-col="sold" className="num font-bold">{report.units}</td>
+                      <td data-col="digital" className="num text-muted">
                         <Money cents={report.items.reduce((a, i) => a + i.digitalGross, 0)} currency={cur} />
                       </td>
-                      <td className="num text-muted">
+                      <td data-col="physical" className="num text-muted">
                         <Money cents={report.items.reduce((a, i) => a + i.physicalGross, 0)} currency={cur} />
                       </td>
-                      <td className="num font-bold">
+                      <td data-col="paid" className="num font-bold">
                         <Money cents={report.gross} currency={cur} />
                       </td>
-                      <td className="num text-muted">
+                      <td data-col="fees" className="num text-muted">
                         <Money cents={-report.items.reduce((a, i) => a + i.feesAndTax, 0)} currency={cur} />
                       </td>
-                      <td className="num font-bold">
+                      <td data-col="net" className="num font-bold">
                         <Money cents={report.net} currency={cur} />
                       </td>
-                      <td className="num font-bold">
+                      <td data-col="people" className="num font-bold">
                         <Money cents={report.toPeople} currency={cur} />
                       </td>
                     </tr>

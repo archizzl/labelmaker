@@ -12,6 +12,8 @@ import { type BoardChart, breakdownChart, seriesChart } from "@/lib/chart-data";
 import { formatCents } from "@/lib/money";
 import { plural } from "@/lib/plural";
 import { loadLayout } from "@/server/chart-layouts";
+import { loadHiddenColumns } from "@/server/list-columns";
+import { ColumnsMenu } from "@/components/columns-menu";
 import { and, desc, eq, or } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { summarize } from "@/lib/splits";
@@ -69,7 +71,7 @@ export default async function FundsPage({ searchParams }: PageProps<"/funds">) {
     );
   }
   const { orgId } = ctx;
-  const [inc, names] = await Promise.all([labelIncome(orgId), nameMaps(orgId)]);
+  const [inc, names, hiddenColumns] = await Promise.all([labelIncome(orgId), nameMaps(orgId), loadHiddenColumns("label-income")]);
   const cur = inc.currencies[0] ?? "USD";
   const v = (m: Totals) => m.get(cur) ?? 0;
   const rows = (m: Map<string, Totals>) =>
@@ -186,6 +188,7 @@ export default async function FundsPage({ searchParams }: PageProps<"/funds">) {
                 Clear
               </Link>
             )}
+            <ColumnsMenu list="label-income" hidden={hiddenColumns} />
             <span className="ml-auto text-sm text-muted">
               {plural(shown.length, "sale")} · <MoneyList totals={shownTotal} />
             </span>
@@ -195,27 +198,27 @@ export default async function FundsPage({ searchParams }: PageProps<"/funds">) {
           <Empty>{filtered ? "No sales match." : "Nothing yet."}</Empty>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" data-cols="label-income">
               <table className="data">
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th className="num">To the label</th>
-                    <th>Source</th>
+                    <th data-col="date">Date</th>
+                    <th data-col="toLabel" className="num">To the label</th>
+                    <th data-col="source">Source</th>
                     <th>Sale</th>
-                    <th>Band</th>
-                    <th className="num">Sale amount</th>
+                    <th data-col="band">Band</th>
+                    <th data-col="amount" className="num">Sale amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   {shown.slice((f.page - 1) * f.per, f.page * f.per).map((l, i) => (
                     <tr key={`${l.saleId}-${l.source}-${i}`}>
-                      <td className="whitespace-nowrap text-muted">{l.date}</td>
-                      <td className="num font-medium">{formatCents(l.cents, l.currency)}</td>
-                      <td className="text-sm">{l.source}</td>
+                      <td data-col="date" className="whitespace-nowrap text-muted">{l.date}</td>
+                      <td data-col="toLabel" className="num font-medium">{formatCents(l.cents, l.currency)}</td>
+                      <td data-col="source" className="text-sm">{l.source}</td>
                       <td>{l.item || <span className="text-muted">(no name)</span>}</td>
-                      <td className="text-sm">{l.band}</td>
-                      <td className="num text-muted">{formatCents(l.saleCents, l.currency)}</td>
+                      <td data-col="band" className="text-sm">{l.band}</td>
+                      <td data-col="amount" className="num text-muted">{formatCents(l.saleCents, l.currency)}</td>
                     </tr>
                   ))}
                 </tbody>

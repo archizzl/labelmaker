@@ -143,9 +143,8 @@ export default async function OrdersPage({ searchParams }: PageProps<"/orders">)
       <PickupList pickups={pickups} bandName={bandName} canEdit={canEdit} />
 
       {all.length === 0 ? (
-        <Card>
-          <Empty>Nothing waiting to ship. 🎉</Empty>
-        </Card>
+        <div>
+        </div>
       ) : (
         <>
           {pack.length > 0 && (
@@ -513,7 +512,7 @@ function PickupList({ pickups, bandName, canEdit }: { pickups: PickupRow[]; band
               <div className="flex flex-wrap items-baseline gap-x-3">
                 <span className="font-bold">{p.buyerName}</span>
                 <span className="text-sm text-muted">ordered {p.orderDate}</span>
-                <Badge>marked shipped {p.createdAt.slice(0, 10)}</Badge>
+                {/* <Badge>marked shipped {p.createdAt.slice(0, 10)}</Badge> */}
               </div>
               <ul className="text-sm">
                 {p.items.map((it, i) => (
@@ -549,7 +548,7 @@ function PickupList({ pickups, bandName, canEdit }: { pickups: PickupRow[]; band
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-xs text-muted">Already marked shipped on Bandcamp.</p>
+      {/* <p className="mt-2 text-xs text-muted">Already marked shipped on Bandcamp.</p> */}
     </Card>
   );
 }

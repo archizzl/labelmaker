@@ -1,4 +1,6 @@
 import { and, eq } from "drizzle-orm";
+import { ColumnsMenu } from "@/components/columns-menu";
+import { loadHiddenColumns } from "@/server/list-columns";
 import Link from "next/link";
 import { ActionForm, CopyButton, Fading, SubmitButton } from "@/components/client";
 import { outsideArtistRows } from "@/components/outside-artists";
@@ -51,7 +53,7 @@ export async function PayoutView({
   const labelSends = pending.filter((l) => l.paidByBandId === null);
   const ctx = await getContext();
   const { orgId } = ctx;
-  const [outside, labelBandRows, canSync, [settings]] = await Promise.all([
+  const [outside, labelBandRows, canSync, [settings], hiddenColumns] = await Promise.all([
     outsideArtistRows(orgId),
     db
       .select({ id: schema.bands.id })
@@ -59,6 +61,7 @@ export async function PayoutView({
       .where(and(eq(schema.bands.orgId, orgId), eq(schema.bands.isLabel, true))),
     bandcampCredentials(orgId).then(Boolean),
     db.select({ keepsNothing: schema.accountSettings.labelKeepsNothing }).from(schema.accountSettings).where(eq(schema.accountSettings.orgId, orgId)),
+    loadHiddenColumns("payout-sales"),
   ]);
   // A label that hasn't taken a cut, or said it keeps nothing: worth saying before money goes out.
   const labelKept = currencies.reduce(
@@ -548,16 +551,19 @@ export async function PayoutView({
               Each sale’s split is shown to the nearest cent. Payout amounts add up everyone’s exact shares and round once per band,
               so they can differ from these by a cent or two.
             </p> */}
-            <div className="overflow-x-auto">
+            <div className="mb-2 flex justify-end">
+              <ColumnsMenu list="payout-sales" hidden={hiddenColumns} />
+            </div>
+            <div className="overflow-x-auto" data-cols="payout-sales">
               <table className="data">
                 <thead>
                   <tr>
-                    <th>Date</th>
+                    <th data-col="date">Date</th>
                     <th>Item</th>
-                    <th>Band</th>
-                    <th className="num">Net</th>
-                    <th>Deductions</th>
-                    <th>Split</th>
+                    <th data-col="band">Band</th>
+                    <th data-col="net" className="num">Net</th>
+                    <th data-col="deductions">Deductions</th>
+                    <th data-col="split">Split</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -565,7 +571,7 @@ export async function PayoutView({
                     const sale = live.saleById.get(r.saleId)!;
                     return (
                       <tr key={r.saleId}>
-                        <td className="whitespace-nowrap text-muted">{sale.date}</td>
+                        <td data-col="date" className="whitespace-nowrap text-muted">{sale.date}</td>
                         <td>
                           <div>{sale.itemName}</div>
                           <div className="text-xs text-muted">
@@ -574,18 +580,20 @@ export async function PayoutView({
                             {sale.trackId && ` › ${names.track.get(sale.trackId)}`}
                           </div>
                         </td>
-                        <td className={r.bandId === null ? "text-bad" : ""}>{bandName(r.bandId)}</td>
-                        <td className="num">
+                        <td data-col="band" className={r.bandId === null ? "text-bad" : ""}>
+                          {bandName(r.bandId)}
+                        </td>
+                        <td data-col="net" className="num">
                           <Money cents={r.netCents} currency={r.currency} />
                         </td>
-                        <td className="text-xs">
+                        <td data-col="deductions" className="text-xs">
                           {r.deductions.map((d) => (
                             <div key={d.deductionId}>
                               {d.label}: <Money cents={d.cents} currency={r.currency} />
                             </div>
                           ))}
                         </td>
-                        <td className="text-xs">
+                        <td data-col="split" className="text-xs">
                           {r.problem === "no_rule" && <span className="text-bad">No split set</span>}
                           {r.problem === "unrouted" && <span className="text-bad">Not matched to a band</span>}
                           {r.ruleSource && <div className="text-muted">{r.ruleSource.replace("_", " ")} split</div>}
