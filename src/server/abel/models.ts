@@ -55,7 +55,11 @@ export async function saveModels(provider: Provider, models: string[], userId: s
     .onConflictDoUpdate({ target: schema.siteSettings.key, set: { value: models, updatedBy: userId, updatedAt: new Date().toISOString().slice(0, 19).replace("T", " ") } });
 }
 
-export type OpenRouterModel = { id: string; name: string; inPerMillion: number | null; outPerMillion: number | null };
+/** The services' names, as the admin dashboard shows them. */
+export const SERVICE_NAMES: Record<Provider, string> = { openrouter: "OpenRouter", deepseek: "DeepSeek", gemini: "Gemini" };
+
+/** A model a service offers. Prices (dollars per million tokens) only from OpenRouter. */
+export type ServiceModel = { id: string; name: string; inPerMillion: number | null; outPerMillion: number | null };
 
 /** Dollars per million tokens, from OpenRouter's dollars per token ("0.0000001" → 0.1). */
 const perMillion = (perToken: unknown) => {
@@ -63,28 +67,48 @@ const perMillion = (perToken: unknown) => {
   return Number.isFinite(n) && n >= 0 ? Math.round(n * 1e6 * 1000) / 1000 : null;
 };
 
-/**
- * OpenRouter's models that can call tools (Abel can't work without them), cheapest first. Its
- * model list is public, so no key is needed. Null when OpenRouter can't be reached.
- */
-export async function openRouterModels(): Promise<OpenRouterModel[] | null> {
+/** A model list's JSON, or null when the service can't be reached or says no. */
+async function getJson(url: string, headers: Record<string, string> = {}): Promise<Record<string, unknown> | null> {
   try {
-    const res = await fetch("https://openrouter.ai/api/v1/models", { signal: AbortSignal.timeout(5000) });
-    if (!res.ok) return null;
-    const { data } = (await res.json()) as {
-      data?: { id?: unknown; name?: unknown; supported_parameters?: unknown; pricing?: { prompt?: unknown; completion?: unknown } }[];
-    };
-    if (!Array.isArray(data)) return null;
-    return data
-      .filter((m) => typeof m.id === "string" && Array.isArray(m.supported_parameters) && m.supported_parameters.includes("tools"))
-      .map((m) => ({
-        id: m.id as string,
-        name: typeof m.name === "string" ? m.name : (m.id as string),
-        inPerMillion: perMillion(m.pricing?.prompt),
-        outPerMillion: perMillion(m.pricing?.completion),
-      }))
-      .sort((a, b) => (a.inPerMillion ?? Infinity) - (b.inPerMillion ?? Infinity) || a.id.localeCompare(b.id));
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(5000) });
+    return res.ok ? ((await res.json()) as Record<string, unknown>) : null;
   } catch {
     return null;
   }
+}
+
+/**
+ * The models this service offers Abel, for the admin dashboard's dropdowns. Null when its list
+ * can't be loaded.
+ * - OpenRouter: the ones that can call tools (Abel can't work without them), cheapest first. Its
+ *   list is public, so no key is needed.
+ * - DeepSeek: its whole list (it's short, and they all call tools).
+ * - Gemini: the ones that answer chats (generateContent), not embeddings.
+ */
+export async function serviceModels(provider: Provider): Promise<ServiceModel[] | null> {
+  const key = process.env[PROVIDERS[provider].key] ?? "";
+  const priced = (id: string, name: unknown, pricing?: { prompt?: unknown; completion?: unknown }): ServiceModel => ({
+    id,
+    name: typeof name === "string" && name ? name : id,
+    inPerMillion: perMillion(pricing?.prompt ?? NaN),
+    outPerMillion: perMillion(pricing?.completion ?? NaN),
+  });
+  if (provider === "openrouter") {
+    const json = await getJson("https://openrouter.ai/api/v1/models");
+    if (!Array.isArray(json?.data)) return null;
+    return (json.data as { id?: unknown; name?: unknown; supported_parameters?: unknown; pricing?: { prompt?: unknown; completion?: unknown } }[])
+      .filter((m) => typeof m.id === "string" && Array.isArray(m.supported_parameters) && m.supported_parameters.includes("tools"))
+      .map((m) => priced(m.id as string, m.name, m.pricing))
+      .sort((a, b) => (a.inPerMillion ?? Infinity) - (b.inPerMillion ?? Infinity) || a.id.localeCompare(b.id));
+  }
+  if (provider === "deepseek") {
+    const json = await getJson("https://api.deepseek.com/models", { authorization: `Bearer ${key}` });
+    if (!Array.isArray(json?.data)) return null;
+    return (json.data as { id?: unknown; name?: unknown }[]).filter((m) => typeof m.id === "string").map((m) => priced(m.id as string, m.name));
+  }
+  const json = await getJson("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", { "x-goog-api-key": key });
+  if (!Array.isArray(json?.models)) return null;
+  return (json.models as { name?: unknown; displayName?: unknown; supportedGenerationMethods?: unknown }[])
+    .filter((m) => typeof m.name === "string" && Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes("generateContent"))
+    .map((m) => priced((m.name as string).replace(/^models\//, ""), m.displayName));
 }

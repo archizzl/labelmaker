@@ -53,12 +53,35 @@ describe("Abel's models", () => {
 
   it("lists OpenRouter's models that can use tools, cheapest first, in dollars per million tokens", async () => {
     vi.stubGlobal("fetch", async () => Response.json(OPENROUTER_LIST));
-    expect(await models.openRouterModels()).toEqual([
+    expect(await models.serviceModels("openrouter")).toEqual([
       { id: "google/gemini-3.8-flash", name: "Gemini 3.8 Flash", inPerMillion: 0.1, outPerMillion: 0.4 },
       { id: "anthropic/claude-haiku-5.5", name: "Claude Haiku 5.5", inPerMillion: 1, outPerMillion: 5 },
     ]);
     vi.stubGlobal("fetch", async () => new Response("", { status: 500 }));
-    expect(await models.openRouterModels()).toBeNull();
+    expect(await models.serviceModels("openrouter")).toBeNull();
+  });
+
+  it("lists DeepSeek's models, and Gemini's that answer chats, with the service's key", async () => {
+    vi.stubEnv("DEEPSEEK_API_KEY", "ds-key");
+    vi.stubEnv("GEMINI_API_KEY", "g-key");
+    const sent: Record<string, string>[] = [];
+    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+      sent.push(init.headers as Record<string, string>);
+      return url.includes("deepseek")
+        ? Response.json({ data: [{ id: "deepseek-flash", name: "DeepSeek-V4.1-Flash" }, { id: "deepseek-v4-pro" }] })
+        : Response.json({
+            models: [
+              { name: "models/gemini-3.8-flash", displayName: "Gemini 3.8 Flash", supportedGenerationMethods: ["generateContent"] },
+              { name: "models/text-embedding", displayName: "Embedding", supportedGenerationMethods: ["embedContent"] },
+            ],
+          });
+    });
+    expect(await models.serviceModels("deepseek")).toEqual([
+      { id: "deepseek-flash", name: "DeepSeek-V4.1-Flash", inPerMillion: null, outPerMillion: null },
+      { id: "deepseek-v4-pro", name: "deepseek-v4-pro", inPerMillion: null, outPerMillion: null },
+    ]);
+    expect(await models.serviceModels("gemini")).toEqual([{ id: "gemini-3.8-flash", name: "Gemini 3.8 Flash", inPerMillion: null, outPerMillion: null }]);
+    expect(sent).toEqual([{ authorization: "Bearer ds-key" }, { "x-goog-api-key": "g-key" }]);
   });
 });
 
@@ -72,6 +95,14 @@ describe("saving them from the admin dashboard", () => {
     expect(await models.savedModels("openrouter")).toEqual(["anthropic/claude-haiku-5.5", "google/gemini-3.8-flash"]);
     expect(await actions.saveAbelModels(null, form("", "", ""))).toEqual({ ok: "Saved. Abel uses google/gemini-3.8-flash, then anthropic/claude-haiku-5.5." });
     expect(await models.savedModels("openrouter")).toEqual([]);
+  });
+
+  it("turns down a model DeepSeek doesn't have", async () => {
+    vi.stubEnv("DEEPSEEK_API_KEY", "ds-key");
+    vi.stubGlobal("fetch", async () => Response.json({ data: [{ id: "deepseek-flash" }] }));
+    expect(await actions.saveAbelModels(null, form("deepseek-nope"))).toEqual({ error: "DeepSeek has no model called “deepseek-nope”." });
+    expect(await actions.saveAbelModels(null, form("deepseek-flash"))).toEqual({ ok: "Saved. Abel uses deepseek-flash." });
+    expect(await models.savedModels("deepseek")).toEqual(["deepseek-flash"]);
   });
 
   it("turns down models OpenRouter doesn't have or that can't use tools, and too many", async () => {

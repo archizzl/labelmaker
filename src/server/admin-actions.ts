@@ -6,7 +6,7 @@ import { db, schema } from "@/db";
 import { eq, inArray } from "drizzle-orm";
 import { FLAG_AUDIENCES, isFeatureFlag, isFlagAudience } from "@/lib/feature-flags";
 import { abelProvider } from "./abel/config";
-import { abelModels, MAX_MODELS, openRouterModels, saveModels } from "./abel/models";
+import { abelModels, MAX_MODELS, saveModels, SERVICE_NAMES, serviceModels } from "./abel/models";
 import { makeResetLink } from "./auth";
 import { requireSiteAdmin } from "./site-admin";
 import { createInvite, revokeInvite } from "./signup-invites";
@@ -101,10 +101,10 @@ export async function saveAbelModels(_: AdminState, fd: FormData): Promise<Admin
   if (models.length > MAX_MODELS) return { error: `At most ${MAX_MODELS} models.` };
   const bad = models.find((m) => m.length > 100 || !/^[\w.\-/:]+$/.test(m));
   if (bad) return { error: `“${bad}” isn’t a model name.` };
-  if (provider === "openrouter" && models.length) {
-    const known = await openRouterModels();
+  if (models.length) {
+    const known = await serviceModels(provider);
     const missing = known && models.find((m) => !known.some((k) => k.id === m));
-    if (missing) return { error: `OpenRouter has no model called “${missing}” that can use tools.` };
+    if (missing) return { error: `${SERVICE_NAMES[provider]} has no model called “${missing}”${provider === "openrouter" ? " that can use tools" : ""}.` };
   }
   await saveModels(provider, models, session.user.id);
   revalidatePath("/admin");
