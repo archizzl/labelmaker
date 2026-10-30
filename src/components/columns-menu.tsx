@@ -58,7 +58,7 @@ export function ColumnsMenu({
     <>
       {css && <style>{css}</style>}
       <details ref={menu} className={`relative ${className}`}>
-        <summary className="cursor-pointer text-sm text-link">Columns{hiddenHere ? ` (${hiddenHere} hidden)` : ""}</summary>
+        <summary className="cursor-pointer text-sm text-link">Columns{hiddenHere ? `` : ""}</summary>
         <div className="absolute right-0 z-20 mt-1 w-52 space-y-1.5 rounded-sm border border-border bg-surface p-3 shadow-lg">
           {offered.map((c) => (
             <label key={c.key} className="flex cursor-pointer items-center gap-2 text-sm">
