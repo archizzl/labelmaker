@@ -46,7 +46,7 @@ const saveItem = actionTool({
   name: "save_inventory_item",
   label: "Save an inventory item",
   description:
-    "Add an item to inventory, or change one (give its id; only the fields given change; counts change with adjust_inventory). kind: product (sold) or supply (used up). A release and its format (packageId) tie it to the catalog. onHand: the starting count of a new item. lowAt: warn below this count.",
+    "Add an item to inventory, or change one (give its id; only the fields given change; counts change with adjust_inventory). kind: product (sold) or supply (used up). A release and its format (packageId) tie it to the catalog. onHand: the starting count of a new item. lowAt: warn below this count. desired: how many they'd like to have.",
   params: z.object({
     id: id.optional(),
     name: z.string().min(1).max(200).optional(),
@@ -57,6 +57,7 @@ const saveItem = actionTool({
     option: z.string().max(100).optional().describe("Like a size"),
     sku: z.string().max(100).optional(),
     lowAt: z.number().int().min(0).optional(),
+    desired: z.number().int().min(1).optional(),
     unitCost: amount.optional(),
     price: amount.optional(),
     currency: currency.optional(),
@@ -80,6 +81,7 @@ const saveItem = actionTool({
       option: or(a.option, i?.option ?? undefined),
       sku: or(a.sku, i?.sku ?? undefined),
       lowAt: or(a.lowAt, i?.lowAt ?? undefined),
+      desired: or(a.desired, i?.desired ?? undefined),
       unitCost: or(a.unitCost, toAmount(i?.unitCostCents)),
       price: or(a.price, toAmount(i?.priceCents)),
       currency: or(a.currency, i?.currency),

@@ -844,6 +844,8 @@ export const inventoryItems = pgTable(
     onHand: integer("on_hand").notNull().default(0),
     /** Flag it as running low at or below this many. */
     lowAt: integer("low_at"),
+    /** How many they'd like to have (shown as on hand / desired). */
+    desired: integer("desired"),
     unitCostCents: integer("unit_cost_cents"),
     /** What it sells for (merch sold in person, which may not be on Bandcamp at all). */
     priceCents: integer("price_cents"),

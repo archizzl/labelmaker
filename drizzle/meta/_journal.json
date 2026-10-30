@@ -337,6 +337,13 @@
       "when": 1793334830518,
       "tag": "0047_list_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1793335216988,
+      "tag": "0048_inventory_desired",
+      "breakpoints": true
     }
   ]
 }

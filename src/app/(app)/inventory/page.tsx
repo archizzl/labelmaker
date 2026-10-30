@@ -220,8 +220,11 @@ function ItemTable({
               />
             </div>
             <div className={`text-right ${photoOf ? "col-start-2 md:col-start-auto" : ""}`}>
-              <div className={`text-2xl font-bold tabular-nums ${isLow(i) ? "text-warn" : i.onHand === 0 ? "text-muted" : ""}`}>{i.onHand}</div>
-              <div className="text-xs text-muted">on hand{i.lowAt !== null ? ` · low at ${i.lowAt}` : ""}</div>
+              <div className="text-2xl font-bold whitespace-nowrap tabular-nums">
+                <span className={isLow(i) ? "text-warn" : i.onHand === 0 ? "text-muted" : ""}>{i.onHand}</span>
+                {i.desired !== null && <span className="text-muted"> / {i.desired}</span>}
+              </div>
+              {i.lowAt !== null && <div className="text-xs text-muted">low at {i.lowAt}</div>}
             </div>
           </li>
         );
@@ -360,6 +363,9 @@ function ItemForm({
       )}
       <Field label="Running low at">
         <input name="lowAt" type="number" inputMode="numeric" min={0} step={1} defaultValue={item?.lowAt ?? ""} />
+      </Field>
+      <Field label="Desired amount (optional)">
+        <input name="desired" type="number" inputMode="numeric" min={1} step={1} defaultValue={item?.desired ?? ""} />
       </Field>
       <Field label="Price each (optional)">
         <input name="price" inputMode="decimal" defaultValue={item?.priceCents != null ? (item.priceCents / 100).toFixed(2) : ""} placeholder="3.00" />

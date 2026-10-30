@@ -119,4 +119,13 @@ describe("merch photos", () => {
     expect((await db.select().from(schema.releases).where(eq(schema.releases.id, handMade.id)))[0].artUrl).toBeNull();
     expect(await photoRows()).toHaveLength(1);
   });
+
+  it("keeps how many of an item they'd like to have, or none", async () => {
+    orgId = await newAccount("Label");
+    await inventory.saveInventoryItem(null, form({ name: "Poster", kind: "product", onHand: 2, desired: 6 }));
+    const [item] = await db.select().from(schema.inventoryItems).where(eq(schema.inventoryItems.orgId, orgId));
+    expect(item).toMatchObject({ onHand: 2, desired: 6 });
+    await inventory.saveInventoryItem(null, form({ id: item.id, name: "Poster", kind: "product", desired: "" }));
+    expect((await db.select().from(schema.inventoryItems).where(eq(schema.inventoryItems.id, item.id)))[0].desired).toBeNull();
+  });
 });

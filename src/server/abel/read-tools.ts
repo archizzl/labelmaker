@@ -435,7 +435,7 @@ const inventory = abelTool({
     return items
       .filter((i) => (!scope || (i.bandId !== null && scope.includes(i.bandId))) && (!bandId || i.bandId === bandId) && (!q || i.name.toLowerCase().includes(q)))
       .slice(0, 60)
-      .map((i) => ({ id: i.id, name: i.name, option: i.option, band: i.bandId ? (names.band.get(i.bandId) ?? null) : null, onHand: i.onHand }));
+      .map((i) => ({ id: i.id, name: i.name, option: i.option, band: i.bandId ? (names.band.get(i.bandId) ?? null) : null, onHand: i.onHand, desired: i.desired }));
   },
 });
 
