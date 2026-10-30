@@ -40,6 +40,7 @@ npx vitest run
 - **If tests time out in their setup** ("Hook timed out"), the machine is busy: rerun with `npx vitest run --maxWorkers=2 --hookTimeout=60000`.
 - **Run tests with the shell's default Node (20).** `better-sqlite3` is built for it, and two import tests fail under Node 22.
 - **Lint:** about 6 old warnings in the catalog pages are expected. There should be no errors.
+- **From the browser:** on a local copy (`npm run dev`), the admin dashboard (`/admin?tab=tests`) has a Tests tab that lists every test and runs all, one file or one test (`src/server/test-runner.ts`; results in `.test-runs/`). It's never on the live site.
 
 ## Try a change in the real Cloudflare runtime
 

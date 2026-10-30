@@ -53,3 +53,6 @@ wrangler.local.tmp.jsonc
 
 # npm run abel:eval transcripts
 .abel-eval.md
+
+# the admin dashboard's test results (local only)
+/.test-runs/

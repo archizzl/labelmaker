@@ -8,6 +8,7 @@ import { FLAG_AUDIENCES, isFeatureFlag, isFlagAudience } from "@/lib/feature-fla
 import { makeResetLink } from "./auth";
 import { requireSiteAdmin } from "./site-admin";
 import { createInvite, revokeInvite } from "./signup-invites";
+import { runTests, testsAvailable } from "./test-runner";
 
 /*
  * The site admin dashboard's actions: invite links for new logins, and password reset links.
@@ -87,4 +88,12 @@ function whoHasIt({ groups, accounts, audiences }: { groups: number; accounts: n
   ].filter((p): p is string => !!p);
   if (!parts.length) return "Not given to anyone.";
   return `Given to ${parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`}.`;
+}
+
+/** Run the tests (all, one file's, or one test) from the Tests tab: a local copy only. */
+export async function runTestsAction(fd: FormData) {
+  await requireSiteAdmin();
+  if (!testsAvailable()) throw new Error("Tests run only on a local copy (npm run dev).");
+  await runTests({ file: str(fd, "file") || undefined, name: str(fd, "name") || undefined });
+  revalidatePath("/admin");
 }

@@ -13,6 +13,8 @@ import { approveAccountApplication, rejectAccountApplication } from "@/server/ap
 import { listApplications } from "@/server/applications";
 import { inviteStatus, listInvites } from "@/server/signup-invites";
 import { requireSiteAdmin } from "@/server/site-admin";
+import { testsAvailable } from "@/server/test-runner";
+import { AdminTests } from "@/components/admin-tests";
 
 export const metadata = { title: "admin" };
 
@@ -23,7 +25,7 @@ const STATUS_TONE = {
   revoked: "neutral",
 } as const;
 
-const TABS = ["applications", "flags", "invites", "accounts", "groups"] as const;
+const TABS = ["applications", "flags", "invites", "accounts", "groups", "tests"] as const;
 type Tab = (typeof TABS)[number];
 
 /** The whole site: invite links for new logins, everyone's logins, and every label and band account. Site admins only. */
@@ -34,7 +36,9 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   const base = process.env.BETTER_AUTH_URL ?? `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
   const link = (code: string) => `${base}/signup?code=${code}`;
 
-  const tab: Tab = TABS.find((t) => t === sp.tab) ?? (sp.created || sp.error ? "invites" : "applications");
+  // The Tests tab is only on a local copy (npm run dev): the live site can't run the tests.
+  const tests = testsAvailable();
+  const tab: Tab = TABS.find((t) => t === sp.tab && (t !== "tests" || tests)) ?? (sp.created || sp.error ? "invites" : "applications");
 
   const session = await requireSiteAdmin();
   const [
@@ -144,6 +148,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
         {tabLink("invites", "Invites", openInvites || undefined)}
         {tabLink("accounts", "Accounts", people.length)}
         {tabLink("groups", "Groups", accounts.length)}
+        {tests && tabLink("tests", "Tests")}
       </nav>
 
       {created && (
@@ -158,6 +163,8 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
         </Callout>
       )}
       {sp.error === "email" && <Callout tone="bad">That email doesn’t look right.</Callout>}
+
+      {tab === "tests" && <AdminTests />}
 
       {tab === "applications" && (
         <Card title={`Applications${waiting.length ? ` (${waiting.length} waiting)` : ""}`}>
