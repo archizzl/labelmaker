@@ -12,6 +12,7 @@ import {
   setPayoutStatus,
   undoFinalize,
 } from "../../actions";
+import { markBandPayout, recordPaymentToLabel } from "../../band-payout-actions";
 import { actionTool } from "../tool";
 import { amount, current, currency, date, id, or, toAmount } from "./shared";
 
@@ -140,4 +141,38 @@ const deleteRemittance = actionTool({
   action: (fd) => deleteBandRemittance(fd),
 });
 
-export const MONEY_TOOLS = [payoutLineStatus, undoPayout, releaseUnpaid, saveSendOut, deleteSendOut, accountHolder, bandPaidTo, saveRemittance, deleteRemittance];
+const bandPayout = actionTool({
+  name: "mark_band_payout",
+  label: "Mark a member paid by the band",
+  description:
+    "In a band's group whose sales Bandcamp pays to the band: mark one of a label's payout lines the band pays its member itself paid, or back to not paid (status pending).",
+  params: z.object({ payoutLineId: id, status: z.enum(["paid", "pending"]), reference: z.string().max(120).optional() }),
+  needs: "admin",
+  available: (ctx) => ctx.org.kind === "band",
+  action: (fd) => markBandPayout(fd),
+  fields: (_ctx, a) => ({ id: a.payoutLineId, status: a.status, reference: a.reference }),
+});
+
+const paymentToLabel = actionTool({
+  name: "record_payment_to_label",
+  label: "Record money the band sent its label",
+  description: "In a band's group whose sales Bandcamp pays to the band: record money it sent a label it's on (the label's share). linkId is the band's link to that label (group_links lists them).",
+  params: z.object({ linkId: id, amount, currency: currency.optional(), date, note: z.string().max(500).optional() }),
+  needs: "admin",
+  available: (ctx) => ctx.org.kind === "band",
+  action: (fd) => recordPaymentToLabel(null, fd),
+});
+
+export const MONEY_TOOLS = [
+  payoutLineStatus,
+  undoPayout,
+  releaseUnpaid,
+  saveSendOut,
+  deleteSendOut,
+  accountHolder,
+  bandPaidTo,
+  saveRemittance,
+  deleteRemittance,
+  bandPayout,
+  paymentToLabel,
+];

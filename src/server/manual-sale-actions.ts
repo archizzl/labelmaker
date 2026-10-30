@@ -11,7 +11,7 @@ import { saleInPayout } from "./sales-browse";
 import { merchSources, saleAdder } from "./manual-sales";
 import { putBackStock, takeStock } from "./inventory";
 import { importNamed } from "./import-rows";
-import { moveSalesToLabel, onLabelSince } from "./own-books";
+import { joinedLabel, moveSalesToLabel, onLabelSince } from "./own-books";
 
 export type ManualSaleState = { ok?: string; error?: string } | null;
 
@@ -163,9 +163,10 @@ export async function deleteManualSale(_: ManualSaleState, fd: FormData): Promis
     .select({ id: schema.sales.id, orgId: schema.sales.orgId, bandId: schema.sales.bandId, via: schema.sales.routedVia, order: schema.sales.transactionId })
     .from(schema.sales)
     .where(eq(schema.sales.id, id));
+  // (Or a label it joined: its hand-added sales went into the label's books for it.)
+  const label = managedBy ?? (await joinedLabel(orgId));
   const ours =
-    sale &&
-    ((sale.orgId === orgId && adder.bands.some((b) => b.id === sale.bandId)) || (managedBy && sale.orgId === managedBy.labelOrgId && sale.bandId === managedBy.bandId));
+    sale && ((sale.orgId === orgId && adder.bands.some((b) => b.id === sale.bandId)) || (label && sale.orgId === label.labelOrgId && sale.bandId === label.bandId));
   if (!sale || !ours) return { error: "That isn’t one of your band’s sales." };
   if (sale.via !== MANUAL_VIA) return { error: "Only sales added by hand can be deleted." };
   const ids =

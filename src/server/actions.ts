@@ -25,6 +25,7 @@ import { putBackStock } from "./inventory";
 import { bandsPayingOwn, computePayoutPeriod, reRouteAll, strandedSales } from "./data";
 import { type PayoutScope, payoutName } from "./period-view";
 import { markSeen } from "./nav-badges";
+import { syncPeriodStatus } from "./period-status";
 import { autoMergeByEmail, findExistingPerson, mergePeople } from "./people";
 import { shareDetails, syncOwnPeopleForBand } from "./own-books";
 
@@ -1095,15 +1096,6 @@ async function syncAllPeriodStatuses(orgId: string) {
   for (const p of await db.select({ id: periods.id }).from(periods).where(eq(periods.orgId, orgId))) await syncPeriodStatus(orgId, p.id);
 }
 
-/** A payout is "paid" once every line is settled: paid, kept in the label account, or nothing owed. */
-async function syncPeriodStatus(orgId: string, periodId: number) {
-  const rows = await db.select().from(payouts).where(eq(payouts.periodId, periodId));
-  const settled = rows.every((r) => r.status !== "pending" || r.amountCents <= 0);
-  await db
-    .update(periods)
-    .set({ status: settled ? "paid" : "finalized" })
-    .where(and(eq(periods.orgId, orgId), eq(periods.id, periodId)));
-}
 
 /** Mark one payout line paid, kept in the label account, or back to unpaid. */
 export async function setPayoutStatus(fd: FormData) {

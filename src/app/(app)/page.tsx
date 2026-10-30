@@ -8,7 +8,7 @@ import { OrdersNotice } from "@/components/orders-notice";
 import { owedChart } from "@/components/owed";
 import { type BoardChart, breakdownChart, seriesChart } from "@/lib/chart-data";
 import { loadLayout } from "@/server/chart-layouts";
-import { parseSalesFilter, summarizeSales } from "@/server/sales-browse";
+import { parseSalesFilter, salesBooksFor, summarizeSales } from "@/server/sales-browse";
 import { Badge, Callout, Card, LinkButton, Money, PageHeader } from "@/components/ui";
 import { db, schema } from "@/db";
 import { plural, someNames } from "@/lib/plural";
@@ -20,6 +20,7 @@ import { groupPhotos, requireAccess } from "@/server/context";
 import { computeAllTime } from "@/server/data";
 import { labelPartFor } from "@/server/own-books";
 import { BandProjects } from "@/components/band-projects";
+import { BandSends } from "@/components/band-sends";
 import type { PeriodSummary } from "@/lib/splits";
 
 export const metadata = { title: "dashboard" };
@@ -122,12 +123,15 @@ export default async function Dashboard() {
   const setupGone = settingsRow?.forGood ?? false;
   const stepsLeft = steps.filter((s) => !s.done).length;
 
-  // The customizable charts: net sales by band and who's owed what, with more to add.
-  const [all, owed, saved, fromLabel] = await Promise.all([
-    summarizeSales(m ? { own: orgId, label: { orgId: m.labelOrgId, bandId: m.bandId } } : orgId, parseSalesFilter({})),
+  // The customizable charts: net sales by band and who's owed what, with more to add. A band's group
+  // on a label (one the label made, or its own) has every sale in them, the labels' for it included.
+  const books = isBand ? await salesBooksFor(orgId) : orgId;
+  const labels = typeof books === "string" ? [] : books.labels;
+  const [all, owed, saved, fromLabels] = await Promise.all([
+    summarizeSales(books, parseSalesFilter({})),
     owedChart(orgId),
     loadLayout("dashboard"),
-    m ? labelPartFor(m.labelOrgId, m.bandId) : null,
+    Promise.all(labels.map(async (l) => ({ label: l, part: await labelPartFor(l.orgId, l.bandId) }))),
   ]);
   const net = all.totals[0]?.net ?? 0;
   const typeLabel = (k: string) => ({ album: "Album", track: "Track", merch: "Merch", other: "Other" })[k] ?? k;
@@ -162,16 +166,19 @@ export default async function Dashboard() {
     }
   };
   addUp(summary, fundExpenses);
-  if (fromLabel) addUp(fromLabel.summary, fromLabel.fundsSpent, true);
-  // The latest payouts, the label's that paid the band's members among them.
+  for (const { part } of fromLabels) addUp(part.summary, part.fundsSpent, true);
+  const keptBy = labels.length === 1 ? `Kept by ${labels[0].name}` : "Kept by labels";
+  // The latest payouts, the labels' that paid the band's members among them.
   const recent = [
     ...periods.map((p) => ({ key: `own-${p.id}`, href: `/periods/${p.id}`, period: p, through: null as string | null })),
-    ...(fromLabel?.payouts ?? []).map(({ period }) => ({
-      key: `label-${period.id}`,
-      href: `/from-label/${m!.linkId}/statement/${period.id}`,
-      period,
-      through: m!.labelName,
-    })),
+    ...fromLabels.flatMap(({ label, part }) =>
+      part.payouts.map(({ period }) => ({
+        key: `label-${period.id}`,
+        href: `/from-label/${label.linkId}/statement/${period.id}`,
+        period,
+        through: label.name,
+      })),
+    ),
   ]
     .sort((a, b) => b.period.startDate.localeCompare(a.period.startDate))
     .slice(0, 5);
@@ -254,12 +261,12 @@ export default async function Dashboard() {
       {/* The main currency (the most sales) first. */}
       {[...figures].sort((a, b) => b[1].net - a[1].net).map(([cur, f]) => (
         <Card key={cur} title={`All-time${figures.size > 1 ? ` (${cur})` : ""}`}>
-          <div className={`mb-6 grid grid-cols-2 gap-4 ${isBand && m ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
+          <div className={`mb-6 grid grid-cols-2 gap-4 ${isBand && labels.length ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
             <Figure label="Net sales" cents={f.net} currency={cur} />
             {isBand ? (
               <>
                 <Figure label="Kept by the band" cents={f.label} currency={cur} />
-                {m && <Figure label={`Kept by ${m.labelName}`} cents={f.labelThrough} currency={cur} />}
+                {labels.length > 0 && <Figure label={keptBy} cents={f.labelThrough} currency={cur} />}
               </>
             ) : (
               <Figure label="Label income" cents={f.label} currency={cur} />
@@ -271,6 +278,11 @@ export default async function Dashboard() {
       ))}
 
       <ChartBoard boardId="dashboard" charts={charts} saved={saved} />
+
+      {/* On a label but paid by Bandcamp itself: what the band sends. */}
+      {labels.map((l) => (
+        <BandSends key={l.linkId} label={l} editable={isAdmin && !ctx.viewingAs} />
+      ))}
 
       {/* A band account the label made: its projects in the label's books. */}
       {m && <BandProjects labelOrgId={m.labelOrgId} bandId={m.bandId} />}

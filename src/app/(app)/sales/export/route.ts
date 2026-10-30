@@ -3,14 +3,16 @@ import type { NextRequest } from "next/server";
 import { centsToDecimal } from "@/lib/money";
 import { bandScope } from "@/lib/permissions";
 import { requireAccess } from "@/server/context";
-import { allMatchingSales, parseSalesFilter } from "@/server/sales-browse";
+import { allMatchingSales, parseSalesFilter, salesBooksFor } from "@/server/sales-browse";
 
 /** The Sales tab's filtered sales as a CSV: the main columns, then everything Bandcamp reported. */
 export async function GET(req: NextRequest) {
-  const { orgId, org, access, managedBy: m } = await requireAccess("sales");
-  // A band account the label made: its own sales and the label's for it, as on the Sales tab.
-  const f = { ...parseSalesFilter(Object.fromEntries(req.nextUrl.searchParams)), onlyBands: m ? undefined : (bandScope(access, "sales") ?? undefined), ...(m ? { band: undefined } : {}) };
-  const rows = await allMatchingSales(m ? { own: org.id, label: { orgId: m.labelOrgId, bandId: m.bandId } } : orgId, f);
+  const { orgId, org, access } = await requireAccess("sales");
+  // A band's group on a label: its own sales and each label's for it, as on the Sales tab.
+  const books = org.kind === "band" ? await salesBooksFor(org.id) : orgId;
+  const onLabel = typeof books !== "string";
+  const f = { ...parseSalesFilter(Object.fromEntries(req.nextUrl.searchParams)), onlyBands: onLabel ? undefined : (bandScope(access, "sales") ?? undefined), ...(onLabel ? { band: undefined } : {}) };
+  const rows = await allMatchingSales(books, f);
   const rawKeys = [...new Set(rows.flatMap((r) => Object.keys(r.sale.raw)))];
   const csv = Papa.unparse({
     fields: ["date", "band", "release", "item", "type", "format", "quantity", "currency", "net", "transaction id", ...rawKeys.map((k) => `bandcamp: ${k}`)],

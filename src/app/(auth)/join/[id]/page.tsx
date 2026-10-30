@@ -5,6 +5,7 @@ import { claimablePeople, connectableAccounts, groupsToJoinWith, hasSharedLogin,
 import { myDetails } from "@/server/people";
 import { getSession, groupPhotos } from "@/server/context";
 import { joinPreview } from "@/lib/join-preview";
+import { possessive } from "@/lib/plural";
 import { signOut } from "@/server/account-actions";
 
 /** The link's preview where it's sent (a message, an email): join the group, with its photo. */
@@ -112,8 +113,8 @@ async function JoinLabelAsBand({ id, label, session }: { id: string; label: { id
     <>
       <h1 className="mb-2 text-xl font-bold">Join {label.name}</h1>
       <p className="mb-5 text-sm text-muted">
-        {!session ? "Sign in to the account that runs your band here. " : groups.length > 1 ? "Choose your band. " : ""}Its sales from today go into{" "}
-        {label.name}’s books, to be split and paid out there.
+        {!session ? "Sign in to the account that runs your band here. Its" : groups.length > 1 ? "Choose your band. Its" : `${possessive(groups[0]?.name ?? "Your band")}`} sales
+        from today go into {label.name}’s books, to be split and paid out there.
       </p>
       {session && (
         <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded border border-border px-3 py-2 text-sm">

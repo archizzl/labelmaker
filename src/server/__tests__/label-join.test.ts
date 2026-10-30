@@ -23,6 +23,9 @@ let links: typeof import("../band-invite-links");
 let join: typeof import("../label-join");
 let data: typeof import("../data");
 let actions: typeof import("../actions");
+let own: typeof import("../own-books");
+let browse: typeof import("../sales-browse");
+let bandPay: typeof import("../band-payout-actions");
 
 beforeAll(async () => {
   ({ db, schema } = await testDb());
@@ -30,6 +33,9 @@ beforeAll(async () => {
   join = await import("../label-join");
   data = await import("../data");
   actions = await import("../actions");
+  own = await import("../own-books");
+  browse = await import("../sales-browse");
+  bandPay = await import("../band-payout-actions");
 });
 
 async function login() {
@@ -184,5 +190,93 @@ describe("a band Bandcamp pays itself", () => {
     funds = await data.labelFunds(orgId);
     expect(funds.balance.get("USD")).toBe(350);
     expect(funds.heldByBands[0].held.get("USD")).toBe(50);
+  });
+});
+
+describe("a band that joined, later on", () => {
+  it("runs its own members: the label's books follow", async () => {
+    const { labelOrgId, bandOrgId, own: band, ana } = await setup();
+    const { bandId } = await join.joinLabel(labelOrgId, bandOrgId, null);
+    const [cy] = await db.insert(schema.people).values({ orgId: bandOrgId, name: "Cy", venmo: "cy" }).returning();
+    await db.insert(schema.bandMemberships).values({ orgId: bandOrgId, bandId: band.id, personId: cy.id, roles: ["keys"] });
+    await db.delete(schema.bandMemberships).where(eq(schema.bandMemberships.personId, ana.id));
+    await own.syncJoinedPeople(bandOrgId);
+
+    const there = await db
+      .select({ name: schema.people.name, roles: schema.bandMemberships.roles, active: schema.bandMemberships.active })
+      .from(schema.bandMemberships)
+      .innerJoin(schema.people, eq(schema.people.id, schema.bandMemberships.personId))
+      .where(and(eq(schema.bandMemberships.orgId, labelOrgId), eq(schema.bandMemberships.bandId, bandId)));
+    expect(there.sort((a, b) => a.name.localeCompare(b.name))).toEqual([
+      { name: "Ana", roles: ["drums"], active: false },
+      { name: "Cy", roles: ["keys"], active: true },
+    ]);
+  });
+
+  it("brings its catalog and splits to the label", async () => {
+    const { labelOrgId, bandOrgId, own: band, ana } = await setup();
+    const [lp] = await db.insert(schema.releases).values({ orgId: bandOrgId, bandId: band.id, title: "First LP", bandcampId: 42, url: "https://glassharbor.bandcamp.com/album/first-lp" }).returning();
+    await db.insert(schema.tracks).values({ orgId: bandOrgId, releaseId: lp.id, bandId: band.id, title: "Opener" });
+    const [rule] = await db.insert(schema.splitRules).values({ orgId: bandOrgId, scope: "band_default", bandId: band.id }).returning();
+    await db.insert(schema.splitShares).values({ orgId: bandOrgId, ruleId: rule.id, personId: ana.id, bps: 10000 });
+    const { bandId } = await join.joinLabel(labelOrgId, bandOrgId, null);
+
+    const [copy] = await db.select().from(schema.releases).where(eq(schema.releases.orgId, labelOrgId));
+    expect(copy).toMatchObject({ bandId, title: "First LP", bandcampId: 42 });
+    expect(await db.select({ title: schema.tracks.title, bandId: schema.tracks.bandId }).from(schema.tracks).where(eq(schema.tracks.releaseId, copy.id))).toEqual([
+      { title: "Opener", bandId },
+    ]);
+    const [split] = await db.select().from(schema.splitRules).where(eq(schema.splitRules.orgId, labelOrgId));
+    expect(split).toMatchObject({ scope: "band_default", bandId });
+    const [share] = await db.select().from(schema.splitShares).where(eq(schema.splitShares.ruleId, split.id));
+    const [mine] = await db.select().from(schema.people).where(eq(schema.people.id, ana.id));
+    expect(share).toMatchObject({ personId: mine.labelPersonId, bps: 10000 });
+  });
+
+  it("still sees every sale of its own, saying who Bandcamp paid", async () => {
+    const { labelOrgId, bandOrgId, own: band } = await setup();
+    await sale(bandOrgId, `old-${bandOrgId}`, "2020-01-01", band.id);
+    await join.joinLabel(labelOrgId, bandOrgId, null);
+    await sale(bandOrgId, `new-${bandOrgId}`, today, band.id);
+    await own.moveSalesToLabel(bandOrgId);
+
+    const books = await browse.salesBooksFor(bandOrgId);
+    expect(books).toMatchObject({ own: bandOrgId, labels: [{ orgId: labelOrgId, name: "Collective", paidTo: "band" }] });
+    const page = await browse.browseSales(books, browse.parseSalesFilter({}));
+    expect(page.rows.map((r) => [r.orgId, r.paidTo])).toEqual([
+      [labelOrgId, "band"],
+      [bandOrgId, "label"],
+    ]);
+  });
+
+  it("marks its members paid, and records what it sent the label", async () => {
+    const { labelOrgId, bandOrgId } = await setup();
+    const { bandId } = await join.joinLabel(labelOrgId, bandOrgId, null);
+    const [person] = await db.insert(schema.people).values({ orgId: labelOrgId, name: "Payee" }).returning();
+    const [period] = await db.insert(schema.periods).values({ orgId: labelOrgId, name: "P", startDate: "2026-01-01", endDate: "2026-01-31" }).returning();
+    const [line] = await db
+      .insert(schema.payouts)
+      .values({ orgId: labelOrgId, periodId: period.id, personId: person.id, currency: "USD", amountCents: 800, byBand: { [bandId]: 800 }, paidByBandId: bandId })
+      .returning();
+
+    orgId = bandOrgId;
+    const fd = new FormData();
+    fd.set("id", String(line.id));
+    fd.set("status", "paid");
+    await bandPay.markBandPayout(fd);
+    const [after] = await db.select().from(schema.payouts).where(eq(schema.payouts.id, line.id));
+    expect(after.status).toBe("paid");
+    const [p] = await db.select().from(schema.periods).where(eq(schema.periods.id, period.id));
+    expect(p.status).toBe("paid");
+
+    const [link] = await db.select().from(schema.accountLinks).where(eq(schema.accountLinks.labelBandId, bandId));
+    const sent = new FormData();
+    for (const [k, v] of Object.entries({ linkId: String(link.id), amount: "2.00", date: "2026-02-01" })) sent.set(k, v);
+    expect(await bandPay.recordPaymentToLabel(null, sent)).toEqual({ ok: "Saved" });
+    expect(await db.select({ cents: schema.bandRemittances.amountCents }).from(schema.bandRemittances).where(eq(schema.bandRemittances.bandId, bandId))).toEqual([{ cents: 200 }]);
+
+    // Not a label it's on: nothing.
+    orgId = await newAccount("Someone else", "band");
+    await expect(bandPay.markBandPayout(fd)).rejects.toThrow();
   });
 });

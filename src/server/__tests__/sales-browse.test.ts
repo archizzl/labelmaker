@@ -1,4 +1,4 @@
-import { inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { newAccount, testDb } from "../../../test/helpers/db";
 
@@ -41,13 +41,20 @@ describe("browsing sales", () => {
       artist: "Someone Else", itemUrl: "", packageName: "", currency: "USD", netCents: 100, transactionId: "theirs", routingKey: "theirs", bandId: other.id, raw: {},
     });
     const { orgId: own } = await setup();
-    const books = { own, label: { orgId: labelOrgId, bandId: flagDay.id } };
+    // (Its own sales aren't the label's: theirs are other transactions.)
+    await db.execute(sql`update sales set dedupe_key = 'own-' || dedupe_key where org_id = ${own}`);
+    const books = { own, labels: [{ linkId: 0, orgId: labelOrgId, name: "Label", bandId: flagDay.id, managed: true, paidTo: "label" as const }] };
     const page = await browse.browseSales(books, f({ per: "100" }));
     // Four of the band's through the label (not the unmatched one, nor another band's), and all five of its own.
     expect(page.count).toBe(9);
     expect(page.rows.filter((r) => r.orgId === labelOrgId)).toHaveLength(4);
     expect(page.rows.some((r) => r.itemName === "Theirs")).toBe(false);
     expect((await browse.summarizeSales(books, f())).totals[0].net).toBe(2 * (900 + 90 + 1800 - 900) + 500);
+
+    // A sale both books have (the label's Bandcamp and the band's own) is the label's, shown once.
+    const [dup] = await db.select().from(schema.sales).where(and(eq(schema.sales.orgId, labelOrgId), eq(schema.sales.bandId, flagDay.id))).limit(1);
+    await db.update(schema.sales).set({ dedupeKey: dup.dedupeKey }).where(eq(schema.sales.id, (await browse.browseSales(own, f())).rows[0].id));
+    expect((await browse.browseSales(books, f({ per: "100" }))).count).toBe(8);
   });
 
   it("filters by band, type, country, source, dates, search and refunds", async () => {

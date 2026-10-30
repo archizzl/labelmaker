@@ -14,7 +14,7 @@ import { loadOpenOrders } from "../merch-orders";
 import { owedByBand, owedTotal } from "../owed";
 import { periodView } from "../period-view";
 import { salesReport } from "../sales-report";
-import { type SalesBooks, summarizeSales } from "../sales-browse";
+import { type SalesBooks, salesBooksFor, summarizeSales } from "../sales-browse";
 import { abelTool } from "./tool";
 
 /*
@@ -175,12 +175,12 @@ const payoutDetail = abelTool({
 
 /**
  * Sales' books as the Sales page has them (ctx: the sales section's, so a band account the label
- * made is in its own books): such an account sees its own and the label's for its band.
+ * made is in its own books): a band's group on a label sees its own and each label's for it.
  */
-function salesBooks(ctx: Context): { books: SalesBooks; onlyBands?: number[] } {
-  const m = ctx.managedBy;
-  if (m) return { books: { own: ctx.orgId, label: { orgId: m.labelOrgId, bandId: m.bandId } } };
-  return { books: ctx.orgId, onlyBands: bandScope(ctx.access, "sales") ?? undefined };
+async function salesBooks(ctx: Context): Promise<{ books: SalesBooks; onlyBands?: number[] }> {
+  const books = ctx.org.kind === "band" ? await salesBooksFor(ctx.orgId) : ctx.orgId;
+  if (typeof books !== "string") return { books };
+  return { books, onlyBands: bandScope(ctx.access, "sales") ?? undefined };
 }
 
 const salesSummary = abelTool({
@@ -195,9 +195,9 @@ const salesSummary = abelTool({
   }),
   needs: { area: "sales" },
   run: async (ctx, { from, to, bandId, search }) => {
-    const { books, onlyBands } = salesBooks(ctx);
+    const { books, onlyBands } = await salesBooks(ctx);
     if (bandId && onlyBands && !onlyBands.includes(bandId)) return { error: "That isn't one of your bands." };
-    const s = await summarizeSales(books, { from, to, band: ctx.managedBy ? undefined : bandId, q: search, onlyBands, sort: "date", dir: "desc", page: 1, per: 10 });
+    const s = await summarizeSales(books, { from, to, band: typeof books === "string" ? bandId : undefined, q: search, onlyBands, sort: "date", dir: "desc", page: 1, per: 10 });
     // The breakdowns are in the main currency (the one with the most sales).
     // (Spellings that differ only in capitals or spacing, like "Flags of the World" and "Flags Of The World", are one item.)
     const top = (rows: { key: string; net: number; units: number }[]) => {

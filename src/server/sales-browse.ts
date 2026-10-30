@@ -126,15 +126,55 @@ const payoutState = sql<PayoutState>`case
 
 const like = (s: string) => `%${s.replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
 
+/** A label a band's group is on: its books for the band, and who Bandcamp pays for the band's sales there. */
+export type SalesLabel = { linkId: number; orgId: string; name: string; bandId: number; managed: boolean; paidTo: "label" | "band" };
+
 /**
- * Whose sales: one account's, or a label-made band account's own together with what its label has
- * for its band (the label's part read-only).
+ * Whose sales: one account's, or a band's group's own together with what each label it's on has for
+ * its band (the labels' part read-only). A band always sees all its sales, on a label or not.
  */
-export type SalesBooks = string | { own: string; label: { orgId: string; bandId: number } };
+export type SalesBooks = string | { own: string; labels: SalesLabel[] };
+
+/**
+ * Every label a band's group is on: the one that made it, ones it linked its own group to, and one
+ * it joined. Its sales on a label are in that label's books.
+ */
+export async function labelsOfBand(bandOrgId: string): Promise<SalesLabel[]> {
+  return db
+    .select({
+      linkId: schema.accountLinks.id,
+      orgId: schema.accountLinks.labelOrgId,
+      name: schema.organization.name,
+      bandId: schema.accountLinks.labelBandId,
+      managed: schema.accountLinks.managed,
+      paidTo: bands.paidTo,
+    })
+    .from(schema.accountLinks)
+    .innerJoin(schema.organization, eq(schema.organization.id, schema.accountLinks.labelOrgId))
+    .innerJoin(bands, eq(bands.id, schema.accountLinks.labelBandId))
+    .where(and(eq(schema.accountLinks.bandOrgId, bandOrgId), eq(schema.accountLinks.status, "active")))
+    .orderBy(asc(schema.organization.name));
+}
+
+/** A group's sales books: a band's group on a label sees its own and the label's for it; anyone else, their own. */
+export async function salesBooksFor(orgId: string): Promise<SalesBooks> {
+  const labels = await labelsOfBand(orgId);
+  return labels.length ? { own: orgId, labels } : orgId;
+}
 
 function inBooks(books: SalesBooks): SQL {
   if (typeof books === "string") return eq(sales.orgId, books);
-  return or(eq(sales.orgId, books.own), and(eq(sales.orgId, books.label.orgId), eq(sales.bandId, books.label.bandId)))!;
+  const labelOrgs = books.labels.map((l) => sql`${l.orgId}`);
+  return or(
+    // Its own, except any a label's books have too (counted there).
+    and(
+      eq(sales.orgId, books.own),
+      labelOrgs.length
+        ? sql`not exists (select 1 from ${sales} dup where dup.org_id in (${sql.join(labelOrgs, sql`, `)}) and dup.dedupe_key = ${sales.dedupeKey})`
+        : undefined,
+    ),
+    ...books.labels.map((l) => and(eq(sales.orgId, l.orgId), eq(sales.bandId, l.bandId))),
+  )!;
 }
 
 function where(books: SalesBooks, f: SalesFilter): SQL {
@@ -207,6 +247,8 @@ export async function browseSales(books: SalesBooks, f: SalesFilter) {
         transactionId: sales.transactionId,
         bandId: sales.bandId,
         bandName: bands.name,
+        /** Who Bandcamp pays for the band's sales (bands.paidTo). */
+        paidTo: bands.paidTo,
         routedVia: sales.routedVia,
         outsidePayouts: sales.outsidePayouts,
         releaseId: sales.releaseId,

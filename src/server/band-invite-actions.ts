@@ -23,7 +23,7 @@ import {
 import { joinLabel } from "./label-join";
 import { assignMemberType } from "./member-types";
 import { applyMyDetails } from "./people";
-import { syncOwnPeople } from "./own-books";
+import { syncJoinedPeople, syncOwnPeople } from "./own-books";
 import { ownBand } from "./data";
 import { auth } from "./auth";
 import { cleanCashtag, cleanVenmoHandle } from "@/lib/paypal-export";
@@ -157,8 +157,10 @@ export async function joinWithInviteLink(_: InviteLinkState, fd: FormData): Prom
       return { error: "That member already has an account. Choose who you are." };
     }
   }
-  // A band that keeps its own books too: they're in those as well, linked to this login.
+  // A band that keeps its own books too: they're in those as well, linked to this login. (A band's
+  // own group that joined a label: they're in the label's books too.)
   if (!found.forLabel) await syncOwnPeople(org.id);
+  else if (org.kind === "band") await syncJoinedPeople(org.id);
   if (personId) {
     // Everywhere they're someone, the one they just joined as included.
     await applyMyDetails(userId, details);

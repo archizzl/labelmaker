@@ -11,7 +11,8 @@ import { loadLayout } from "@/server/chart-layouts";
 import { bandScope, can } from "@/lib/permissions";
 import { ownBooksOf, requireAccess } from "@/server/context";
 import { saleAdder } from "@/server/manual-sales";
-import { onLabelSince } from "@/server/own-books";
+import { joinedLabel, onLabelSince } from "@/server/own-books";
+import { bandsPayingOwn } from "@/server/data";
 import { DeleteManualSale } from "@/components/manual-sale";
 import { SaleOrder } from "@/components/sale-order";
 import { Pager } from "@/components/pager";
@@ -26,6 +27,7 @@ import {
   type SortKey,
   type SalesBooks,
   type SaleRow,
+  salesBooksFor,
   salesFilterOptions,
   summarizeSales,
 } from "@/server/sales-browse";
@@ -41,19 +43,31 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
   const { access } = ctx;
   // Opening Sales clears its "new sales" number.
   await markSeen(ctx, "sales");
-  // A band account the label made: its own sales and what the label has for it, in one list. It adds
-  // and imports its own (the label's are the label's to change).
+  // A band's group on a label (one the label made, or its own): its own sales and what each label has
+  // for it, in one list. It adds and imports its own (the labels' are the labels' to change).
   const m = ctx.managedBy;
   const own = m ? await ownBooksOf(ctx) : ctx;
   const orgId = own.orgId;
-  const books: SalesBooks = m ? { own: orgId, label: { orgId: m.labelOrgId, bandId: m.bandId } } : orgId;
+  const books: SalesBooks = ctx.org.kind === "band" ? await salesBooksFor(orgId) : orgId;
+  const labels = typeof books === "string" ? [] : books.labels;
+  // Who got each sale's money: the band, or the label (as Bandcamp pays it). Shown wherever it can be either.
+  const bandPaid = ctx.org.kind === "label" ? await bandsPayingOwn(orgId) : new Set<number>();
+  const showPaidTo = labels.length > 0 || bandPaid.size > 0;
+  const paidTo = (s: SaleRow) => {
+    if (s.orgId === orgId) return ctx.org.kind === "label" && s.paidTo === "band" ? (s.bandName ?? ctx.org.name) : own.org.name;
+    return s.paidTo === "band" ? own.org.name : (labels.find((l) => l.orgId === s.orgId)?.name ?? "the label");
+  };
   // A member type can limit this to their own bands' sales.
-  const scope = m ? null : bandScope(access, "sales");
+  const scope = labels.length ? null : bandScope(access, "sales");
   const canEdit = can(own.access, "sales", "edit");
-  const [since, adder] = await Promise.all([m ? onLabelSince(m.labelOrgId, m.bandId) : null, saleAdder()]);
+  const [since, adder, joinedTo] = await Promise.all([
+    m ? onLabelSince(m.labelOrgId, m.bandId) : null,
+    saleAdder(),
+    !m && labels.length ? joinedLabel(orgId).then((j) => j?.labelOrgId ?? null) : null,
+  ]);
   const canDelete = (s: { orgId: string; bandId: number | null }) =>
-    !!adder && ((s.orgId === orgId && adder.bands.some((b) => b.id === s.bandId)) || (!!m && s.orgId === m.labelOrgId));
-  const f = { ...parseSalesFilter(await searchParams), onlyBands: scope ?? undefined, ...(m ? { band: undefined } : {}) };
+    !!adder && ((s.orgId === orgId && adder.bands.some((b) => b.id === s.bandId)) || labels.some((l) => l.orgId === s.orgId && (l.managed || joinedTo === l.orgId)));
+  const f = { ...parseSalesFilter(await searchParams), onlyBands: scope ?? undefined, ...(labels.length ? { band: undefined } : {}) };
   const [page, summary, options, [{ unrouted }]] = await Promise.all([
     browseSales(books, f),
     summarizeSales(books, f),
@@ -143,10 +157,10 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
             </details>
           </td>
           <td className="text-sm">
-            {m && s.bandId ? (
+            {labels.length && s.bandId ? (
               <>
                 {s.bandName}
-                {s.orgId === orgId && since && s.date < since && <div className="text-xs text-muted">before {m.labelName}</div>}
+                {m && s.orgId === orgId && since && s.date < since && <div className="text-xs text-muted">before {m.labelName}</div>}
               </>
             ) : s.bandId ? (
               <Link href={filterQuery(f, { band: s.bandId, page: 1 }) || "?"} className="hover:underline">
@@ -186,6 +200,12 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
           <td className={`num ${s.netCents < 0 ? "text-bad" : ""}`}>
             <Money cents={s.netCents} currency={s.currency} />
           </td>
+          {showPaidTo && (
+            <td className="text-sm">
+              {paidTo(s)}
+              {s.orgId !== orgId && <div className="text-xs text-muted">through {labels.find((l) => l.orgId === s.orgId)?.name}</div>}
+            </td>
+          )}
           <td className="whitespace-nowrap text-sm">
             <PayoutCell state={s.payoutState} periodId={s.periodId} outside={s.outsidePayouts} />
           </td>
@@ -207,7 +227,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
       <SalesTabs active="browse" unrouted={unrouted} canImport={canEdit} canAdd={!!adder} />
 
       <Card title={main ? `${page.count.toLocaleString("en-US")} sale${page.count === 1 ? "" : "s"}` : "Sales"}>
-        <Filters f={f} options={options} filtered={filtered} oneBand={!!m} />
+        <Filters f={f} options={options} filtered={filtered} oneBand={labels.length > 0} />
         {f.buyer && (
           <p className="mb-3 text-sm">
             Showing one buyer’s sales. <Link href={filterQuery(f, { buyer: undefined, page: 1 }) || "/sales"}>Show everyone’s</Link>
@@ -239,6 +259,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
                     <SortHeader f={f} k="source" label="From" />
                     <SortHeader f={f} k="qty" label="Qty" num />
                     <SortHeader f={f} k="net" label="Net" num />
+                    {showPaidTo && <th>Paid to</th>}
                     <SortHeader f={f} k="payout" label="Paid out" />
                   </tr>
                 </thead>
@@ -247,7 +268,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
                     order.length === 1 ? (
                       saleRow(order[0])
                     ) : (
-                      <SaleOrder key={`order-${order[0].id}`} head={<OrderCells order={order} />}>
+                      <SaleOrder key={`order-${order[0].id}`} head={<OrderCells order={order} paidTo={showPaidTo ? paidTo : undefined} />}>
                         {order.map((x) => saleRow(x, order.length))}
                       </SaleOrder>
                     ),
@@ -497,7 +518,7 @@ function ordersOf(rows: SaleRow[]): SaleRow[][] {
 const itemLabel = (s: SaleRow) => `${s.packageName ? `${s.itemName} ${s.packageName}` : s.itemName}${s.quantity > 1 ? ` ×${s.quantity}` : ""}`;
 
 /** An order's own row: what's in it and its totals. */
-function OrderCells({ order }: { order: SaleRow[] }) {
+function OrderCells({ order, paidTo }: { order: SaleRow[]; paidTo?: (s: SaleRow) => string }) {
   const first = order[0];
   const unique = (xs: (string | null)[]) => [...new Set(xs.filter((x): x is string => !!x))];
   const bandNames = unique(order.map((s) => s.bandName));
@@ -521,6 +542,7 @@ function OrderCells({ order }: { order: SaleRow[] }) {
       <td className={`num ${net < 0 ? "text-bad" : ""}`}>
         <Money cents={net} currency={first.currency} />
       </td>
+      {paidTo && <td className="text-sm">{[...new Set(order.map(paidTo))].join(", ")}</td>}
       <td className="whitespace-nowrap text-sm">
         {states.length === 1 ? (
           <PayoutCell state={first.payoutState} periodId={first.periodId} outside={order.every((s) => s.outsidePayouts)} />

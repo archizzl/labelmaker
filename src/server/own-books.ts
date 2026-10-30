@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, gte, inArray, isNull, min, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, min, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { BAND_GROUP_VIA, MANUAL_IMPORT, MANUAL_VIA } from "@/lib/manual-sales";
 import { normalizeText, routeSale } from "@/lib/routing";
@@ -103,10 +103,90 @@ export async function syncOwnPeople(bandOrgId: string) {
   if (gone.length) await db.update(bandMemberships).set({ active: false }).where(inArray(bandMemberships.id, gone));
 }
 
-/** A band's members changed in the label's books: its own books (if it keeps them) follow. */
-export async function syncOwnPeopleForBand(labelOrgId: string, bandId: number) {
-  const sub = await subAccountFor(labelOrgId, bandId);
+/**
+ * A band's members changed: in a label's books, its own books (if it keeps them) follow; in a band's
+ * own group that joined a label, the label's books follow.
+ */
+export async function syncOwnPeopleForBand(orgId: string, bandId: number) {
+  const sub = await subAccountFor(orgId, bandId);
   if (sub) await syncOwnPeople(sub.org.id);
+  await syncJoinedPeople(orgId);
+}
+
+/** The label a band's own group joined (with the label's invite link for bands), if any. */
+export async function joinedLabel(bandOrgId: string): Promise<{ labelOrgId: string; bandId: number; linkId: number } | null> {
+  const [row] = await db
+    .select({ labelOrgId: schema.accountLinks.labelOrgId, bandId: schema.accountLinks.labelBandId, linkId: schema.accountLinks.id })
+    .from(schema.accountLinks)
+    .where(and(eq(schema.accountLinks.bandOrgId, bandOrgId), eq(schema.accountLinks.joined, true), eq(schema.accountLinks.status, "active")))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * The same person in a label's books, for someone in a band group's own books that joined it: the
+ * one they're linked to (people.labelPersonId), or a copy made now and linked.
+ */
+export async function counterpartIn(labelOrgId: string, person: typeof people.$inferSelect): Promise<number> {
+  if (person.labelPersonId) {
+    const [there] = await db
+      .select({ id: people.id })
+      .from(people)
+      .where(and(eq(people.id, person.labelPersonId), eq(people.orgId, labelOrgId)));
+    if (there) return there.id;
+  }
+  const [copy] = await db
+    .insert(people)
+    .values({ ...shared(person), orgId: labelOrgId })
+    .returning({ id: people.id });
+  await db.update(people).set({ labelPersonId: copy.id }).where(eq(people.id, person.id));
+  return copy.id;
+}
+
+/**
+ * A band's own group that joined a label: the band runs its members, and the label's books follow.
+ * Each of its band's members is in the label's band too, the same person (people.labelPersonId),
+ * with the same roles, current or not; someone taken off the band is a former member there. Their
+ * names and how they're paid are kept the same both ways (shareDetails). People the label added to
+ * the band itself are left alone. Does nothing for any other group.
+ */
+export async function syncJoinedPeople(bandOrgId: string) {
+  const joined = await joinedLabel(bandOrgId);
+  if (!joined) return;
+  const band = await ownBandRow(bandOrgId);
+  if (!band) return;
+  const [mine, linked, theirs] = await Promise.all([
+    db
+      .select({ person: people, roles: bandMemberships.roles, active: bandMemberships.active })
+      .from(bandMemberships)
+      .innerJoin(people, eq(people.id, bandMemberships.personId))
+      .where(and(eq(bandMemberships.orgId, bandOrgId), eq(bandMemberships.bandId, band.id))),
+    db
+      .select({ labelPersonId: people.labelPersonId })
+      .from(people)
+      .where(and(eq(people.orgId, bandOrgId), isNotNull(people.labelPersonId))),
+    db
+      .select()
+      .from(bandMemberships)
+      .where(and(eq(bandMemberships.orgId, joined.labelOrgId), eq(bandMemberships.bandId, joined.bandId))),
+  ]);
+  const kept = new Set<number>();
+  for (const { person, roles, active } of mine) {
+    // Someone who left before the band joined doesn't need a record there.
+    if (!active && !person.labelPersonId) continue;
+    const id = await counterpartIn(joined.labelOrgId, person);
+    kept.add(id);
+    const there = theirs.find((m) => m.personId === id);
+    if (!there) {
+      await db.insert(bandMemberships).values({ orgId: joined.labelOrgId, bandId: joined.bandId, personId: id, roles, active });
+    } else if (there.active !== active || there.roles.join("\n") !== roles.join("\n")) {
+      await db.update(bandMemberships).set({ roles, active }).where(eq(bandMemberships.id, there.id));
+    }
+  }
+  // Taken off the band in its own books: a former member in the label's.
+  const mirrored = new Set(linked.map((l) => l.labelPersonId!));
+  const gone = theirs.filter((m) => m.active && mirrored.has(m.personId) && !kept.has(m.personId)).map((m) => m.id);
+  if (gone.length) await db.update(bandMemberships).set({ active: false }).where(inArray(bandMemberships.id, gone));
 }
 
 /** The same people in the other books: own-books records for label payees, and the label's for own-books ones. */
