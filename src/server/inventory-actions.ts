@@ -7,7 +7,7 @@ import { applyMove, catalogCandidates, isMoveReason } from "@/lib/inventory";
 import { parseCents } from "@/lib/money";
 import { bandScope } from "@/lib/permissions";
 import { type Context, requireAccess } from "./context";
-import { deleteMerchPhoto, photoFrom, saveMerchPhoto } from "./merch-photos";
+import { deleteMerchPhoto, merchPhotoUrl, ownPhotoId, photoFrom, saveMerchPhoto } from "./merch-photos";
 
 /*
  * Inventory: adding and changing items, and their counts. Anyone who can change Inventory; members
@@ -40,6 +40,49 @@ async function ownItem(ctx: Context, id: number) {
 function done() {
   revalidatePath("/inventory");
   revalidatePath("/");
+}
+
+/**
+ * Give an item a photo (`file`), or take its uploaded one off (null). Stock outside the catalog keeps
+ * its own; stock of a catalog item without a photo from Bandcamp puts it on the catalog item, so it
+ * shows everywhere that item does. A photo from Bandcamp stays.
+ */
+async function setItemPhoto(orgId: string, item: { id: number; releaseId: number | null; photoId: number | null }, file: File | null) {
+  if (item.releaseId) {
+    const [r] = await db
+      .select({ id: releases.id, artUrl: releases.artUrl })
+      .from(releases)
+      .where(and(eq(releases.orgId, orgId), eq(releases.id, item.releaseId)));
+    if (!r) return;
+    if (r.artUrl && !ownPhotoId(r.artUrl)) throw new Error("It has a photo from Bandcamp.");
+    const photoId = file ? await saveMerchPhoto(orgId, file) : null;
+    await db.update(releases).set({ artUrl: photoId ? merchPhotoUrl(photoId) : null }).where(eq(releases.id, r.id));
+    await deleteMerchPhoto(orgId, ownPhotoId(r.artUrl));
+    // (One it had of its own, from before it was linked, isn't shown any more.)
+    if (item.photoId) {
+      await db.update(inventoryItems).set({ photoId: null }).where(eq(inventoryItems.id, item.id));
+      await deleteMerchPhoto(orgId, item.photoId);
+    }
+    return;
+  }
+  const photoId = file ? await saveMerchPhoto(orgId, file) : null;
+  await db.update(inventoryItems).set({ photoId }).where(eq(inventoryItems.id, item.id));
+  await deleteMerchPhoto(orgId, item.photoId);
+}
+
+/** Upload a photo for an item (from its picture on the Inventory page), or with "remove", take it off. */
+export async function setInventoryPhoto(_: InventoryState, fd: FormData): Promise<InventoryState> {
+  const ctx = await requireAccess("inventory", "edit");
+  try {
+    const item = await ownItem(ctx, optInt(fd, "id") ?? -1);
+    const file = str(fd, "remove") === "1" ? null : photoFrom(fd);
+    if (!file && str(fd, "remove") !== "1") return { error: "Choose a photo." };
+    await setItemPhoto(ctx.orgId, item, file);
+    revalidatePath("/", "layout");
+    return { ok: file ? "Photo saved." : "Photo removed." };
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
 }
 
 /** Add an item, or change its details (not its count: that's adjustInventory). */
@@ -93,22 +136,31 @@ export async function saveInventoryItem(_: InventoryState, fd: FormData): Promis
       location: str(fd, "location").slice(0, 200) || null,
       notes: str(fd, "notes").slice(0, 1000) || null,
     };
-    // Its own photo: only for stock outside the catalog (catalog items show the catalog's).
+    // Its photo (see setItemPhoto), once the item is saved: a new one, or the uploaded one taken off.
     const before = id ? await ownItem(ctx, id) : null;
-    const file = !releaseId ? photoFrom(fd) : null;
-    const dropPhoto = !!before?.photoId && (!!releaseId || !!file || str(fd, "removePhoto") === "1");
-    const photoId = file ? await saveMerchPhoto(orgId, file) : dropPhoto ? null : (before?.photoId ?? null);
+    const file = photoFrom(fd);
+    let itemId = id;
     if (id) {
-      await db.update(inventoryItems).set({ ...values, photoId }).where(eq(inventoryItems.id, id));
-      if (dropPhoto) await deleteMerchPhoto(orgId, before!.photoId);
+      // Linked to a catalog item now: it shows the catalog's photo, so one of its own goes.
+      const dropOwn = !!releaseId && !!before?.photoId;
+      await db
+        .update(inventoryItems)
+        .set({ ...values, ...(dropOwn ? { photoId: null } : {}) })
+        .where(eq(inventoryItems.id, id));
+      if (dropOwn) await deleteMerchPhoto(orgId, before!.photoId);
     } else {
       const start = Math.max(0, optInt(fd, "onHand") ?? 0);
-      await db.transaction(async (tx) => {
-        const [item] = await tx.insert(inventoryItems).values({ ...values, photoId, orgId, onHand: start }).returning({ id: inventoryItems.id });
+      itemId = await db.transaction(async (tx) => {
+        const [item] = await tx.insert(inventoryItems).values({ ...values, orgId, onHand: start }).returning({ id: inventoryItems.id });
         if (start) {
           await tx.insert(inventoryMoves).values({ orgId, itemId: item.id, delta: start, reason: "recount", note: "Starting count", onHandAfter: start, byUserId: ctx.user.id });
         }
+        return item.id;
       });
+    }
+    if (file || str(fd, "removePhoto") === "1") {
+      const [saved] = await db.select().from(inventoryItems).where(eq(inventoryItems.id, itemId!));
+      await setItemPhoto(orgId, saved, file);
     }
     done();
     return { ok: id ? `Saved ${name}.` : `Added ${name}.` };

@@ -89,4 +89,34 @@ describe("merch photos", () => {
     await bandcamp.upsertRelease(orgId, details("https://f4.bcbits.com/img/2_10.jpg"), band.id, shirt.id);
     expect(await artOf()).toBe("https://f4.bcbits.com/img/2_10.jpg");
   });
+
+  it("from the Inventory page: stock of a catalog item without a Bandcamp photo gives the catalog item one", async () => {
+    orgId = await newAccount("Label");
+    const [band] = await db.insert(schema.bands).values({ orgId, name: "Flag Day" }).returning();
+    const [handMade] = await db.insert(schema.releases).values({ orgId, bandId: band.id, title: "Patch", kind: "merch" }).returning();
+    const [fromBandcamp] = await db
+      .insert(schema.releases)
+      .values({ orgId, bandId: band.id, title: "Shirt", kind: "merch", artUrl: "https://f4.bcbits.com/img/0001_10.jpg" })
+      .returning();
+    const [patch, shirt, loose] = await db
+      .insert(schema.inventoryItems)
+      .values([
+        { orgId, name: "Patch", kind: "product", bandId: band.id, releaseId: handMade.id },
+        { orgId, name: "Shirt", kind: "product", bandId: band.id, releaseId: fromBandcamp.id },
+        { orgId, name: "Sticker", kind: "product" },
+      ])
+      .returning();
+
+    expect(await inventory.setInventoryPhoto(null, form({ id: patch.id, photo: photo() }))).toEqual({ ok: "Photo saved." });
+    const [r] = await db.select().from(schema.releases).where(eq(schema.releases.id, handMade.id));
+    expect(r.artUrl).toMatch(/^\/merch\/photo\/\d+$/);
+    expect(await inventory.setInventoryPhoto(null, form({ id: shirt.id, photo: photo() }))).toEqual({ error: "It has a photo from Bandcamp." });
+    expect(await inventory.setInventoryPhoto(null, form({ id: loose.id, photo: photo() }))).toEqual({ ok: "Photo saved." });
+    expect((await db.select().from(schema.inventoryItems).where(eq(schema.inventoryItems.id, loose.id)))[0].photoId).not.toBeNull();
+
+    // Taken off again: the catalog item has none, and its file is gone.
+    expect(await inventory.setInventoryPhoto(null, form({ id: patch.id, remove: "1" }))).toEqual({ ok: "Photo removed." });
+    expect((await db.select().from(schema.releases).where(eq(schema.releases.id, handMade.id)))[0].artUrl).toBeNull();
+    expect(await photoRows()).toHaveLength(1);
+  });
 });

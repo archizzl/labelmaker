@@ -203,7 +203,8 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
           {showPaidTo && (
             <td className="text-sm">
               {paidTo(s)}
-              {s.orgId !== orgId && <div className="text-xs text-muted">through {labels.find((l) => l.orgId === s.orgId)?.name}</div>}
+              {/* The band was paid, but the sale is split in a label's books: which one. */}
+              {s.orgId !== orgId && s.paidTo === "band" && <div className="text-xs text-muted">through {labels.find((l) => l.orgId === s.orgId)?.name}</div>}
             </td>
           )}
           <td className="whitespace-nowrap text-sm">

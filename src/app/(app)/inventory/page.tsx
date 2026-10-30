@@ -10,7 +10,11 @@ import { formatCents } from "@/lib/money";
 import { bandScope, can } from "@/lib/permissions";
 import { requireAccess } from "@/server/context";
 import { addFromCatalog, adjustInventory, archiveInventoryItem, saveInventoryItem } from "@/server/inventory-actions";
-import { merchPhotoUrl } from "@/server/merch-photos";
+import { merchPhotoUrl, ownPhotoId } from "@/server/merch-photos";
+import { InventoryPhoto } from "@/components/inventory-photo";
+
+/** A photo from Bandcamp (not one uploaded here): it can't be changed here. */
+const fromBandcamp = (url: string | null | undefined) => !!url && ownPhotoId(url) === null;
 
 export const metadata = { title: "inventory" };
 
@@ -175,13 +179,8 @@ function ItemTable({
         const photo = photoOf?.(i);
         return (
           <li key={i.id} className={`grid gap-3 py-3 ${photoOf ? "grid-cols-[3rem_minmax(0,1fr)] md:grid-cols-[3rem_minmax(0,1fr)_7rem]" : "md:grid-cols-[minmax(0,1fr)_7rem]"}`}>
-            {photoOf &&
-              (photo ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={photo.replace(/_(2|10|16)\.jpg$/, "_3.jpg")} alt="" loading="lazy" className="h-12 w-12 border border-border bg-surface-2 object-cover" />
-              ) : (
-                <div className="h-12 w-12 border border-border bg-surface-2" />
-              ))}
+            {/* A photo from Bandcamp stays; anything else can be given one here. */}
+            {photoOf && <InventoryPhoto id={i.id} src={photo ?? null} editable={canEdit && !fromBandcamp(photo)} />}
             <div className="min-w-0 space-y-1">
               <div className="flex flex-wrap items-baseline gap-x-2">
                 <span className="font-medium">{i.name}</span>
@@ -205,7 +204,7 @@ function ItemTable({
                           label: "Edit",
                           content: (
                             <>
-                              <ItemForm item={i} bands={bands} catalog={catalog} ownBandsOnly={ownBandsOnly} />
+                              <ItemForm item={i} bands={bands} catalog={catalog} ownBandsOnly={ownBandsOnly} photo={photoOf?.(i) ?? null} />
                               <form action={archiveInventoryItem} className="mt-3">
                                 <input type="hidden" name="id" value={i.id} />
                                 <SubmitButton variant="ghost" size="sm" confirm={`Remove ${itemLabel(i)} from the inventory? Its history is kept.`}>
@@ -297,6 +296,7 @@ function ItemForm({
   catalog,
   defaultBand,
   ownBandsOnly = false,
+  photo = null,
 }: {
   item?: Item;
   bands: Option[];
@@ -304,6 +304,8 @@ function ItemForm({
   defaultBand?: number | null;
   /** Limited to their own bands: no "label / shared" choice. */
   ownBandsOnly?: boolean;
+  /** The photo it shows now. */
+  photo?: string | null;
 }) {
   const linked = item?.releaseId ? `${item.releaseId}:${item.packageId ?? ""}` : "";
   return (
@@ -371,15 +373,21 @@ function ItemForm({
       <Field label="Notes" className="sm:col-span-3">
         <input name="notes" defaultValue={item?.notes ?? ""} maxLength={1000} />
       </Field>
-      <Field label="Photo (items not in the catalog)" className="sm:col-span-2">
-        <input type="file" name="photo" accept="image/jpeg,image/png,image/gif,image/webp" className="text-xs" />
-      </Field>
-      {item?.photoId ? (
-        <label className="flex items-center gap-1.5 self-end pb-2 text-sm">
-          <input type="checkbox" name="removePhoto" value="1" /> Remove its photo
-        </label>
+      {fromBandcamp(photo) ? (
+        <div className="sm:col-span-3" />
       ) : (
-        <div />
+        <>
+          <Field label="Photo" className="sm:col-span-2">
+            <input type="file" name="photo" accept="image/jpeg,image/png,image/gif,image/webp" className="text-xs" />
+          </Field>
+          {photo ? (
+            <label className="flex items-center gap-1.5 self-end pb-2 text-sm">
+              <input type="checkbox" name="removePhoto" value="1" /> Remove its photo
+            </label>
+          ) : (
+            <div />
+          )}
+        </>
       )}
       <div className="sm:col-span-3">
         {item ? (
