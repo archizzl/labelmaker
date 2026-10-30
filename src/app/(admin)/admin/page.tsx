@@ -15,6 +15,7 @@ import { inviteStatus, listInvites } from "@/server/signup-invites";
 import { requireSiteAdmin } from "@/server/site-admin";
 import { testsAvailable } from "@/server/test-runner";
 import { AdminTests } from "@/components/admin-tests";
+import { AdminAbel } from "@/components/admin-abel";
 
 export const metadata = { title: "admin" };
 
@@ -25,7 +26,7 @@ const STATUS_TONE = {
   revoked: "neutral",
 } as const;
 
-const TABS = ["applications", "flags", "invites", "accounts", "groups", "tests"] as const;
+const TABS = ["applications", "flags", "abel", "invites", "accounts", "groups", "tests"] as const;
 type Tab = (typeof TABS)[number];
 
 /** The whole site: invite links for new logins, everyone's logins, and every label and band account. Site admins only. */
@@ -145,6 +146,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
       <nav className="mb-6 flex gap-x-6 gap-y-2 overflow-x-auto border-b border-border text-sm" aria-label="Admin">
         {tabLink("applications", "Applications", waiting.length || undefined)}
         {tabLink("flags", "Feature flags", FEATURE_FLAGS.length)}
+        {tabLink("abel", "Abel")}
         {tabLink("invites", "Invites", openInvites || undefined)}
         {tabLink("accounts", "Accounts", people.length)}
         {tabLink("groups", "Groups", accounts.length)}
@@ -165,6 +167,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
       {sp.error === "email" && <Callout tone="bad">That email doesn’t look right.</Callout>}
 
       {tab === "tests" && <AdminTests />}
+      {tab === "abel" && <AdminAbel />}
 
       {tab === "applications" && (
         <Card title={`Applications${waiting.length ? ` (${waiting.length} waiting)` : ""}`}>

@@ -5,6 +5,7 @@ import { AREAS, can, describePermissions } from "@/lib/permissions";
 import type { Context } from "../context";
 import { type BaseLlm, Gemini, LlmAgent } from "./adk";
 import { abelProvider, PROVIDERS } from "./config";
+import { abelModels } from "./models";
 import { ChatApiLlm, DEEPSEEK, OPENROUTER } from "./openai-compatible";
 import { FIND_TOOLS } from "./find";
 import { LOOKUP_TOOLS } from "./lookups";
@@ -19,15 +20,11 @@ import { WRITE_TOOLS } from "./write-tools";
 
 export const ABEL_TOOLS: AbelTool[] = [...FIND_TOOLS, ...READ_TOOLS, ...LOOKUP_TOOLS, ...WRITE_TOOLS];
 
-function model(): BaseLlm {
+async function model(): Promise<BaseLlm> {
   const provider = abelProvider();
   if (!provider) throw new Error("Abel has no AI service set up.");
   const key = process.env[PROVIDERS[provider].key]!;
-  const listed = (process.env.ABEL_MODEL ?? "")
-    .split(",")
-    .map((m) => m.trim())
-    .filter(Boolean);
-  const models = listed.length ? listed : [...PROVIDERS[provider].models];
+  const { models } = await abelModels(provider);
   if (provider === "openrouter") return new ChatApiLlm(OPENROUTER, models, key);
   // (DeepSeek and Gemini have no fallbacks: the first model.)
   if (provider === "deepseek") return new ChatApiLlm(DEEPSEEK, models.slice(0, 1), key);
@@ -85,11 +82,11 @@ Being a dog:
 }
 
 /** Abel for this person, with the tools they may use. */
-export async function abelFor(ctx: Context, chatId: number | null, llm: BaseLlm = model()) {
+export async function abelFor(ctx: Context, chatId: number | null, llm?: BaseLlm) {
   return new LlmAgent({
     name: "abel",
     description: "labelmaker's assistant",
-    model: llm,
+    model: llm ?? (await model()),
     instruction: instruction(ctx),
     tools: await toolsFor(ctx, ABEL_TOOLS, chatId),
   });

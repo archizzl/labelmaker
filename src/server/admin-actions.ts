@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { eq, inArray } from "drizzle-orm";
 import { FLAG_AUDIENCES, isFeatureFlag, isFlagAudience } from "@/lib/feature-flags";
+import { abelProvider } from "./abel/config";
+import { abelModels, MAX_MODELS, openRouterModels, saveModels } from "./abel/models";
 import { makeResetLink } from "./auth";
 import { requireSiteAdmin } from "./site-admin";
 import { createInvite, revokeInvite } from "./signup-invites";
@@ -88,6 +90,26 @@ function whoHasIt({ groups, accounts, audiences }: { groups: number; accounts: n
   ].filter((p): p is string => !!p);
   if (!parts.length) return "Not given to anyone.";
   return `Given to ${parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`}.`;
+}
+
+/** The models Abel uses on the service it's running on, in order. None sent: back to ABEL_MODEL or the defaults. */
+export async function saveAbelModels(_: AdminState, fd: FormData): Promise<AdminState> {
+  const session = await requireSiteAdmin();
+  const provider = abelProvider();
+  if (!provider) return { error: "Abel has no AI service set up." };
+  const models = [...new Set(fd.getAll("model").map((m) => String(m).trim()).filter(Boolean))];
+  if (models.length > MAX_MODELS) return { error: `At most ${MAX_MODELS} models.` };
+  const bad = models.find((m) => m.length > 100 || !/^[\w.\-/:]+$/.test(m));
+  if (bad) return { error: `“${bad}” isn’t a model name.` };
+  if (provider === "openrouter" && models.length) {
+    const known = await openRouterModels();
+    const missing = known && models.find((m) => !known.some((k) => k.id === m));
+    if (missing) return { error: `OpenRouter has no model called “${missing}” that can use tools.` };
+  }
+  await saveModels(provider, models, session.user.id);
+  revalidatePath("/admin");
+  const inUse = await abelModels(provider);
+  return { ok: `Saved. Abel uses ${inUse.models.join(", then ")}.` };
 }
 
 /** Run the tests (all, one file's, or one test) from the Tests tab: a local copy only. */

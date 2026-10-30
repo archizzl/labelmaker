@@ -1138,3 +1138,11 @@ export const abelActions = pgTable(
   },
   (t) => [index("abel_actions_org").on(t.orgId, t.createdAt)],
 );
+
+/** Settings for the whole site, changed from the admin dashboard (e.g. "abel_models:openrouter"). */
+export const siteSettings = pgTable("site_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").$type<unknown>().notNull(),
+  updatedBy: text("updated_by").references(() => user.id, { onDelete: "set null" }),
+  updatedAt: text("updated_at").notNull().default(now),
+});
