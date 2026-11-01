@@ -64,7 +64,7 @@ export function SplitRules({
             .map((r) => (
               <li key={r.id} className="rounded-md border border-border p-3">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
-                  {r.id === current?.id ? <Badge tone="good">In effect</Badge> : r.effectiveFrom > new Date().toISOString().slice(0, 10) ? <Badge tone="accent">Scheduled</Badge> : <Badge>Superseded</Badge>}
+                  {r.id === current?.id ? <Badge tone="good">In effect</Badge> : r.effectiveFrom > new Date().toISOString().slice(0, 10) ? <Badge tone="accent">Scheduled</Badge> : <Badge>Replaced</Badge>}
                   <span className="text-xs text-muted">
                     {r.effectiveFrom === "2000-01-01" ? "Always" : `From ${r.effectiveFrom}`}
                     {r.overridesCatalog && " · overrides release/track splits"}

@@ -223,7 +223,6 @@ export default async function DirectoryPage() {
                     </SubmitButton>
                   </form>
                 ))}
-                <p className="text-xs text-muted">“Keep this one” merges the others into it.</p>
               </li>
             ))}
           </ul>
@@ -453,7 +452,7 @@ function PersonRow({
           {!active && <span className="ml-2 text-xs font-normal text-muted">(former member)</span>}
           {p.holdsLabelAccount && (
             <span className="mt-0.5 block">
-              <Badge tone="accent">label account</Badge>
+              <Badge tone="accent">label’s bank account</Badge>
             </span>
           )}
         </span>
@@ -546,7 +545,6 @@ function PersonRow({
         {ctx.isAdmin && ctx.org.kind === "label" && (
           <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4 text-sm">
             <ViewAsButton kind="person" id={p.id} name={p.name} />
-            <span className="text-xs text-muted">See {ctx.org.name} as they would when they sign in. Nothing can be changed while viewing.</span>
           </div>
         )}
         {!limited && (

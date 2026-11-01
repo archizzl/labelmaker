@@ -100,7 +100,7 @@ export default async function Dashboard() {
       href: "/settings",
       hint: "",
     },
-    ...(isBand ? [] : [{ done: bands.length > 0, label: "Add your bands", href: "/directory", hint: "Or let them come in from Bandcamp." }]),
+    ...(isBand ? [] : [{ done: bands.length > 0, label: "Add your bands", href: "/directory", hint: "" }]),
     {
       done: bands.length > 0 && bandsWithoutMembers.length === 0 && unpayable.length === 0,
       label: isBand ? "Add the band’s members, with how to pay them" : "Add members to each band, with how to pay them",

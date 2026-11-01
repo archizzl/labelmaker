@@ -50,16 +50,7 @@ export default async function OrdersPage({ searchParams }: PageProps<"/orders">)
       <>
         <PageHeader title="Orders" />
         {open.status === "no-api" ? (
-          <Callout tone="neutral">
-            Open merch orders come straight from Bandcamp.{" "}
-            {access.admin ? (
-              <>
-                Add your Bandcamp API access under <Link href="/settings">Settings</Link> to see them here.
-              </>
-            ) : (
-              "An admin needs to connect Bandcamp’s API in Settings before they show here."
-            )}
-          </Callout>
+          <Callout tone="neutral">Bandcamp’s API isn’t connected, so orders can’t show here.</Callout>
         ) : (
           <Callout tone="bad">
             Couldn’t get your orders from Bandcamp: {open.message}{" "}

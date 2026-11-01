@@ -139,7 +139,7 @@ export default async function FundsPage({ searchParams }: PageProps<"/funds">) {
       <FundsTabs active="funds" funds rules={can(ctx.access, "rules")} />
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Tile label="Left in the label’s account" cents={v(inc.balance)} currency={cur} emphasis />
+        <Tile label="Left in the label’s bank account" cents={v(inc.balance)} currency={cur} emphasis />
         <Tile label="Came in to the label" cents={v(inc.income)} currency={cur} />
         <Tile label="Sent on to others" cents={-v(inc.sent) || 0} currency={cur} />
         <Tile label="Spent on expenses" cents={-v(inc.spent) || 0} currency={cur} hint={<Link href="/receipts">receipts</Link>} />

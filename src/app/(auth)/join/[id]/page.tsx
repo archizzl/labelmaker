@@ -113,7 +113,7 @@ async function JoinLabelAsBand({ id, label, session }: { id: string; label: { id
     <>
       <h1 className="mb-2 text-xl font-bold">Join {label.name}</h1>
       <p className="mb-5 text-sm text-muted">
-        {!session ? "Sign in to the account that runs your band here. Its" : groups.length > 1 ? "Choose your band. Its" : `${possessive(groups[0]?.name ?? "Your band")}`} sales
+        {!session ? "Sign in with the account you run your band’s group from. Its" : groups.length > 1 ? "Choose your band. Its" : `${possessive(groups[0]?.name ?? "Your band")}`} sales
         from today go into {label.name}’s books, to be split and paid out there.
       </p>
       {session && (

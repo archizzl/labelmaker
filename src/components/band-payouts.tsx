@@ -5,7 +5,7 @@ import { db, schema } from "@/db";
 import { STATUS_LABEL, STATUS_TONE } from "@/lib/status";
 import { nameMaps } from "@/server/data";
 
-const PAYOUT_STATUS = { pending: "to be paid", paid: "paid", kept: "kept by the label account holder" } as const;
+const PAYOUT_STATUS = { pending: "to be paid", paid: "paid", kept: "kept in the label’s bank account" } as const;
 
 /** One band's part of the label's payouts: each payout that paid its members, and what each got. Read-only. */
 export async function BandPayouts({

@@ -163,7 +163,7 @@ export async function LabelFunds({ bandId, showTotals = true }: { bandId?: numbe
             <Stat label={`Kept by the label${currencies.length > 1 ? ` (${cur})` : ""}`} cents={funds.kept.get(cur) ?? 0} currency={cur} />
             <Stat label="Sent on to others" cents={funds.sent.get(cur) ?? 0} currency={cur} />
             <Stat label="Spent on expenses" cents={funds.spent.get(cur) ?? 0} currency={cur} />
-            <Stat label="Left in the label’s account" cents={funds.balance.get(cur) ?? 0} currency={cur} emphasis />
+            <Stat label="Left in the label’s bank account" cents={funds.balance.get(cur) ?? 0} currency={cur} emphasis />
           </div>
         ))}
 

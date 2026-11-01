@@ -402,7 +402,7 @@ export async function PayoutView({
                       <div className="font-medium">{l.name}</div>
                       <div className="text-xs text-muted">
                         {l.holdsLabelAccount && !finalized && l.amountCents > 0 && l.paidByBandId === null
-                          ? "stays in the label’s account"
+                          ? "stays in the label’s bank account"
                           : [l.email, payHandlesSummary(l)].filter(Boolean).join(" · ") || "no payment details"}
                       </div>
                       {l.paidByBandId !== null && <div className="text-xs font-medium">{bandName(l.paidByBandId)} pays this</div>}
@@ -530,7 +530,6 @@ export async function PayoutView({
                 Finalize &amp; get ready to pay
               </SubmitButton>
             </ActionForm>
-            <p className="mt-2 text-xs text-muted">Finalizing saves the payout and locks the amounts, so later changes to splits don’t alter them.</p>
           </div>
         )}
       </Card>

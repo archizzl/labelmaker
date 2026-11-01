@@ -20,7 +20,7 @@ export const metadata = { title: "my earnings" };
 const STATUS = {
   pending: { label: "To be paid", tone: "warn" },
   paid: { label: "Paid", tone: "good" },
-  kept: { label: "Kept in label account", tone: "good" },
+  kept: { label: "Kept in the label’s bank account", tone: "good" },
 } as const;
 
 /**

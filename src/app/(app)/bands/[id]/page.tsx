@@ -13,7 +13,7 @@ import { PhysicalFormatsTable, costsFor } from "@/components/physical-formats";
 import { LabelDefaultSummary, SplitRules, SharesSummary, currentRule } from "@/components/split-rules";
 import { ItemSplits } from "@/components/item-splits";
 import type { PersonOption } from "@/components/split-editor";
-import { Badge, Callout, Card, Disclosure, Empty, Field, LinkButton, Money, MoneyList, PageHeader, RolesList } from "@/components/ui";
+import { Badge, Card, Disclosure, Empty, Field, LinkButton, Money, MoneyList, PageHeader, RolesList } from "@/components/ui";
 import { db, schema } from "@/db";
 import { ITEM_CATEGORIES } from "@/lib/bandcamp-csv";
 import { possessive } from "@/lib/plural";
@@ -300,13 +300,6 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
         </>
       )}
 
-      {band.isLabel && (
-        <Callout tone="neutral">
-          This is the label itself. It holds releases under the label’s own name. Unless you
-          set a split below, the label keeps what these releases earn. On compilations, tracks by your bands go to those bands,
-          and tracks by other artists go to their <Link href="/catalog#outside-artists">contacts</Link>.
-        </Callout>
-      )}
 
       {tab === "overview" && (
         <>
@@ -453,9 +446,6 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
                 </form>
               ) : (
                 <p className="text-sm">{band.paidTo === "band" ? band.name : "The label"}</p>
-              )}
-              {band.paidTo === "band" && (
-                <p className="mt-2 text-sm text-muted">{band.name} pays its members their part of each payout, and sends the label its share.</p>
               )}
             </Card>
           )}

@@ -86,7 +86,7 @@ export function SplitEditor(props: Props) {
       <div className="space-y-1.5">
         {rows.length === 0 &&
           (carveOuts ? (
-            <p className="text-sm text-muted">No carve-outs: each band’s members share everything evenly.</p>
+            <p className="text-sm text-muted">Nobody gets a share off the top: each band’s members share everything evenly.</p>
           ) : (
             <p className="text-sm text-muted">No band members yet.</p>
           ))}
@@ -156,7 +156,7 @@ export function SplitEditor(props: Props) {
         {carveOuts ? (
           <span className={`ml-auto text-sm font-medium tabular-nums ${total <= 10000 ? "text-good" : "text-bad"}`}>
             {total > 10000
-              ? `Carve-outs total ${(total / 100).toFixed(2)}%, more than 100%`
+              ? `Shares off the top total ${(total / 100).toFixed(2)}%, more than 100%`
               : `${((10000 - total) / 100).toFixed(2)}% split evenly between each band’s members`}
           </span>
         ) : (

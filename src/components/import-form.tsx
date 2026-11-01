@@ -131,8 +131,7 @@ export function ImportForm() {
               )}
               {preview.unrouted > 0 && (
                 <p className="mb-4 text-sm text-warn">
-                  {plural(preview.unrouted, "sale")} didn’t match a band. Import anyway: below, you can add their artists as bands or
-                  say which band they’re on, and the app remembers for next time.
+                  {plural(preview.unrouted, "sale")} didn’t match a band.
                 </p>
               )}
               <div className="flex gap-2">

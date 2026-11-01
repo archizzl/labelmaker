@@ -89,7 +89,7 @@ export default async function InvitePage({ params, searchParams }: PageProps<"/i
       ) : normalizeEmail(session.user.email) !== normalizeEmail(invite.email) ? (
         <div className="space-y-3 text-sm">
           <p className="text-bad">
-            You’re signed in as {session.user.email}, but this invite is for {invite.email}. Sign out, then sign in or create a login with
+            You’re signed in as {session.user.email}, but this invite is for {invite.email}. Sign out, then sign in or create an account with
             that email.
           </p>
           <form action={signOut}>

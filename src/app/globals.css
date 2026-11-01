@@ -3,6 +3,8 @@
 /* Bandcamp-flavoured palette: white pages, #333 text, hairline grey rules,
    teal for primary actions and blue for links. */
 :root {
+  /* Native controls (date pickers, menus, scrollbars) follow the light or dark theme. */
+  color-scheme: light dark;
   --bg: #ffffff;
   --surface: #ffffff;
   --surface-2: #f3f3f3;

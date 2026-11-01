@@ -557,7 +557,7 @@ export async function saveSplitRule(_: ActionState, fd: FormData): Promise<Actio
   const total = shares.reduce((a, s) => a + s.bps, 0);
   if (scope === "label_default") {
     // Carve-outs are optional; whatever is left goes evenly to each band's members.
-    if (total > 10000) return { error: `Carve-outs add up to ${(total / 100).toFixed(2)}%, more than 100%` };
+    if (total > 10000) return { error: `Shares off the top add up to ${(total / 100).toFixed(2)}%, more than 100%` };
   } else {
     if (shares.length === 0) return { error: "Give at least one person a share" };
     if (total !== 10000) return { error: `Shares add up to ${(total / 100).toFixed(2)}%, not 100%` };

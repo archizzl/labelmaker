@@ -150,8 +150,7 @@ export default async function ReceiptsPage({ searchParams }: PageProps<"/receipt
       {clearable && clearable.files.length > 0 && (
         <Card title="Clear out settled receipts’ files">
           <p className="mb-3 text-sm text-muted">
-            {clearable.receipts} receipt{clearable.receipts === 1 ? " is" : "s are"} settled: approved, and paid back (or nothing to pay back).
-            Download their files to keep, then remove them from storage. The receipts themselves stay.
+            {clearable.receipts} receipt{clearable.receipts === 1 ? " is" : "s are"} settled. Removing their files keeps the receipts.
           </p>
           {clearable.batches.map((b, i) => (
             <ClearFilesPart

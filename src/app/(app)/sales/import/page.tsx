@@ -1,5 +1,4 @@
 import { asc, desc, eq } from "drizzle-orm";
-import Link from "next/link";
 import { connection } from "next/server";
 import { Fading, SubmitButton } from "@/components/client";
 import { ImportForm } from "@/components/import-form";
@@ -141,7 +140,7 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
   const ctx = await requireAccess("sales", "edit");
   // Importing and matching are label-wide: not for people limited to their own bands.
   if (bandScope(ctx.access, "sales")) redirect("/sales");
-  const { orgId, isAdmin } = ctx;
+  const { orgId } = ctx;
   const canAddBands = can(ctx.access, "roster", "edit");
   const importedId = Number((await searchParams).imported) || null;
   const [allImports, noBand, noRelease, bands, releases, tracks, creds] = await Promise.all([
@@ -160,7 +159,6 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
   // A sync that found nothing new only marks when we last checked; it's not worth a history row.
   // Hand-added sales hang off one import of their own: they're in the sales list, not here.
   const history = allImports.filter((h) => h.filename !== MANUAL_IMPORT && !(h.addedCount === 0 && h.filename.startsWith(API_SYNC_PREFIX)));
-  const bandCount = bands.length;
   const apiReady = !!creds;
 
   return (
@@ -175,22 +173,7 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
           </Callout>
         </Fading>
       )}
-      {bandCount === 0 && <Callout>Tip: add your bands first so sales can be matched automatically. You can still import now and match later.</Callout>}
 
-      {/* (A band account the label made: the label's sync brings in its sales through the label.) */}
-      {!apiReady && !ctx.managedBy && (
-        <Card>
-          <p className="text-sm text-muted">
-            {isAdmin ? (
-              <>
-                To pull sales automatically, add your Bandcamp API access (client ID and secret) under <Link href="/settings">Settings</Link>.
-              </>
-            ) : (
-              "To pull sales automatically, an admin needs to add Bandcamp API access in Settings. Until then, upload the sales report here."
-            )}
-          </p>
-        </Card>
-      )}
 
       <Card title={apiReady ? "Or upload a CSV" : "Upload"}>
         <ImportForm />

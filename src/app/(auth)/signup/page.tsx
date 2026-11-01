@@ -30,19 +30,14 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
           <Link href="/signup">sign up without it</Link>.
         </p>
         <p className="text-sm text-muted">
-          Already have a login? <Link href={signIn}>Sign in</Link>
+          Already have an account? <Link href={signIn}>Sign in</Link>
         </p>
       </>
     );
   }
   return (
     <>
-      <h1 className="mb-1 text-xl font-bold">Create an account</h1>
-      <p className="mb-5 text-sm text-muted">
-        {invite || email || next.startsWith("/join/")
-          ? "For label owners, band members and anyone who gets paid."
-          : "Then set up your label or band."}
-      </p>
+      <h1 className="mb-5 text-xl font-bold">Create an account</h1>
       <SignUpForm
         next={next}
         email={email}

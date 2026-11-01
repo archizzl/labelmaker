@@ -23,7 +23,7 @@ export default async function WelcomePage({ searchParams }: PageProps<"/welcome"
     <div className="wide">
       <h1 className="mb-1 text-xl font-bold">Welcome, {first}</h1>
 
-      <p className="mb-5 text-sm text-muted">Set up your label or band.</p>
+      <p className="mb-5 text-sm text-muted">Set up your group.</p>
       <CreateAccountForm next={safePath(typeof q.next === "string" ? q.next : null, "") || undefined} />
 
       <div className="mt-5 flex flex-wrap items-center gap-4 text-sm text-muted">
