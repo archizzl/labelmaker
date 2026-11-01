@@ -404,6 +404,14 @@ export function ExpenseTable({
                   </SubmitButton>
                 </form>
               )}
+              {mode === "admin" && e.status === "rejected" && (
+                <form action={reviewExpense} className="pt-1">
+                  <input type="hidden" name="id" value={e.id} />
+                  <SubmitButton size="sm" variant="ghost" name="decision" value="reopen">
+                    Undo reject
+                  </SubmitButton>
+                </form>
+              )}
               {mode === "admin" && e.status === "approved" && e.paidBy === "person" && !e.recoup && !e.reimbursedAt && (
                 <form action={setReimbursed} className="flex flex-wrap items-center gap-2 pt-1">
                   <input type="hidden" name="id" value={e.id} />

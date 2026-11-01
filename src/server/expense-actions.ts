@@ -253,6 +253,13 @@ export async function reviewExpense(fd: FormData) {
     .where(and(eq(expenses.orgId, orgId), eq(expenses.id, Number(str(fd, "id")))));
   if (!e) return;
   checkScope(ctx, e.bandId);
+  // Undo a rejection: back to waiting for a decision.
+  if (str(fd, "decision") === "reopen") {
+    if (e.status !== "rejected") return;
+    await db.update(expenses).set({ status: "pending", reviewNote: null, reviewedAt: null }).where(eq(expenses.id, e.id));
+    done();
+    return;
+  }
   const payingBands = approve && recoup ? await recoupBands(orgId, e) : [];
   if (approve && recoup && !payingBands.length) {
     throw new Error("Choose a band, release or project for this expense first (edit it), so its sales can pay it back.");

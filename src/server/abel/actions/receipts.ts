@@ -56,8 +56,9 @@ const saveExpenseTool = actionTool({
 const review = actionTool({
   name: "review_receipt",
   label: "Review a receipt",
-  description: "Approve or reject a receipt someone sent in (receipts lists those waiting: status pending). recoup: when approving, sales pay it back.",
-  params: z.object({ expenseId: id, decision: z.enum(["approve", "reject"]), note: z.string().max(500).optional(), recoup: z.boolean().optional() }),
+  description:
+    "Approve or reject a receipt someone sent in (receipts lists those waiting: status pending), or reopen a rejected one (back to waiting). recoup: when approving, sales pay it back.",
+  params: z.object({ expenseId: id, decision: z.enum(["approve", "reject", "reopen"]), note: z.string().max(500).optional(), recoup: z.boolean().optional() }),
   needs: { area: "receipts", level: "edit" },
   items: { expenseId: "expense" },
   action: (fd) => reviewExpense(fd),
