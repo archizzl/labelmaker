@@ -92,8 +92,8 @@ export async function OutsideArtists() {
                     </span>
                     <form action={clearOutsideArtistContact}>
                       <input type="hidden" name="artistId" value={artist.id} />
-                      <SubmitButton variant="ghost" size="sm">
-                        change
+                      <SubmitButton variant="ghost" size="sm" confirm={`Stop paying ${contact.name} for ${artist.name}? You can then choose someone else.`}>
+                        remove
                       </SubmitButton>
                     </form>
                   </div>
