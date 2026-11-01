@@ -7,13 +7,14 @@ import { Badge, Callout, Card, Empty, MoneyList, PageHeader } from "@/components
 import { db, schema } from "@/db";
 import { addBandFromArtist, assignArtistToBand, assignRouting, createReleaseFromSales, deleteImport } from "@/server/actions";
 import { bandcampSubdomain } from "@/lib/applications";
-import { can } from "@/lib/permissions";
+import { bandScope, can } from "@/lib/permissions";
 import { MANUAL_IMPORT } from "@/lib/manual-sales";
 import { plural } from "@/lib/plural";
 import { API_SYNC_PREFIX, bandcampCredentials } from "@/server/bandcamp-api";
 import { SalesTabs } from "@/components/sales-tabs";
 import { SyncFooter } from "@/components/sync-status";
 import { requireAccess } from "@/server/context";
+import { redirect } from "next/navigation";
 import { unroutedGroups } from "@/server/data";
 
 export const metadata = { title: "import sales" };
@@ -138,6 +139,8 @@ function byArtist(groups: UnmatchedGroup[], labelSubdomain: string | null) {
 export default async function ImportPage({ searchParams }: PageProps<"/sales/import">) {
   await connection();
   const ctx = await requireAccess("sales", "edit");
+  // Importing and matching are label-wide: not for people limited to their own bands.
+  if (bandScope(ctx.access, "sales")) redirect("/sales");
   const { orgId, isAdmin } = ctx;
   const canAddBands = can(ctx.access, "roster", "edit");
   const importedId = Number((await searchParams).imported) || null;

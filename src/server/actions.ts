@@ -111,6 +111,13 @@ export type ActionState = { ok?: string; error?: string } | null;
  * For changes in a section someone may have only for their own bands (a band manager): checks that
  * what they touch belongs to one of those bands. Admins and unlimited types pass every check.
  */
+/** Importing and matching sales: label-wide, so only for people who see every band's sales. */
+async function allSales() {
+  const ctx = await requireAccess("sales", "edit");
+  if (bandScope(ctx.access, "sales")) throw new Error("That’s for people who look after every band.");
+  return ctx;
+}
+
 async function scoped(area: "roster" | "catalog") {
   const ctx = await requireAccess(area, "edit");
   const { orgId } = ctx;
@@ -679,9 +686,9 @@ async function readUpload(fd: FormData) {
 }
 
 export async function previewImport(_: ImportPreview | null, fd: FormData): Promise<ImportPreview> {
-  const { orgId } = await requireAccess("sales", "edit");
   let name = "file";
   try {
+    const { orgId } = await allSales();
     const up = await readUpload(fd);
     name = up.name;
     const { parsed, routed, catalog } = await prepare(orgId, parseBandcampCsv(up.bytes));
@@ -721,6 +728,7 @@ export async function previewImport(_: ImportPreview | null, fd: FormData): Prom
 
 export async function commitImport(fd: FormData): Promise<{ importId?: number; error?: string }> {
   const ctx = await requireAccess("sales", "edit");
+  if (bandScope(ctx.access, "sales")) return { error: "That’s for people who look after every band." };
   const { orgId } = ctx;
   const up = await readUpload(fd);
   const parsed = parseBandcampCsv(up.bytes);
@@ -808,7 +816,7 @@ export async function syncWithBandcamp(_?: ActionState, fd?: FormData): Promise<
 }
 
 export async function deleteImport(fd: FormData) {
-  const { orgId, user } = await requireAccess("sales", "edit");
+  const { orgId, user } = await allSales();
   const id = int(fd, "id");
   await db.transaction(async (tx) => {
     // What its sales took off stock goes back.
@@ -821,7 +829,7 @@ export async function deleteImport(fd: FormData) {
 
 /** Route every sale with this key to a band / release / track, and remember the choice. */
 export async function assignRouting(fd: FormData) {
-  const { orgId } = await requireAccess("sales", "edit");
+  const { orgId } = await allSales();
   const key = str(fd, "key");
   const [kind, idStr] = str(fd, "target").split(":");
   const id = Number(idStr);
@@ -878,7 +886,7 @@ export async function addBandFromArtist(fd: FormData) {
  * artist's name is added to the band's other spellings so new items match too.
  */
 export async function assignArtistToBand(fd: FormData) {
-  const { orgId } = await requireAccess("sales", "edit");
+  const { orgId } = await allSales();
   const bandId = int(fd, "bandId");
   const [band] = await db
     .select()
@@ -903,7 +911,7 @@ export async function assignArtistToBand(fd: FormData) {
 }
 
 export async function deleteRoutingOverride(fd: FormData) {
-  const { orgId } = await requireAccess("sales", "edit");
+  const { orgId } = await allSales();
   await db.delete(routingOverrides).where(and(eq(routingOverrides.orgId, orgId), eq(routingOverrides.id, int(fd, "id"))));
   await reRouteAll(orgId);
   done();
@@ -945,7 +953,7 @@ export async function createReleaseFromSales(fd: FormData) {
 }
 
 export async function rerouteAction() {
-  const { orgId } = await requireAccess("sales", "edit");
+  const { orgId } = await allSales();
   await reRouteAll(orgId);
   done();
 }

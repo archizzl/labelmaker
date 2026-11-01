@@ -62,6 +62,8 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
   // A member type can limit this to their own bands' sales.
   const scope = labels.length ? null : bandScope(access, "sales");
   const canEdit = can(own.access, "sales", "edit");
+  // Importing and matching are label-wide.
+  const canImport = canEdit && !bandScope(own.access, "sales");
   const [since, adder, joinedTo] = await Promise.all([
     m ? onLabelSince(m.labelOrgId, m.bandId) : null,
     saleAdder(),
@@ -228,7 +230,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
           )
         }
       />
-      <SalesTabs active="browse" unrouted={unrouted} canImport={canEdit} canAdd={!!adder} />
+      <SalesTabs active="browse" unrouted={unrouted} canImport={canImport} canAdd={!!adder} />
 
       <Card title={main ? `${page.count.toLocaleString("en-US")} sale${page.count === 1 ? "" : "s"}` : "Sales"}>
         <Filters f={f} options={options} filtered={filtered} oneBand={labels.length > 0} columns={<ColumnsMenu list="sales" hidden={hiddenColumns} without={showPaidTo ? [] : ["paidTo"]} />} />

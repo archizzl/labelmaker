@@ -5,7 +5,7 @@ import { ManualSaleForm } from "@/components/manual-sale";
 import { SalesTabs } from "@/components/sales-tabs";
 import { Card, PageHeader } from "@/components/ui";
 import { db, schema } from "@/db";
-import { can } from "@/lib/permissions";
+import { bandScope, can } from "@/lib/permissions";
 import { merchChoices, merchSources, saleAdder } from "@/server/manual-sales";
 
 export const metadata = { title: "add a sale" };
@@ -33,7 +33,7 @@ export default async function AddSalePage() {
       {can(ctx.access, "sales") ? (
         <>
           <PageHeader title="Sales" />
-          <SalesTabs active="add" canImport={can(ctx.access, "sales", "edit")} />
+          <SalesTabs active="add" canImport={can(ctx.access, "sales", "edit") && !bandScope(ctx.access, "sales")} />
         </>
       ) : (
         <PageHeader title="Add a sale" />
