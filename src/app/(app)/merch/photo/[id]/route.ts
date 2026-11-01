@@ -6,7 +6,7 @@ import { readStoredFile } from "@/server/receipt-store";
 
 /**
  * A merch photo uploaded here (src/server/merch-photos.ts). For anyone signed in to its group, or to
- * a band group the label made (which shows the label's merch for its band).
+ * a band group the label made (which shows the label's merch for its band, and keeps its own books).
  */
 export async function GET(_req: NextRequest, ctx: RouteContext<"/merch/photo/[id]">) {
   const me = await getContext();
@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/merch/photo/[id
     .from(schema.merchPhotos)
     .where(eq(schema.merchPhotos.id, Number((await ctx.params).id)));
   const notFound = new Response("Not found", { status: 404 });
-  if (!photo || (photo.orgId !== me.orgId && photo.orgId !== me.managedBy?.labelOrgId)) return notFound;
+  if (!photo || ![me.orgId, me.org.id, me.managedBy?.labelOrgId].includes(photo.orgId)) return notFound;
   const body = await readStoredFile(photo);
   if (!body) return notFound;
   return new Response(body, {

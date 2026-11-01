@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db, schema } from "@/db";
-import { getContext } from "@/server/context";
+import { getContext, ownBooksOf } from "@/server/context";
 import { bandScope, can, inBandScope } from "@/lib/permissions";
 import { canViewReceipt } from "@/server/expenses";
 import { readStoredFile } from "@/server/receipt-store";
@@ -12,7 +12,7 @@ import { readStoredFile } from "@/server/receipt-store";
  * or paid it, and admins of a band account linked to that expense's band.
  */
 export async function GET(_req: NextRequest, ctx: RouteContext<"/receipts/file/[id]">) {
-  const me = await getContext();
+  const lens = await getContext();
   const [row] = await db
     .select({ file: schema.expenseFiles, expense: schema.expenses })
     .from(schema.expenseFiles)
@@ -21,6 +21,8 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/receipts/file/[
   const notFound = new Response("Not found", { status: 404 });
   if (!row) return notFound;
   const { file, expense } = row;
+  // A band account the label made: a receipt in its own books is checked as them.
+  const me = lens.lens && expense.orgId !== lens.orgId ? await ownBooksOf(lens) : lens;
 
   const allowed = await canViewReceipt(
     { orgId: me.orgId, isAdmin: me.isAdmin, userId: me.user.id, personId: me.person?.id ?? null, seesReceipts: can(me.access, "receipts") && inBandScope(bandScope(me.access, "receipts"), [expense.bandId]) },
