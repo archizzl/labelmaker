@@ -10,6 +10,7 @@ import { parseReleasePage } from "@/lib/bandcamp-release";
 import { parseCents } from "@/lib/money";
 import { isSalePart, salePartLabel } from "@/lib/sale-parts";
 import { cleanCashtag, cleanVenmoHandle } from "@/lib/paypal-export";
+import { asFormResult } from "./form-result";
 import { bandScope, can } from "@/lib/permissions";
 import { plural, possessive } from "@/lib/plural";
 import { summarize } from "@/lib/splits";
@@ -224,6 +225,17 @@ export async function deleteBand(fd: FormData) {
 }
 
 // ---------- people & memberships ----------
+
+/** saveBand, deleteBand and savePerson for their forms: errors shown beside them. */
+export async function saveBandForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => saveBand(fd), "Saved.");
+}
+export async function deleteBandForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => deleteBand(fd));
+}
+export async function savePersonForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => savePerson(fd), "Saved.");
+}
 
 export async function savePerson(fd: FormData) {
   const access = await scoped("roster");

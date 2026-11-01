@@ -4,7 +4,7 @@ import { DisclosureRow } from "@/components/disclosure-row";
 import { Badge, Empty, Field, Money } from "@/components/ui";
 import type { schema } from "@/db";
 import { centsToDecimal } from "@/lib/money";
-import { deleteExpense, deleteExpenseFile, reviewExpense, saveExpense, setReimbursed, submitReceipt } from "@/server/expense-actions";
+import { deleteExpense, deleteExpenseFile, reviewExpenseForm, saveExpense, setReimbursed, submitReceipt } from "@/server/expense-actions";
 import { coverageLines, type Expense, owedReimbursement } from "@/server/expenses";
 import type { Payee } from "./pay-person";
 import { ReimburseButtons } from "./reimburse-buttons";
@@ -389,7 +389,7 @@ export function ExpenseTable({
               <Files files={files.get(e.id) ?? []} admin={mode === "admin"} removedAt={e.filesRemovedAt} />
 
               {mode === "admin" && e.status === "pending" && (
-                <form action={reviewExpense} className="flex flex-wrap items-center gap-2 pt-1">
+                <ActionForm action={reviewExpenseForm} className="flex flex-wrap items-center gap-2 pt-1">
                   <input type="hidden" name="id" value={e.id} />
                   <label className="flex items-center gap-1.5 text-sm">
                     <input type="checkbox" name="recoup" disabled={!e.bandId} />{" "}
@@ -402,15 +402,15 @@ export function ExpenseTable({
                   <SubmitButton size="sm" variant="ghost" name="decision" value="reject" confirm={`Reject “${e.description}”? Add a note first if you want to say why.`}>
                     Reject
                   </SubmitButton>
-                </form>
+                </ActionForm>
               )}
               {mode === "admin" && e.status === "rejected" && (
-                <form action={reviewExpense} className="pt-1">
+                <ActionForm action={reviewExpenseForm} className="pt-1">
                   <input type="hidden" name="id" value={e.id} />
                   <SubmitButton size="sm" variant="ghost" name="decision" value="reopen">
                     Undo reject
                   </SubmitButton>
-                </form>
+                </ActionForm>
               )}
               {mode === "admin" && e.status === "approved" && e.paidBy === "person" && !e.recoup && !e.reimbursedAt && (
                 <form action={setReimbursed} className="flex flex-wrap items-center gap-2 pt-1">

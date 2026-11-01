@@ -14,7 +14,7 @@ import { db, schema } from "@/db";
 import { payHandlesSummary } from "@/lib/paypal-export";
 import { bandScope, can } from "@/lib/permissions";
 import { someNames } from "@/lib/plural";
-import { addMember, deletePerson, mergePeopleAction, removeMember, savePerson, updateMembership } from "@/server/actions";
+import { addMember, deletePerson, mergePeopleAction, removeMember, savePersonForm, updateMembership } from "@/server/actions";
 import { type Context, requireAccess } from "@/server/context";
 import { labelHost } from "@/server/data";
 import { type BandAccountSummary, bandAccountSummaries, ensureBandAccounts } from "@/server/band-accounts";
@@ -657,7 +657,7 @@ function BandRoles({ person: p, membership: m, canRemove }: { person: Person; me
 
 function PersonFields({ person, labelNotes = true }: { person?: Person; labelNotes?: boolean }) {
   return (
-    <form action={savePerson} className="grid gap-4 sm:grid-cols-2">
+    <ActionForm action={savePersonForm} className="grid gap-4 sm:grid-cols-2">
       {person && <input type="hidden" name="id" value={person.id} />}
       <Field label="Name">
         <input name="name" required defaultValue={person?.name} />
@@ -689,6 +689,6 @@ function PersonFields({ person, labelNotes = true }: { person?: Person; labelNot
           <SubmitButton>Add person</SubmitButton>
         )}
       </div>
-    </form>
+    </ActionForm>
   );
 }

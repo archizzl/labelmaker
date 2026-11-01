@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db, schema } from "@/db";
 import { parseCents } from "@/lib/money";
 import { getContext, ownBooksOf, requireAccess } from "./context";
+import { asFormResult } from "./form-result";
 import { bandScope, can, inBandScope } from "@/lib/permissions";
 import type { Context } from "./context";
 import { readReceiptFiles as readFiles, recoupBands, recoupStartFor } from "./expenses";
@@ -275,6 +276,11 @@ export async function reviewExpense(fd: FormData) {
     })
     .where(eq(expenses.id, e.id));
   done();
+}
+
+/** reviewExpense for its form: errors (no band to pay it back) shown beside it. */
+export async function reviewExpenseForm(_: ExpenseState, fd: FormData): Promise<ExpenseState> {
+  return asFormResult(() => reviewExpense(fd));
 }
 
 /** Admin: the label has paid back someone who fronted an expense (or undo that). */

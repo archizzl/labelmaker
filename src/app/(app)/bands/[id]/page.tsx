@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { BandFields } from "@/components/band-fields";
-import { ReadOnly, SaveWhenChanged, SubmitButton } from "@/components/client";
+import { ActionForm, ReadOnly, SaveWhenChanged, SubmitButton } from "@/components/client";
 import { SalesSection } from "@/components/sales-section";
 import { DeductionForm, DeductionList } from "@/components/deductions";
 import { BandTabs } from "@/components/band-tabs";
@@ -24,7 +24,7 @@ import { ensureBandAccounts } from "@/server/band-accounts";
 import { linkForLabelBand } from "@/server/links";
 import { LabelFunds } from "@/components/label-funds";
 import { ExpenseForm, ExpenseTable } from "@/components/receipts";
-import { deleteBand, removeMember, saveRelease, setBandPaidTo, updateMembership } from "@/server/actions";
+import { deleteBandForm, removeMember, saveRelease, setBandPaidTo, updateMembership } from "@/server/actions";
 import { bandScope, can } from "@/lib/permissions";
 import { getContext, ownBooksOf, requireAccess } from "@/server/context";
 import { projectsEnabled } from "@/server/features";
@@ -701,13 +701,12 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
           <Card title="Band settings">
             <BandFields band={band} />
             {ctx.org.kind === "label" && (
-              <form action={deleteBand} className="mt-8 border-t border-border pt-4">
+              <ActionForm action={deleteBandForm} className="mt-8 border-t border-border pt-4">
                 <input type="hidden" name="id" value={id} />
-                <p className="mb-2 text-sm text-muted">Deleting the band also deletes its releases, splits and deductions. Its sales become unmatched.</p>
-                <SubmitButton variant="danger" size="sm" confirm={`Delete ${band.name}? Its releases, splits and deductions are deleted too, and its sales become unrouted.`}>
+                <SubmitButton variant="danger" size="sm" confirm={`Delete ${band.name}? Its releases, splits and deductions are deleted too, and its sales become unmatched.`}>
                   Delete band
                 </SubmitButton>
-              </form>
+              </ActionForm>
             )}
           </Card>
         </ReadOnly>

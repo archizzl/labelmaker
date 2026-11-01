@@ -1,6 +1,6 @@
 import type { schema } from "@/db";
-import { saveBand } from "@/server/actions";
-import { SubmitButton } from "./client";
+import { saveBandForm } from "@/server/actions";
+import { ActionForm, SubmitButton } from "./client";
 import { Field } from "./ui";
 
 /**
@@ -9,7 +9,7 @@ import { Field } from "./ui";
  */
 export function BandFields({ band, labelNotes = true }: { band?: typeof schema.bands.$inferSelect; labelNotes?: boolean }) {
   return (
-    <form action={saveBand} className="grid gap-4 sm:grid-cols-2">
+    <ActionForm action={saveBandForm} className="grid gap-4 sm:grid-cols-2">
       {band && <input type="hidden" name="id" value={band.id} />}
       <Field label="Band name" hint="Exactly as it appears in Bandcamp's “artist” column.">
         <input name="name" required defaultValue={band?.name} />
@@ -32,6 +32,6 @@ export function BandFields({ band, labelNotes = true }: { band?: typeof schema.b
       <div className="sm:col-span-2">
         <SubmitButton>{band ? "Save band" : "Add band"}</SubmitButton>
       </div>
-    </form>
+    </ActionForm>
   );
 }
