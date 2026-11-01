@@ -44,19 +44,25 @@ async function who(): Promise<Context | Response> {
   return ctx;
 }
 
+/**
+ * Whose chats these are: the person signed in. While a label admin is viewing as someone, the
+ * admin's own (the person's chats stay theirs), though Abel answers as that person would see things.
+ */
+const chatOwner = (ctx: Context) => ctx.viewingAs?.realUser.id ?? ctx.user.id;
+
 export async function GET(request: Request) {
   const ctx = await who();
   if (ctx instanceof Response) return ctx;
   const chatId = Number(new URL(request.url).searchParams.get("chat"));
   if (chatId) {
-    const chat = await chatEvents(ctx.orgId, ctx.user.id, chatId);
+    const chat = await chatEvents(ctx.orgId, chatOwner(ctx), chatId);
     if (!chat) return Response.json({ error: "No such chat." }, { status: 404, headers: NO_STORE });
     return Response.json({ id: chat.chat.id, title: chat.chat.title, messages: await toMessages(ctx, chat.events) }, { headers: NO_STORE });
   }
   const chats: AbelChatListItem[] = await db
     .select({ id: schema.abelChats.id, title: schema.abelChats.title, updatedAt: schema.abelChats.updatedAt })
     .from(schema.abelChats)
-    .where(and(eq(schema.abelChats.orgId, ctx.orgId), eq(schema.abelChats.userId, ctx.user.id)))
+    .where(and(eq(schema.abelChats.orgId, ctx.orgId), eq(schema.abelChats.userId, chatOwner(ctx))))
     .orderBy(desc(schema.abelChats.updatedAt))
     .limit(30);
   return Response.json({ chats }, { headers: NO_STORE });
@@ -73,22 +79,22 @@ export async function POST(request: Request) {
   const confirmation =
     body.confirmation && typeof body.confirmation.id === "string" ? { id: body.confirmation.id, confirmed: body.confirmation.confirmed === true } : null;
   if (!message && !confirmation) return Response.json({ error: "Say something first." }, { status: 400, headers: NO_STORE });
-  if (await overDailyLimit(ctx.user.id)) return Response.json({ error: "Abel’s daily limit is reached. Try again tomorrow." }, { status: 429, headers: NO_STORE });
+  if (await overDailyLimit(chatOwner(ctx))) return Response.json({ error: "Abel’s daily limit is reached. Try again tomorrow." }, { status: 429, headers: NO_STORE });
 
   const sessions = new DrizzleSessionService(ctx.orgId);
   let chatId = Number(body.chatId) || null;
-  if (chatId && !(await sessions.getSession({ appName: APP_NAME, userId: ctx.user.id, sessionId: String(chatId), config: { numRecentEvents: 1 } }))) {
+  if (chatId && !(await sessions.getSession({ appName: APP_NAME, userId: chatOwner(ctx), sessionId: String(chatId), config: { numRecentEvents: 1 } }))) {
     return Response.json({ error: "No such chat." }, { status: 404, headers: NO_STORE });
   }
   if (confirmation) {
-    const chat = chatId ? await chatEvents(ctx.orgId, ctx.user.id, chatId) : null;
+    const chat = chatId ? await chatEvents(ctx.orgId, chatOwner(ctx), chatId) : null;
     if (!chat || !awaitingAnswer(chat.events, confirmation.id)) {
       return Response.json({ error: "That change isn’t waiting for an answer any more." }, { status: 409, headers: NO_STORE });
     }
   }
   if (!chatId) {
     if (!message) return Response.json({ error: "No such chat." }, { status: 404, headers: NO_STORE });
-    chatId = Number((await sessions.createSession({ appName: APP_NAME, userId: ctx.user.id })).id);
+    chatId = Number((await sessions.createSession({ appName: APP_NAME, userId: chatOwner(ctx) })).id);
     await db.update(schema.abelChats).set({ title: message.replace(/\s+/g, " ").slice(0, 80) }).where(eq(schema.abelChats.id, chatId));
   }
   const newMessage: Content = confirmation
@@ -111,7 +117,7 @@ export async function POST(request: Request) {
       request.signal.addEventListener("abort", () => stop.abort("left"));
       try {
         for await (const event of runner.runAsync({
-          userId: ctx.user.id,
+          userId: chatOwner(ctx),
           sessionId: String(chatId),
           newMessage,
           runConfig: createRunConfig({ streamingMode: StreamingMode.SSE, maxLlmCalls: MAX_LLM_CALLS }),
