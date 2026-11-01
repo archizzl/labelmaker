@@ -805,7 +805,7 @@ export async function syncWithBandcamp(_?: ActionState, fd?: FormData): Promise<
   // its releases read from the label's Bandcamp, not the whole label. (From its Settings: its own books.)
   if (viewed.lens && !own) {
     // (The band's own login, not a member's.)
-    if (viewed.org.role === "member") return { error: "Only the band’s own login can sync." };
+    if (viewed.org.role === "member") return { error: "Only the band’s own account can sync." };
     const m = viewed.managedBy!;
     // On the live site the Mac reads the pages; here, the app does.
     const local = onCloudflare ? null : await syncCatalog(m.labelOrgId, { onlyBands: [m.bandId] });

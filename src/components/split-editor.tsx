@@ -86,7 +86,7 @@ export function SplitEditor(props: Props) {
       <div className="space-y-1.5">
         {rows.length === 0 &&
           (carveOuts ? (
-            <p className="text-sm text-muted">Nobody gets a share off the top: each band’s members share everything evenly.</p>
+            <p className="text-sm text-muted">No shares off the top.</p>
           ) : (
             <p className="text-sm text-muted">No band members yet.</p>
           ))}
