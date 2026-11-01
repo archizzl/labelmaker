@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 import { BandFilter } from "@/components/band-filter";
 import { connection } from "next/server";
 import { ActionForm, SaveWhenChanged, SubmitButton } from "@/components/client";
@@ -10,7 +10,7 @@ import { InventoryCounter } from "@/components/inventory-counter";
 import { formatCents } from "@/lib/money";
 import { bandScope, can } from "@/lib/permissions";
 import { requireAccess } from "@/server/context";
-import { addFromCatalog, archiveInventoryItem, saveInventoryItem } from "@/server/inventory-actions";
+import { addFromCatalog, archiveInventoryItem, restoreInventoryItem, saveInventoryItem } from "@/server/inventory-actions";
 import { merchPhotoUrl, ownPhotoId } from "@/server/merch-photos";
 import { InventoryPhoto } from "@/components/inventory-photo";
 
@@ -34,11 +34,11 @@ export default async function InventoryPage({ searchParams }: PageProps<"/invent
   const canCount = canEdit || lens;
   const band = Number((await searchParams).band) || null;
 
-  const [allItems, bandRows, releaseRows] = await Promise.all([
+  const [itemRows, bandRows, releaseRows] = await Promise.all([
     db
       .select()
       .from(schema.inventoryItems)
-      .where(and(eq(schema.inventoryItems.orgId, orgId), eq(schema.inventoryItems.archived, false)))
+      .where(eq(schema.inventoryItems.orgId, orgId))
       .orderBy(asc(schema.inventoryItems.name), asc(schema.inventoryItems.option)),
     db.select({ id: schema.bands.id, name: schema.bands.name }).from(schema.bands).where(eq(schema.bands.orgId, orgId)).orderBy(asc(schema.bands.name)),
     db
@@ -48,7 +48,10 @@ export default async function InventoryPage({ searchParams }: PageProps<"/invent
       .orderBy(asc(schema.releases.title)),
   ]);
   const inScope = (bandId: number | null) => !scope || (bandId !== null && scope.includes(bandId));
+  const allItems = itemRows.filter((i) => !i.archived);
   const items = allItems.filter((i) => inScope(i.bandId) && (!band || i.bandId === band));
+  // Taken off the list (their history is kept), to put back.
+  const removed = itemRows.filter((i) => i.archived && inScope(i.bandId) && (!band || i.bandId === band));
   const bands = bandRows.filter((b) => inScope(b.id));
   const bandName = new Map(bandRows.map((b) => [b.id, b.name]));
   const moves = items.length
@@ -137,6 +140,27 @@ export default async function InventoryPage({ searchParams }: PageProps<"/invent
           <ItemTable items={supplies} bandName={bandName} movesOf={movesOf} canEdit={canEdit} canCount={canCount} bands={bands} catalog={catalog} ownBandsOnly={!!scope} />
         )}
       </Card>
+
+      {canEdit && removed.length > 0 && (
+        <Disclosure summary={`Removed (${removed.length})`}>
+          <ul className="divide-y divide-border text-sm">
+            {removed.map((i) => (
+              <li key={i.id} className="flex items-center justify-between gap-3 py-2">
+                <span>
+                  {itemLabel(i)}
+                  {i.bandId && <span className="text-muted"> · {bandName.get(i.bandId)}</span>}
+                </span>
+                <form action={restoreInventoryItem}>
+                  <input type="hidden" name="id" value={i.id} />
+                  <SubmitButton variant="ghost" size="sm">
+                    Put back
+                  </SubmitButton>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </Disclosure>
+      )}
     </>
   );
 }

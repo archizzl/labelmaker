@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { schema } from "@/db";
-import { addFromCatalog, archiveInventoryItem, saveInventoryItem } from "../../inventory-actions";
+import { addFromCatalog, archiveInventoryItem, restoreInventoryItem, saveInventoryItem } from "../../inventory-actions";
 import { markHandedOff, markOrderPickup, savePickupNote } from "../../order-actions";
 import { actionTool } from "../tool";
 import { amount, current, currency, id, or, toAmount } from "./shared";
@@ -103,6 +103,16 @@ const archiveItem = actionTool({
   fields: (_ctx, a) => ({ id: a.itemId }),
 });
 
+const restoreItem = actionTool({
+  name: "restore_inventory_item",
+  label: "Put an item back on the inventory list",
+  description: "Put an item that was taken off the inventory list back on it, with its count and history.",
+  params: z.object({ itemId: id }),
+  needs: { area: "inventory", level: "edit" },
+  action: (fd) => restoreInventoryItem(fd),
+  fields: (_ctx, a) => ({ id: a.itemId }),
+});
+
 const fromCatalog = actionTool({
   name: "add_inventory_from_catalog",
   label: "Add the catalog's merch to inventory",
@@ -112,4 +122,4 @@ const fromCatalog = actionTool({
   action: (fd) => addFromCatalog(null, fd),
 });
 
-export const STOCK_TOOLS = [pickup, handedOff, pickupNote, saveItem, archiveItem, fromCatalog];
+export const STOCK_TOOLS = [pickup, handedOff, pickupNote, saveItem, archiveItem, restoreItem, fromCatalog];

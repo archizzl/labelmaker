@@ -257,6 +257,14 @@ export async function archiveInventoryItem(fd: FormData) {
   done();
 }
 
+/** Put a removed item back on the list. */
+export async function restoreInventoryItem(fd: FormData) {
+  const ctx = await requireAccess("inventory", "edit");
+  const item = await ownItem(ctx, optInt(fd, "id") ?? -1);
+  await db.update(inventoryItems).set({ archived: false }).where(eq(inventoryItems.id, item.id));
+  done();
+}
+
 /** Add every format and merch item from the catalog that isn't tracked yet (counts start at 0). */
 export async function addFromCatalog(_: InventoryState, fd: FormData): Promise<InventoryState> {
   const ctx = await requireAccess("inventory", "edit");
