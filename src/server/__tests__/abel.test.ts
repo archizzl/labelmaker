@@ -114,7 +114,7 @@ describe("Abel's tools", () => {
     as(orgId, userId, ADMIN);
     // Not: their own earnings (no payee record), projects (a feature this group doesn't have), a band group's settings and what a
     // band sends its label (it's a label).
-    const not = ["my_earnings", "list_projects", "save_project", "delete_project", "save_band_settings", "mark_band_payout", "record_payment_to_label"];
+    const not = ["my_earnings", "list_projects", "save_project", "delete_project", "save_band_settings", "mark_band_payout", "record_payment_to_label", "delete_payment_to_label"];
     expect(await names()).toEqual(agent.ABEL_TOOLS.filter((t) => !not.includes(t.name)).map((t) => t.name).sort());
   });
 
