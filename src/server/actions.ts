@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, gt, inArray } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -1154,7 +1154,9 @@ export async function markAllPaid(fd: FormData) {
   await db
     .update(payouts)
     .set({ status: "paid", paidAt: new Date().toISOString(), reference: optStr(fd, "reference") })
-    .where(and(eq(payouts.orgId, orgId), eq(payouts.periodId, periodId), eq(payouts.status, "pending")));
+    // What the label sends: not lines of nothing or owed back, nor what bands pay their own members
+    // (the same lines the button counts).
+    .where(and(eq(payouts.orgId, orgId), eq(payouts.periodId, periodId), eq(payouts.status, "pending"), gt(payouts.amountCents, 0), isNull(payouts.paidByBandId)));
   await syncPeriodStatus(orgId, periodId);
   done();
 }

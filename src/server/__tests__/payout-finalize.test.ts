@@ -119,3 +119,20 @@ describe("finalizing a payout", () => {
     expect(await data.strandedSales(orgId, period)).toEqual([]);
   });
 });
+
+describe("mark all as paid", () => {
+  it("marks what the label sends, not lines of nothing, owed back, or paid by a band", async () => {
+    orgId = await newAccount();
+    const { bands, people, periods, payouts } = schema;
+    const [band] = await db.insert(bands).values({ orgId, name: "Pays its own" }).returning();
+    const [p] = await db.insert(people).values({ orgId, name: "Someone" }).returning();
+    const [period] = await db.insert(periods).values({ orgId, name: "Jan", startDate: "2026-01-01", endDate: "2026-01-31" }).returning();
+    const line = (amountCents: number, paidByBandId: number | null = null) => ({ orgId, periodId: period.id, personId: p.id, currency: "USD", amountCents, byBand: {}, paidByBandId });
+    const rows = await db.insert(payouts).values([line(500), line(0), line(-200), line(700, band.id)]).returning();
+    const fd = new FormData();
+    fd.set("periodId", String(period.id));
+    await actions.markAllPaid(fd);
+    const after = await db.select().from(payouts).where(eq(payouts.periodId, period.id));
+    expect(rows.map((r) => after.find((a) => a.id === r.id)!.status)).toEqual(["paid", "pending", "pending", "pending"]);
+  });
+});

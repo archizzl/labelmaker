@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { PayoutView } from "@/components/payout-view";
+import { can } from "@/lib/permissions";
 import { requireAccess } from "@/server/context";
 import { periodView } from "@/server/period-view";
 
@@ -12,5 +13,5 @@ export default async function PeriodPage({ params }: PageProps<"/periods/[id]">)
   const ctx = await requireAccess("payouts");
   const view = await periodView(ctx.orgId, Number((await params).id));
   if (!view) notFound();
-  return <PayoutView view={view} name={view.period.name} />;
+  return <PayoutView view={view} name={view.period.name} canEdit={can(ctx.access, "payouts", "edit")} />;
 }

@@ -38,10 +38,13 @@ export async function PayoutView({
   view,
   name,
   sync,
+  canEdit = true,
 }: {
   view: View;
   name: string;
   sync?: { synced: number | null; error: string | null };
+  /** False for someone who can only look at payouts: no buttons that change them. */
+  canEdit?: boolean;
 }) {
   const { period, scope, live, lines, bands, names, problems, drift, finalized } = view;
   const stranded = "stranded" in view ? view.stranded : 0;
@@ -121,16 +124,18 @@ export async function PayoutView({
               <LinkButton href={`/periods/${id}/statement`} size="sm">
                 Printable statements
               </LinkButton>
-              <form action={undoFinalize}>
-                <input type="hidden" name="id" value={id} />
-                <SubmitButton
-                  variant="ghost"
-                  size="sm"
-                  confirm="Undo finalizing? This payout's records, including who's been marked paid, are removed, and it goes back to being a preview."
-                >
-                  Undo finalize
-                </SubmitButton>
-              </form>
+              {canEdit && (
+                <form action={undoFinalize}>
+                  <input type="hidden" name="id" value={id} />
+                  <SubmitButton
+                    variant="ghost"
+                    size="sm"
+                    confirm="Undo finalizing? This payout's records, including who's been marked paid, are removed, and it goes back to being a preview."
+                  >
+                    Undo finalize
+                  </SubmitButton>
+                </form>
+              )}
             </>
           ) : (
             <>
@@ -203,12 +208,14 @@ export async function PayoutView({
             This payout took in {plural(stranded, "sale")} that nobody was paid for, so they aren’t owed to anyone
             now. Let go of them and they’re owed again: the next payout pays them once they have a band and a split.
           </p>
-          <form action={releaseUnpaidSales} className="mt-2">
-            <input type="hidden" name="id" value={id!} />
-            <SubmitButton variant="secondary" size="sm" confirm="Let go of the sales nobody was paid for? They'll be owed again, for a later payout.">
-              Leave them for a later payout
-            </SubmitButton>
-          </form>
+          {canEdit && (
+            <form action={releaseUnpaidSales} className="mt-2">
+              <input type="hidden" name="id" value={id!} />
+              <SubmitButton variant="secondary" size="sm" confirm="Let go of the sales nobody was paid for? They'll be owed again, for a later payout.">
+                Leave them for a later payout
+              </SubmitButton>
+            </form>
+          )}
         </Callout>
       )}
       {!finalized && problems.unrouted > 0 && (
@@ -429,7 +436,18 @@ export async function PayoutView({
                         )}
                       </td>
                     )}
-                    {finalized && (
+                    {finalized && !canEdit && (
+                      <td>
+                        {l.status === "paid" ? (
+                          <Badge tone="good">Paid {l.paidAt?.slice(0, 10)}</Badge>
+                        ) : l.status === "kept" ? (
+                          <Badge tone="good">Kept in the label’s bank account</Badge>
+                        ) : (
+                          <span className="text-xs text-muted">Not paid yet</span>
+                        )}
+                      </td>
+                    )}
+                    {finalized && canEdit && (
                       <td>
                         <form action={setPayoutStatus} className="flex flex-wrap items-center gap-2">
                           <input type="hidden" name="id" value={l.payoutId!} />
@@ -444,7 +462,7 @@ export async function PayoutView({
                             </>
                           ) : l.status === "kept" ? (
                             <>
-                              <Badge tone="good">Kept in label account</Badge>
+                              <Badge tone="good">Kept in the label’s bank account</Badge>
                               <input type="hidden" name="status" value="pending" />
                               <SubmitButton variant="ghost" size="sm">
                                 Pay out instead
@@ -453,7 +471,7 @@ export async function PayoutView({
                           ) : (
                             <>
                               <input type="hidden" name="status" value="paid" />
-                              <input name="reference" placeholder="PayPal txn ID (optional)" className="!w-44 !py-1 !text-xs" />
+                              <input name="reference" placeholder="PayPal transaction ID (optional)" className="!w-44 !py-1 !text-xs" />
                               <SubmitButton variant="secondary" size="sm">
                                 Mark paid
                               </SubmitButton>
@@ -479,7 +497,7 @@ export async function PayoutView({
           </p>
         )}
 
-        {id !== null && labelSends.length > 0 && (
+        {canEdit && id !== null && labelSends.length > 0 && (
           <div className="mt-4 space-y-3 border-t border-border pt-4 text-sm">
             <p className="text-muted">
               <b>Paying everyone at once:</b> with a PayPal Business account that has Payouts turned on, go to PayPal → Pay &amp; Get
@@ -489,7 +507,7 @@ export async function PayoutView({
             <form action={markAllPaid} className="flex flex-wrap items-center gap-2">
               <input type="hidden" name="periodId" value={id} />
               <input name="reference" placeholder="Batch ID (optional)" className="!w-56" />
-              <SubmitButton variant="secondary" confirm={`Mark all ${pending.length} unpaid payouts as paid?`}>
+              <SubmitButton variant="secondary" confirm={`Mark ${plural(labelSends.length, "unpaid payout")} as paid?`}>
                 Mark all as paid
               </SubmitButton>
             </form>
