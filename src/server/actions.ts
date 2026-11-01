@@ -792,6 +792,8 @@ export async function syncWithBandcamp(_?: ActionState, fd?: FormData): Promise<
   // A band account the label made, on a page of the label's books for it: just its band's part,
   // its releases read from the label's Bandcamp, not the whole label. (From its Settings: its own books.)
   if (viewed.lens && !own) {
+    // (The band's own login, not a member's.)
+    if (viewed.org.role === "member") return { error: "Only the band’s own login can sync." };
     const m = viewed.managedBy!;
     // On the live site the Mac reads the pages; here, the app does.
     const local = onCloudflare ? null : await syncCatalog(m.labelOrgId, { onlyBands: [m.bandId] });
@@ -1162,7 +1164,8 @@ export async function markAllPaid(fd: FormData) {
  * it's recorded as theirs, but never sent. Their unpaid payouts so far are marked kept too.
  */
 export async function setLabelAccountHolder(fd: FormData) {
-  const { orgId } = await requireAccess("funds", "edit");
+  // (It's on Settings, and changes payouts: admins only.)
+  const { orgId } = await requireAdmin();
   const personId = optInt(fd, "personId");
   await owned(orgId, people, personId);
   await db.transaction(async (tx) => {

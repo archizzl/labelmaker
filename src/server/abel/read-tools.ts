@@ -15,7 +15,7 @@ import { owedByBand, owedTotal } from "../owed";
 import { periodView } from "../period-view";
 import { salesReport } from "../sales-report";
 import { type SalesBooks, salesBooksFor, summarizeSales } from "../sales-browse";
-import { abelTool } from "./tool";
+import { abelTool, isAccountAdmin } from "./tool";
 
 /*
  * What Abel can look up. Each mirrors its page: the same books, the same band limits. Results are
@@ -521,7 +521,7 @@ const PAGES = [
 
 /** The pages this person can open (also in Abel's instructions, so he links to real ones). */
 export const pagesFor = (ctx: Context) =>
-  PAGES.filter((p) => ("admin" in p ? ctx.isAdmin : "area" in p ? can(ctx.access, p.area) || ctx.lens : true)).map((p) => ({ link: p.path, what: p.what }));
+  PAGES.filter((p) => ("admin" in p ? isAccountAdmin(ctx) : "area" in p ? can(ctx.access, p.area) || ctx.lens : true)).map((p) => ({ link: p.path, what: p.what }));
 
 const whereIs = abelTool({
   name: "where_is",

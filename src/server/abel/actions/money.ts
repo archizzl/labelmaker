@@ -109,7 +109,7 @@ const accountHolder = actionTool({
   description:
     "Set who holds the label's bank account: their share of payouts stays there instead of being sent, and their unpaid payouts are marked kept. Leave out personId for nobody.",
   params: z.object({ personId: id.optional() }),
-  needs: { area: "funds", level: "edit" },
+  needs: "admin",
   action: (fd) => setLabelAccountHolder(fd),
 });
 

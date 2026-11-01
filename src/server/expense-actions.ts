@@ -310,7 +310,7 @@ export async function deleteExpense(fd: FormData) {
   }
   if (!e) return;
   const ownPending = e.status === "pending" && e.submittedByUserId === ctx.user.id;
-  if (!can(ctx.access, "receipts", "edit") && !ownPending) throw new Error("Only admins can delete this.");
+  if (!can(ctx.access, "receipts", "edit") && !ownPending) throw new Error("Only people who can change receipts can delete this.");
   if (!ownPending) checkScope(ctx, e.bandId);
   const files = await db.select({ storageKey: expenseFiles.storageKey }).from(expenseFiles).where(eq(expenseFiles.expenseId, e.id));
   await db.delete(expenses).where(eq(expenses.id, e.id));
