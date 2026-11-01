@@ -12,7 +12,7 @@ import {
   setPayoutStatus,
   undoFinalize,
 } from "../../actions";
-import { markBandPayout, recordPaymentToLabel } from "../../band-payout-actions";
+import { deletePaymentToLabel, markBandPayout, recordPaymentToLabel } from "../../band-payout-actions";
 import { actionTool } from "../tool";
 import { amount, current, currency, date, id, or, toAmount } from "./shared";
 
@@ -163,6 +163,16 @@ const paymentToLabel = actionTool({
   action: (fd) => recordPaymentToLabel(null, fd),
 });
 
+const deletePayment = actionTool({
+  name: "delete_payment_to_label",
+  label: "Delete a record of money the band sent its label",
+  description: "In a band's group whose sales Bandcamp pays to the band: delete a record of money it sent a label (one entered twice, say), by its id.",
+  params: z.object({ id }),
+  needs: "admin",
+  available: (ctx) => ctx.org.kind === "band",
+  action: (fd) => deletePaymentToLabel(fd),
+});
+
 export const MONEY_TOOLS = [
   payoutLineStatus,
   undoPayout,
@@ -173,6 +183,7 @@ export const MONEY_TOOLS = [
   bandPaidTo,
   saveRemittance,
   deleteRemittance,
+  deletePayment,
   bandPayout,
   paymentToLabel,
 ];

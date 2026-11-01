@@ -56,3 +56,14 @@ export async function recordPaymentToLabel(_: BandPayoutState, fd: FormData): Pr
   revalidatePath("/", "layout");
   return { ok: "Saved" };
 }
+
+/** Take back a record of money sent to a label (one entered twice, say), by the band or the label. */
+export async function deletePaymentToLabel(fd: FormData) {
+  const ctx = await requireAdmin();
+  const labels = await labelsOfBand(ctx.orgId);
+  const id = Number(fd.get("id"));
+  const [row] = await db.select().from(schema.bandRemittances).where(eq(schema.bandRemittances.id, id));
+  if (!row || !labels.some((l) => l.orgId === row.orgId && l.bandId === row.bandId)) throw new Error("That isn’t one of your band’s payments.");
+  await db.delete(schema.bandRemittances).where(and(eq(schema.bandRemittances.orgId, row.orgId), eq(schema.bandRemittances.id, id)));
+  revalidatePath("/", "layout");
+}

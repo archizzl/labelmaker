@@ -1,8 +1,8 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { ActionForm, SubmitButton } from "@/components/client";
 import { Card, Disclosure, Field, Money, MoneyList } from "@/components/ui";
 import { db, schema } from "@/db";
-import { markBandPayout, recordPaymentToLabel } from "@/server/band-payout-actions";
+import { deletePaymentToLabel, markBandPayout, recordPaymentToLabel } from "@/server/band-payout-actions";
 import { labelFunds } from "@/server/data";
 import type { SalesLabel } from "@/server/sales-browse";
 
@@ -13,7 +13,7 @@ import type { SalesLabel } from "@/server/sales-browse";
  */
 export async function BandSends({ label, editable }: { label: SalesLabel; editable: boolean }) {
   if (label.paidTo !== "band") return null;
-  const [lines, sent, funds] = await Promise.all([
+  const [lines, paid, sent, funds] = await Promise.all([
     db
       .select({ id: schema.payouts.id, name: schema.people.name, period: schema.periods.name, currency: schema.payouts.currency, cents: schema.payouts.amountCents })
       .from(schema.payouts)
@@ -21,6 +21,15 @@ export async function BandSends({ label, editable }: { label: SalesLabel; editab
       .innerJoin(schema.periods, eq(schema.periods.id, schema.payouts.periodId))
       .where(and(eq(schema.payouts.orgId, label.orgId), eq(schema.payouts.paidByBandId, label.bandId), eq(schema.payouts.status, "pending")))
       .orderBy(schema.periods.startDate, schema.people.name),
+    // The last few it marked paid, to take back a mistake.
+    db
+      .select({ id: schema.payouts.id, name: schema.people.name, period: schema.periods.name, currency: schema.payouts.currency, cents: schema.payouts.amountCents, paidAt: schema.payouts.paidAt })
+      .from(schema.payouts)
+      .innerJoin(schema.people, eq(schema.people.id, schema.payouts.personId))
+      .innerJoin(schema.periods, eq(schema.periods.id, schema.payouts.periodId))
+      .where(and(eq(schema.payouts.orgId, label.orgId), eq(schema.payouts.paidByBandId, label.bandId), eq(schema.payouts.status, "paid"), isNotNull(schema.payouts.paidAt)))
+      .orderBy(desc(schema.payouts.paidAt))
+      .limit(5),
     db
       .select()
       .from(schema.bandRemittances)
@@ -58,6 +67,25 @@ export async function BandSends({ label, editable }: { label: SalesLabel; editab
           ))}
         </ul>
       )}
+      {editable && paid.length > 0 && (
+        <ul className="mt-3 space-y-1 text-sm">
+          {paid.map((l) => (
+            <li key={l.id} className="flex flex-wrap items-center gap-x-3">
+              <span className="text-muted">Paid {l.paidAt!.slice(0, 10)}</span>
+              <span>{l.name}</span>
+              <Money cents={l.cents} currency={l.currency} />
+              <span className="text-xs text-muted">{l.period}</span>
+              <form action={markBandPayout} className="ml-auto">
+                <input type="hidden" name="id" value={l.id} />
+                <input type="hidden" name="status" value="pending" />
+                <SubmitButton variant="ghost" size="sm" confirm={`Mark ${l.name}’s payment as not paid yet?`}>
+                  Undo
+                </SubmitButton>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
       {sent.length > 0 && (
         <ul className="mt-4 space-y-1 text-sm">
           {sent.map((r) => (
@@ -66,6 +94,14 @@ export async function BandSends({ label, editable }: { label: SalesLabel; editab
               <span>Sent to {label.name}</span>
               <Money cents={r.amountCents} currency={r.currency} />
               {r.note && <span className="text-xs text-muted">{r.note}</span>}
+              {editable && (
+                <form action={deletePaymentToLabel} className="ml-auto">
+                  <input type="hidden" name="id" value={r.id} />
+                  <SubmitButton variant="ghost" size="sm" confirm={`Delete this record of money sent to ${label.name}?`}>
+                    Delete
+                  </SubmitButton>
+                </form>
+              )}
             </li>
           ))}
         </ul>
