@@ -241,15 +241,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
         )}
         {!main ? (
           <Empty>
-            {filtered ? (
-              <>
-                No sales match. <Link href="/sales">Clear the filters</Link>.
-              </>
-            ) : (
-              <>
-                No sales yet. <Link href="/sales/import">Import or sync them from Bandcamp</Link>.
-              </>
-            )}
+            {filtered ? "No sales match." : "No sales yet."}
           </Empty>
         ) : (
           <>
@@ -294,7 +286,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
           </h2>
           <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Tile label="Net received" value={formatCents(main.net, main.currency)} />
-            <Tile label={`Sale${main.sales === 1 ? "" : "s"}`} value={main.sales.toLocaleString("en-US")} hint={`${main.units.toLocaleString("en-US")} items`} />
+            <Tile label={`Sale${main.sales === 1 ? "" : "s"}`} value={main.sales.toLocaleString("en-US")} hint={`${main.units.toLocaleString("en-US")} item${main.units === 1 ? "" : "s"}`} />
             <Tile label="Average per sale" value={formatCents(Math.round(main.net / Math.max(1, main.sales)), main.currency)} />
             <Tile
               label="Refunds"

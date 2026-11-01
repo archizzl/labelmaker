@@ -19,7 +19,7 @@ export function BandFields({ band, labelNotes = true }: { band?: typeof schema.b
       </Field>
       <Field
         label="Bandcamp URLs"
-        hint="Comma-separated. A subdomain (“glassharbor”), a host (“glassharbor.com”) or a URL prefix (“label.bandcamp.com/album/night-swims”)."
+        hint="Comma-separated: Bandcamp subdomains, hosts or URL prefixes."
         className="sm:col-span-2"
       >
         <input name="urlPatterns" defaultValue={band?.urlPatterns.join(", ")} />

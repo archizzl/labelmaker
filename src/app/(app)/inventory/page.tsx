@@ -324,7 +324,7 @@ function ItemForm({
         </select>
       </Field>
       <Field label="Name" className="sm:col-span-2">
-        <input name="name" required defaultValue={item?.name} placeholder="e.g. Jewel cases, Logo shirt, Flags of the World CD" maxLength={200} />
+        <input name="name" required defaultValue={item?.name} maxLength={200} />
       </Field>
       <Field label="Catalog item (optional)" className="sm:col-span-2">
         <select name="catalog" defaultValue={linked}>
@@ -352,7 +352,7 @@ function ItemForm({
         </Field>
       )}
       <Field label="Size or option">
-        <input name="option" defaultValue={item?.option ?? ""} placeholder="e.g. M" maxLength={100} />
+        <input name="option" defaultValue={item?.option ?? ""} maxLength={100} />
       </Field>
       <Field label="SKU">
         <input name="sku" defaultValue={item?.sku ?? ""} maxLength={100} />
@@ -379,7 +379,7 @@ function ItemForm({
         <input name="unitCost" inputMode="decimal" defaultValue={item?.unitCostCents != null ? (item.unitCostCents / 100).toFixed(2) : ""} placeholder="0.85" />
       </Field>
       <Field label="Kept at">
-        <input name="location" defaultValue={item?.location ?? ""} placeholder="e.g. Alex’s garage" maxLength={200} />
+        <input name="location" defaultValue={item?.location ?? ""} maxLength={200} />
       </Field>
       <Field label="Notes" className="sm:col-span-3">
         <input name="notes" defaultValue={item?.notes ?? ""} maxLength={1000} />

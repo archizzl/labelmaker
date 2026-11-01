@@ -353,7 +353,7 @@ export default async function ReleasePage({ params, searchParams }: PageProps<"/
           <Disclosure summary="+ Add tracks">
             <form action={addTracks} className="space-y-3">
               <input type="hidden" name="releaseId" value={id} />
-              <Field label="One track per line" hint="Optionally add the track URL after a pipe: “Undertow | https://glassharbor.bandcamp.com/track/undertow”">
+              <Field label="One track per line" hint="Title, then optionally | and the track’s URL.">
                 <textarea name="titles" rows={6} required />
               </Field>
               <SubmitButton>Add tracks</SubmitButton>

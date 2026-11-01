@@ -179,7 +179,7 @@ export function DeductionForm({
               </select>
             </Field>
           )}
-          <Field label="Only for formats matching words" hint="“CD” or “cassette, tape”. Digital sales never match.">
+          <Field label="Only for formats matching words" hint="Comma-separated. Digital sales never match.">
             <input name="formatMatch" defaultValue={d?.formatMatch ?? ""} placeholder="CD" />
           </Field>
           <div className="grid grid-cols-2 gap-2">

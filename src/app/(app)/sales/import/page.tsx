@@ -170,7 +170,7 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
       {justImported && (
         <Fading clearParams={["imported"]}>
           <Callout tone="good">
-            Imported {justImported.addedCount} new sales from {justImported.filename}
+            Imported {plural(justImported.addedCount, "new sale")} from {justImported.filename}
             {justImported.duplicateCount > 0 && ` (${justImported.duplicateCount} already imported, skipped)`}.
           </Callout>
         </Fading>
@@ -270,7 +270,7 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
       )}
 
       {noRelease.length > 0 && (
-        <Card title={<>Matched to a band, but not a release <Badge>{noRelease.length} items</Badge></>}>
+        <Card title={<>Matched to a band, but not a release <Badge>{plural(noRelease.length, "item")}</Badge></>}>
           {/* <p className="mb-3 text-sm text-muted">
             Optional. These use the band’s default or item-type split. Match them to a release or track if those have their own splits.
           </p> */}
@@ -311,7 +311,7 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
                       <td className="text-right">
                         <form action={deleteImport}>
                           <input type="hidden" name="id" value={h.id} />
-                          <SubmitButton variant="ghost" size="sm" confirm={`Remove the ${h.addedCount} sales from this import? Finalized payouts are not affected.`}>
+                          <SubmitButton variant="ghost" size="sm" confirm={`Remove ${h.addedCount === 1 ? "the 1 sale" : `the ${h.addedCount} sales`} from this import? Finalized payouts are not affected.`}>
                             Undo import
                           </SubmitButton>
                         </form>

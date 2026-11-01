@@ -37,7 +37,7 @@ function Rows({ label, items, setItems, render, addLabel }: { label: string; ite
  * Applying for a label or band account. Asks what's useful for setting it up: a band's members, or
  * a label's artists and team. A site admin reviews it.
  */
-export function ApplicationForm({ yourName }: { yourName: string }) {
+export function ApplicationForm() {
   const [state, action, pending] = useActionState(applyForAccount, null);
   const [kind, setKind] = useState<"label" | "band">("band");
   const [members, setMembers] = useState(() => rows(3));
@@ -82,8 +82,8 @@ export function ApplicationForm({ yourName }: { yourName: string }) {
           setItems={setMembers}
           render={(i) => (
             <>
-              <input name="memberName" placeholder={i === 0 ? `Name (e.g. ${yourName})` : "Name"} aria-label="Member's name" />
-              <input name="memberRole" placeholder="Role (e.g. drums)" aria-label="Member's role" />
+              <input name="memberName" placeholder="Name" aria-label="Member's name" />
+              <input name="memberRole" placeholder="Role" aria-label="Member's role" />
               <input name="memberEmail" type="email" placeholder="Email, to invite them (optional)" aria-label="Member's email" />
             </>
           )}

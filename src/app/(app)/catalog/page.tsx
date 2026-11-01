@@ -49,9 +49,7 @@ export default async function CatalogPage({ searchParams }: PageProps<"/catalog"
       {!oneBand && <BandFilter path="/catalog" bands={bands} current={bandFilter} all="all bands" />}
       {bands.length === 0 && (
         <Card>
-          <Empty>
-            Add a <Link href="/directory" className="underline">band</Link> first.
-          </Empty>
+          <Empty>No bands yet.</Empty>
         </Card>
       )}
       {shown.map((b) => {

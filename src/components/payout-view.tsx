@@ -115,7 +115,7 @@ export async function PayoutView({
             ) : (
               "whole label"
             )}{" "}
-            · {scope.startDate} → {scope.endDate} · {live.results.length} sales
+            · {scope.startDate} → {scope.endDate} · {plural(live.results.length, "sale")}
           </>
         }
         actions={
@@ -196,7 +196,7 @@ export async function PayoutView({
           {live.alreadyPaid.map((a, i) => (
             <span key={a.period.id}>
               {i > 0 && ", "}
-              {a.sales} sale{a.sales === 1 ? "" : "s"} in <Link href={`/periods/${a.period.id}`}>{a.period.name}</Link>
+              {plural(a.sales, "sale")} in <Link href={`/periods/${a.period.id}`}>{a.period.name}</Link>
             </span>
           ))}
           .
@@ -564,7 +564,7 @@ export async function PayoutView({
             )
           }
         >
-          <Disclosure summary={`Show all ${live.results.length} sales and how each was split`}>
+          <Disclosure summary={`Show ${live.results.length === 1 ? "the sale and how it" : `all ${live.results.length} sales and how each`} was split`}>
             {/* <p className="mb-2 text-xs text-muted">
               Each sale’s split is shown to the nearest cent. Payout amounts add up everyone’s exact shares and round once per band,
               so they can differ from these by a cent or two.

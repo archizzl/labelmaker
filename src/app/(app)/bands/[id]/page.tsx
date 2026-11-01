@@ -359,10 +359,7 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
           {showProjects && (
             <Card title="Projects" actions={<LinkButton href={`/projects?band=${id}`} size="sm">All projects</LinkButton>}>
               {bandProjects.length === 0 ? (
-                <p className="text-sm text-muted">
-                  No projects yet.{" "}
-                  <Link href={`/projects?band=${id}`}>Create one</Link>.
-                </p>
+                <p className="text-sm text-muted">No projects yet.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="data">
@@ -584,7 +581,7 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
                       </span>
                       <span className="col-span-2 truncate text-xs text-muted sm:col-span-1">
                         {[m.person.email, payHandlesSummary(m.person)].filter(Boolean).join(" · ") || (
-                          <span className="text-warn">no payment details — click to add</span>
+                          <span className="text-warn">no payment details</span>
                         )}
                       </span>
                       <span className="col-span-2 truncate text-xs sm:col-span-1">{loginOf(m.person.id, id)}</span>

@@ -215,7 +215,7 @@ export default async function FansPage({ searchParams }: PageProps<"/fans">) {
                 </div>
                 {list.count > list.rows.length && (
                   <p className="mt-3 text-sm text-muted">
-                    Showing the {list.rows.length} newest of {list.count.toLocaleString("en-US")}. Search to narrow it down, or export them all.
+                    Showing the {list.rows.length} newest of {list.count.toLocaleString("en-US")}.
                   </p>
                 )}
               </>
