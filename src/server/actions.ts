@@ -560,6 +560,16 @@ export async function saveSplitRule(_: ActionState, fd: FormData): Promise<Actio
   await owned(orgId, people, ...shares.map((s) => s.personId));
   const ruleId = optInt(fd, "ruleId");
   await owned(orgId, splitRules, ruleId);
+  if ((await getContext()).lens && orgId !== (await ownBooksOf(await getContext())).orgId) {
+    // A band account changing a split in the label's books: only one on its own band's item, and
+    // only for that band.
+    if (ruleId) {
+      const [was] = await db.select().from(splitRules).where(eq(splitRules.id, ruleId));
+      const itsItem = (was.scope === "release" || was.scope === "track") && (await splitBooks(was.scope, was.releaseId, was.trackId)) === orgId;
+      if (!itsItem) return { error: "That item isn’t your band’s." };
+    }
+    values.bandId = null;
+  }
   await db.transaction(async (tx) => {
     let id = ruleId;
     if (id) {

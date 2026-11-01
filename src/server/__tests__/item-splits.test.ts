@@ -64,6 +64,17 @@ describe("a band account's splits on its own items", () => {
 
     expect(await actions.saveSplitRule(null, form({ scope: "release", releaseId: theirs.id, shares }))).toEqual({ error: "That item isn’t your band’s." });
 
+    // Not by rewriting one of the label's other splits as its own.
+    const [labelDefault] = await db.insert(schema.splitRules).values({ orgId: labelOrgId, scope: "label_default", effectiveFrom: "2000-01-01" }).returning();
+    const [otherBands] = await db.insert(schema.splitRules).values({ orgId: labelOrgId, scope: "release", releaseId: theirs.id, effectiveFrom: "2000-01-01" }).returning();
+    for (const r of [labelDefault, otherBands]) {
+      expect(await actions.saveSplitRule(null, form({ scope: "release", releaseId: cd.id, ruleId: r.id, shares }))).toEqual({ error: "That item isn’t your band’s." });
+      expect((await db.select().from(schema.splitRules).where(eq(schema.splitRules.id, r.id)))[0]).toMatchObject({ scope: r.scope, releaseId: r.releaseId });
+    }
+    // Its own can be changed, and is never filed under another band.
+    expect(await actions.saveSplitRule(null, form({ scope: "release", releaseId: cd.id, ruleId: rule.id, bandId: other.id, shares }))).toEqual({ ok: "Split saved" });
+    expect((await db.select().from(schema.splitRules).where(eq(schema.splitRules.id, rule.id)))[0].bandId).toBeNull();
+
     // Taken off again from the band account.
     await actions.deleteSplitRule(form({ ruleId: rule.id }));
     expect(await db.select().from(schema.splitRules).where(eq(schema.splitRules.releaseId, cd.id))).toEqual([]);
