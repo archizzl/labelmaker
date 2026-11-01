@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { BandFields } from "@/components/band-fields";
-import { SaveWhenChanged, SubmitButton } from "@/components/client";
+import { ReadOnly, SaveWhenChanged, SubmitButton } from "@/components/client";
 import { SalesSection } from "@/components/sales-section";
 import { DeductionForm, DeductionList } from "@/components/deductions";
 import { BandTabs } from "@/components/band-tabs";
@@ -57,6 +57,8 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
   const lens = ctx.lens;
   if (lens) ctx = await requireAccess("rules");
   const { orgId } = ctx;
+  // Someone who can look at bands but not change them.
+  const rosterLocked = can(ctx.access, "roster", "edit") ? null : "You can look at this band, not change it.";
   const id = Number((await params).id);
   const sp = await searchParams;
   const tab = (["overview", "money", "people", "catalog", "settings"] as const).find((t) => t === sp.tab) ?? "overview";
@@ -313,9 +315,11 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
           <Card
             title="Payouts"
             actions={
-              <LinkButton href={`/periods?band=${id}`} size="sm" variant="primary">
-                Pay this band
-              </LinkButton>
+              can(ctx.access, "payouts", "edit") && (
+                <LinkButton href={`/periods?band=${id}`} size="sm" variant="primary">
+                  Pay this band
+                </LinkButton>
+              )
             }
           >
             {bandPeriods.length === 0 ? (
@@ -548,7 +552,7 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
         </>
       )}
       {tab === "people" && (
-        <>
+        <ReadOnly reason={rosterLocked}>
           <Card title="Members">
             {members.length === 0 ? (
               <Empty>No members yet.</Empty>
@@ -641,7 +645,7 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
 
           {accountRow !== undefined && <LinkedBandAccount band={band} row={accountRow} />}
 
-        </>
+        </ReadOnly>
       )}
       {tab === "catalog" && (
         <>
@@ -651,7 +655,7 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
             ) : (
               itemTable(music)
             )}
-            <Disclosure summary="+ Add release">
+            {can(ctx.access, "catalog", "edit") && <Disclosure summary="+ Add release">
               <form action={saveRelease} className="grid gap-4 sm:grid-cols-2">
                 <input type="hidden" name="bandId" value={id} />
                 <input type="hidden" name="open" value="true" />
@@ -671,7 +675,7 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
                   <SubmitButton>Add release</SubmitButton>
                 </div>
               </form>
-            </Disclosure>
+            </Disclosure>}
           </Card>
 
           <Card title="Physical formats">
@@ -693,7 +697,7 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
         </>
       )}
       {tab === "settings" && (
-        <>
+        <ReadOnly reason={rosterLocked}>
           <Card title="Band settings">
             <BandFields band={band} />
             {ctx.org.kind === "label" && (
@@ -706,7 +710,7 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
               </form>
             )}
           </Card>
-        </>
+        </ReadOnly>
       )}
     </>
   );

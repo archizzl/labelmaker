@@ -17,6 +17,7 @@ import { outsideArtistRows } from "@/components/outside-artists";
 import { SyncFooter } from "@/components/sync-status";
 import { setSetupHidden } from "@/server/actions";
 import { groupPhotos, requireAccess } from "@/server/context";
+import { bandScope, can } from "@/lib/permissions";
 import { computeAllTime } from "@/server/data";
 import { labelPartFor } from "@/server/own-books";
 import { BandProjects } from "@/components/band-projects";
@@ -29,6 +30,8 @@ export default async function Dashboard() {
   await connection();
   const ctx = await requireAccess("dashboard");
   const { orgId, isAdmin } = ctx;
+  // (Importing and matching sales are label-wide.)
+  const canImport = can(ctx.access, "sales", "edit") && !bandScope(ctx.access, "sales");
   // A band account the label made: its own books, with what the label has for its band added in.
   const m = ctx.managedBy;
   const [bands, memberships, defaults, saleRows, periods, outside, { summary }, people, releaseRows, fundExpenses] = await Promise.all([
@@ -194,12 +197,16 @@ export default async function Dashboard() {
         }
         actions={
           <>
-            <LinkButton href="/sales/import" variant={next === "import" ? "primary" : "secondary"}>
-              Import sales
-            </LinkButton>
-            <LinkButton href="/periods" variant={next === "payout" ? "primary" : "secondary"}>
-              Pay out
-            </LinkButton>
+            {canImport && (
+              <LinkButton href="/sales/import" variant={next === "import" ? "primary" : "secondary"}>
+                Import sales
+              </LinkButton>
+            )}
+            {can(ctx.access, "payouts", "edit") && (
+              <LinkButton href="/periods" variant={next === "payout" ? "primary" : "secondary"}>
+                Pay out
+              </LinkButton>
+            )}
           </>
         }
       />
@@ -209,7 +216,7 @@ export default async function Dashboard() {
         <OrdersNotice ctx={ctx} />
       </Suspense>
 
-      {unrouted > 0 && (
+      {unrouted > 0 && canImport && (
         <Callout tone="bad">
           {plural(unrouted, "imported sale")} {unrouted === 1 ? "isn’t" : "aren’t"} matched to a band. <Link href="/sales/import" className="underline">Fix on the Import page</Link>.
         </Callout>

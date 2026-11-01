@@ -3,7 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { BandFields } from "@/components/band-fields";
-import { ActionForm, OpenLinkedSection, SaveWhenChanged, SubmitButton } from "@/components/client";
+import { ActionForm, OpenLinkedSection, ReadOnly, SaveWhenChanged, SubmitButton } from "@/components/client";
 import { SyncFooter } from "@/components/sync-status";
 import { Badge, Card, Disclosure, Empty, Field, MoneyList, PageHeader, RolesList } from "@/components/ui";
 import { ViewAsButton } from "@/components/viewing-as";
@@ -12,7 +12,7 @@ import { listMemberTypes, memberTypeOf } from "@/server/member-types";
 import { BandsInviteLink, StandingInviteLink } from "@/components/band-invite-links";
 import { db, schema } from "@/db";
 import { payHandlesSummary } from "@/lib/paypal-export";
-import { bandScope } from "@/lib/permissions";
+import { bandScope, can } from "@/lib/permissions";
 import { addMember, deletePerson, mergePeopleAction, removeMember, savePerson, updateMembership } from "@/server/actions";
 import { type Context, requireAccess } from "@/server/context";
 import { labelHost } from "@/server/data";
@@ -47,6 +47,7 @@ export default async function DirectoryPage() {
   const { orgId } = ctx;
   // A band manager: just their bands and the people in them, and nothing label-wide.
   const scope = bandScope(ctx.access, "roster");
+  const canEdit = can(ctx.access, "roster", "edit");
   // Bands' own accounts (label admins): bands added since (or from before sub-accounts) get theirs.
   const showAccounts = ctx.isAdmin && ctx.org.kind === "label";
   if (showAccounts) await ensureBandAccounts(orgId);
@@ -180,7 +181,7 @@ export default async function DirectoryPage() {
   );
 
   return (
-    <>
+    <ReadOnly reason={canEdit ? null : "You can look at the Directory, not change it."}>
       <PageHeader
         title="Directory"
       />
@@ -339,7 +340,7 @@ export default async function DirectoryPage() {
 
       {!scope && (
         <div className="mt-6 flex flex-wrap items-start gap-3">
-          {ctx.org.kind === "label" && (
+          {ctx.org.kind === "label" && canEdit && (
             <Disclosure summary="+ Add a band">
               <BandFields />
             </Disclosure>
@@ -355,7 +356,7 @@ export default async function DirectoryPage() {
         </div>
       )}
       <SyncFooter orgId={orgId} />
-    </>
+    </ReadOnly>
   );
 }
 

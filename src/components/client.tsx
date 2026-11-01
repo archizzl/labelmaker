@@ -8,9 +8,11 @@ import { buttonClass } from "./ui";
 /** Why nothing on the page can be changed (a label admin viewing as someone), or null. */
 const ReadOnlyReason = createContext<string | null>(null);
 
-/** Turns off every SubmitButton inside, with the reason as its tooltip. The server refuses changes too. */
-export function ReadOnly({ reason, children }: { reason: string; children: ReactNode }) {
-  return <ReadOnlyReason value={reason}>{children}</ReadOnlyReason>;
+/** Turns off every SubmitButton inside, with the reason as its tooltip (null: nothing's off). The server refuses changes too. */
+export function ReadOnly({ reason, children }: { reason: string | null; children: ReactNode }) {
+  // (Inside another, its reason stays: viewing as someone.)
+  const outer = useContext(ReadOnlyReason);
+  return <ReadOnlyReason value={outer ?? reason}>{children}</ReadOnlyReason>;
 }
 
 /** The reason nothing can be changed here (see ReadOnly), or null. */

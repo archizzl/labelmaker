@@ -11,6 +11,7 @@ import { db, schema } from "@/db";
 import { periodName } from "@/lib/dates";
 import { STATUS_LABEL, STATUS_TONE } from "@/lib/status";
 import { previewPayout } from "@/server/actions";
+import { can } from "@/lib/permissions";
 import { requireAccess } from "@/server/context";
 import { labelPayoutsFor, syncOwnPeople } from "@/server/own-books";
 import { owedByBand, owedTotal } from "@/server/owed";
@@ -104,6 +105,7 @@ export default async function PeriodsPage({ searchParams }: PageProps<"/periods"
   // Which band a payout was for: only worth a column for a label with more than one.
   const showFor = ctx.org.kind === "label" && bands.length > 1;
 
+  const canEdit = can(ctx.access, "payouts", "edit");
   const newPayout = (
     <>
       {/* A band account has one band: nothing to choose. */}
@@ -137,7 +139,7 @@ export default async function PeriodsPage({ searchParams }: PageProps<"/periods"
       {owesOwn ? (
         <>
           <ChartBoard boardId="payouts" charts={[owed]} saved={owedLayout} />
-          <Card title="New payout">{newPayout}</Card>
+          {canEdit && <Card title="New payout">{newPayout}</Card>}
         </>
       ) : (
         <Card>
@@ -149,7 +151,7 @@ export default async function PeriodsPage({ searchParams }: PageProps<"/periods"
             <p>All funds are paid out.</p>
           )}
           {/* (A band account the label made pays from its own books only what came before the label.) */}
-          {salesRange?.first && (
+          {canEdit && salesRange?.first && (
             <div className="mt-4">
               <Disclosure summary="+ New payout">{newPayout}</Disclosure>
             </div>
