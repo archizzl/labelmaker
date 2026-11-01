@@ -80,7 +80,7 @@ export function ApplicationForm() {
           addLabel="Add a member"
           items={members}
           setItems={setMembers}
-          render={(i) => (
+          render={() => (
             <>
               <input name="memberName" placeholder="Name" aria-label="Member's name" />
               <input name="memberRole" placeholder="Role" aria-label="Member's role" />
