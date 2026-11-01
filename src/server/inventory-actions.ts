@@ -130,7 +130,8 @@ export async function saveInventoryItem(_: InventoryState, fd: FormData): Promis
       option: str(fd, "option").slice(0, 100) || null,
       sku: str(fd, "sku").slice(0, 100) || null,
       lowAt: lowAt !== null && lowAt >= 0 ? lowAt : null,
-      desired: desired !== null && desired > 0 ? desired : null,
+      // (Set on the counter once it's added: the edit form leaves it alone.)
+      ...(fd.has("desired") ? { desired: desired !== null && desired > 0 ? desired : null } : {}),
       unitCostCents: cost ? parseCents(cost) : null,
       // (Supplies aren't sold.)
       priceCents: price && kind === "product" ? parseCents(price) : null,
@@ -205,6 +206,49 @@ export async function adjustInventory(_: InventoryState, fd: FormData): Promise<
   }
 }
 
+export type CountState = { onHand?: number; error?: string };
+
+/**
+ * The counter on the Inventory page: add or take off some (`by`), or set the count (`to`). Kept in
+ * the history as "other" (+/−) or a recount.
+ */
+export async function changeCount(id: number, change: { by: number } | { to: number }): Promise<CountState> {
+  const ctx = await requireAccess("inventory", "edit", { bandMay: true });
+  try {
+    const item = await ownItem(ctx, id);
+    const set = "to" in change;
+    const amount = Math.trunc(set ? change.to : change.by);
+    if (!Number.isFinite(amount) || (!set && amount === 0)) return { error: "Enter a number." };
+    let after = 0;
+    await db.transaction(async (tx) => {
+      const [cur] = await tx.select({ onHand: inventoryItems.onHand }).from(inventoryItems).where(eq(inventoryItems.id, item.id)).for("update");
+      const { delta, onHandAfter } = applyMove(cur.onHand, set ? "recount" : "other", amount);
+      after = onHandAfter;
+      if (!delta) return;
+      await tx.update(inventoryItems).set({ onHand: onHandAfter }).where(eq(inventoryItems.id, item.id));
+      await tx.insert(inventoryMoves).values({ orgId: ctx.orgId, itemId: item.id, delta, reason: set ? "recount" : "other", onHandAfter, byUserId: ctx.user.id });
+    });
+    done();
+    return { onHand: after };
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+}
+
+/** How many they'd like to have on hand (null for none). */
+export async function setIdealCount(id: number, ideal: number | null): Promise<{ error?: string }> {
+  const ctx = await requireAccess("inventory", "edit", { bandMay: true });
+  try {
+    const item = await ownItem(ctx, id);
+    const n = ideal === null || !Number.isFinite(ideal) || ideal <= 0 ? null : Math.trunc(ideal);
+    await db.update(inventoryItems).set({ desired: n }).where(eq(inventoryItems.id, item.id));
+    done();
+    return {};
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+}
+
 /** Take an item off the list (its history is kept). */
 export async function archiveInventoryItem(fd: FormData) {
   const ctx = await requireAccess("inventory", "edit");
@@ -232,5 +276,5 @@ export async function addFromCatalog(_: InventoryState, fd: FormData): Promise<I
   if (!add.length) return { ok: "Everything in the catalog is already here." };
   await db.insert(inventoryItems).values(add.map((c) => ({ ...c, orgId, kind: "product" as const, onHand: 0 })));
   done();
-  return { ok: `Added ${add.length} item${add.length === 1 ? "" : "s"} from the catalog, at 0 on hand. Count them in with “Received” or “Recount”.` };
+  return { ok: `Added ${add.length} item${add.length === 1 ? "" : "s"} from the catalog, at 0 on hand.` };
 }

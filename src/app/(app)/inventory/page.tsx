@@ -6,10 +6,11 @@ import { DisclosureRow } from "@/components/disclosure-row";
 import { Badge, Callout, Card, Disclosure, Empty, Field, PageHeader } from "@/components/ui";
 import { db, schema } from "@/db";
 import { isLow, MOVE_REASONS } from "@/lib/inventory";
+import { InventoryCounter } from "@/components/inventory-counter";
 import { formatCents } from "@/lib/money";
 import { bandScope, can } from "@/lib/permissions";
 import { requireAccess } from "@/server/context";
-import { addFromCatalog, adjustInventory, archiveInventoryItem, saveInventoryItem } from "@/server/inventory-actions";
+import { addFromCatalog, archiveInventoryItem, saveInventoryItem } from "@/server/inventory-actions";
 import { merchPhotoUrl, ownPhotoId } from "@/server/merch-photos";
 import { InventoryPhoto } from "@/components/inventory-photo";
 
@@ -178,7 +179,7 @@ function ItemTable({
       {items.map((i) => {
         const photo = photoOf?.(i);
         return (
-          <li key={i.id} className={`grid gap-3 py-3 ${photoOf ? "grid-cols-[3rem_minmax(0,1fr)] md:grid-cols-[3rem_minmax(0,1fr)_7rem]" : "md:grid-cols-[minmax(0,1fr)_7rem]"}`}>
+          <li key={i.id} className={`grid gap-3 py-3 ${photoOf ? "grid-cols-[3rem_minmax(0,1fr)] md:grid-cols-[3rem_minmax(0,1fr)_auto]" : "md:grid-cols-[minmax(0,1fr)_auto]"}`}>
             {/* A photo from Bandcamp stays; anything else can be given one here. */}
             {photoOf && <InventoryPhoto id={i.id} src={photo ?? null} editable={canEdit && !fromBandcamp(photo)} />}
             <div className="min-w-0 space-y-1">
@@ -196,7 +197,6 @@ function ItemTable({
               <DisclosureRow
                 className="pt-1"
                 panels={[
-                  ...(canCount ? [{ label: "Change count", content: <AdjustForm item={i} /> }] : []),
                   { label: "History", content: <History moves={movesOf(i.id)} /> },
                   ...(canEdit
                     ? [
@@ -219,12 +219,16 @@ function ItemTable({
                 ]}
               />
             </div>
-            <div className={`text-right ${photoOf ? "col-start-2 md:col-start-auto" : ""}`}>
-              <div className="text-2xl font-bold whitespace-nowrap tabular-nums">
-                <span className={isLow(i) ? "text-warn" : i.onHand === 0 ? "text-muted" : ""}>{i.onHand}</span>
-                {i.desired !== null && <span className="text-muted"> / {i.desired}</span>}
-              </div>
-              {i.lowAt !== null && <div className="text-xs text-muted">low at {i.lowAt}</div>}
+            <div className={photoOf ? "col-start-2 md:col-start-auto" : ""}>
+              {canCount ? (
+                <InventoryCounter id={i.id} onHand={i.onHand} ideal={i.desired} low={isLow(i)} />
+              ) : (
+                <div className="text-2xl font-bold whitespace-nowrap tabular-nums md:text-right">
+                  <span className={isLow(i) ? "text-warn" : i.onHand === 0 ? "text-muted" : ""}>{i.onHand}</span>
+                  {i.desired !== null && <span className="text-muted"> / {i.desired}</span>}
+                </div>
+              )}
+              {i.lowAt !== null && <div className="mt-1 text-xs text-muted md:text-right">low at {i.lowAt}</div>}
             </div>
           </li>
         );
@@ -233,34 +237,9 @@ function ItemTable({
   );
 }
 
-function AdjustForm({ item }: { item: Item }) {
-  return (
-    <ActionForm action={adjustInventory} className="grid gap-3 sm:grid-cols-3">
-      <input type="hidden" name="id" value={item.id} />
-      <Field label="What happened">
-        <select name="reason" defaultValue="received">
-          {MOVE_REASONS.map((r) => (
-            <option key={r.key} value={r.key}>
-              {r.label}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field label="How many" hint="For a recount, the new total.">
-        <input name="amount" type="number" inputMode="numeric" step={1} required className="!w-28" />
-      </Field>
-      <Field label="Note (optional)">
-        <input name="note" placeholder="e.g. from the pressing plant" maxLength={300} />
-      </Field>
-      <div className="sm:col-span-3">
-        <SubmitButton size="sm">Save</SubmitButton>
-      </div>
-    </ActionForm>
-  );
-}
-
-// (In the history, without the form's note in brackets: "Sold", "Recount".)
+// (In the history, without the note in brackets: "Sold". The counter's changes are "other" and a recount.)
 const REASON_LABEL = new Map<string, string>(MOVE_REASONS.map((r) => [r.key, r.label.replace(/ \(.*\)$/, "")]));
+const moveLabel = (m: Move) => (m.reason === "recount" ? "Count set" : m.reason === "other" ? (m.delta < 0 ? "Taken off" : "Added") : (REASON_LABEL.get(m.reason) ?? m.reason));
 
 function History({ moves }: { moves: Move[] }) {
   if (!moves.length) return <p className="text-sm text-muted">No changes yet.</p>;
@@ -280,7 +259,7 @@ function History({ moves }: { moves: Move[] }) {
             <tr key={m.id}>
               <td className="text-xs text-muted">{m.createdAt.slice(0, 10)}</td>
               <td>
-                {REASON_LABEL.get(m.reason) ?? m.reason}
+                {moveLabel(m)}
                 {m.note && <span className="text-muted"> · {m.note}</span>}
               </td>
               <td className={`num ${m.delta < 0 ? "text-bad" : m.delta > 0 ? "text-good" : ""}`}>{m.delta > 0 ? `+${m.delta}` : m.delta}</td>
@@ -364,9 +343,11 @@ function ItemForm({
       <Field label="Running low at">
         <input name="lowAt" type="number" inputMode="numeric" min={0} step={1} defaultValue={item?.lowAt ?? ""} />
       </Field>
-      <Field label="Desired amount (optional)">
-        <input name="desired" type="number" inputMode="numeric" min={1} step={1} defaultValue={item?.desired ?? ""} />
-      </Field>
+      {!item && (
+        <Field label="Ideal count (optional)">
+          <input name="desired" type="number" inputMode="numeric" min={1} step={1} />
+        </Field>
+      )}
       <Field label="Price each (optional)">
         <input name="price" inputMode="decimal" defaultValue={item?.priceCents != null ? (item.priceCents / 100).toFixed(2) : ""} placeholder="3.00" />
       </Field>

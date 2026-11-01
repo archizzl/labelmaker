@@ -128,4 +128,27 @@ describe("merch photos", () => {
     await inventory.saveInventoryItem(null, form({ id: item.id, name: "Poster", kind: "product", desired: "" }));
     expect((await db.select().from(schema.inventoryItems).where(eq(schema.inventoryItems.id, item.id)))[0].desired).toBeNull();
   });
+
+  it("changes the count from the counter, and sets the ideal count; editing the item leaves the ideal alone", async () => {
+    orgId = await newAccount("Label");
+    await inventory.saveInventoryItem(null, form({ name: "Poster", kind: "product", onHand: 5 }));
+    const [item] = await db.select().from(schema.inventoryItems).where(eq(schema.inventoryItems.orgId, orgId));
+    expect(await inventory.changeCount(item.id, { by: 3 })).toEqual({ onHand: 8 });
+    expect(await inventory.changeCount(item.id, { by: -10 })).toEqual({ onHand: 0 });
+    expect(await inventory.changeCount(item.id, { to: 12 })).toEqual({ onHand: 12 });
+    expect(await inventory.changeCount(item.id, { to: 12 })).toEqual({ onHand: 12 });
+    const moves = await db.select().from(schema.inventoryMoves).where(eq(schema.inventoryMoves.itemId, item.id)).orderBy(schema.inventoryMoves.id);
+    expect(moves.map((m) => [m.reason, m.delta, m.onHandAfter])).toEqual([
+      ["recount", 5, 5],
+      ["other", 3, 8],
+      ["other", -8, 0],
+      ["recount", 12, 12],
+    ]);
+
+    await inventory.setIdealCount(item.id, 20);
+    await inventory.saveInventoryItem(null, form({ id: item.id, name: "Big poster", kind: "product" }));
+    expect((await db.select().from(schema.inventoryItems).where(eq(schema.inventoryItems.id, item.id)))[0]).toMatchObject({ name: "Big poster", desired: 20 });
+    await inventory.setIdealCount(item.id, null);
+    expect((await db.select().from(schema.inventoryItems).where(eq(schema.inventoryItems.id, item.id)))[0].desired).toBeNull();
+  });
 });

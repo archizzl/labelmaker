@@ -13,6 +13,9 @@ export function ReadOnly({ reason, children }: { reason: string; children: React
   return <ReadOnlyReason value={reason}>{children}</ReadOnlyReason>;
 }
 
+/** The reason nothing can be changed here (see ReadOnly), or null. */
+export const useReadOnly = () => useContext(ReadOnlyReason);
+
 /** Close the add/edit panel (a <details>) that an element sits in. */
 export function closeEnclosingPanel(el: Element | null | undefined) {
   el?.closest("details")?.removeAttribute("open");
