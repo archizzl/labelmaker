@@ -74,12 +74,13 @@ export function SignUpForm({
   );
 }
 
-export function CreateAccountForm() {
+export function CreateAccountForm({ next }: { next?: string }) {
   const [state, action, pending] = useActionState(createAccount, null);
   // The button and name say which it is.
   const [kind, setKind] = useState<"label" | "band">("label");
   return (
     <form action={action} className="space-y-4">
+      {next && <input type="hidden" name="next" value={next} />}
       <fieldset className="space-y-2">
         <legend className="mb-1 text-sm font-medium">This group is</legend>
         <label className="flex items-start gap-2 text-sm">

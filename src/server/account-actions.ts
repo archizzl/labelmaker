@@ -99,6 +99,9 @@ export async function signOut(fd?: FormData) {
  * A new label or band account, owned by whoever creates it. A band account gets its band straight
  * away; the creator is added as a payee (and, for a band, as a member of it) linked to their login.
  */
+/** Where to go once a new group's setup is done (the link they came from), if anywhere. */
+const AFTER_SETUP_COOKIE = "lm_after_setup";
+
 export async function createAccount(_: FormState, fd: FormData): Promise<FormState> {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -116,6 +119,9 @@ export async function createAccount(_: FormState, fd: FormData): Promise<FormSta
   // A band account is its band. Whoever made it isn't assumed to be in it: setup asks.
   if (kind === "band") await db.insert(schema.bands).values({ orgId, name });
   await auth.api.setActiveOrganization({ body: { organizationId: orgId }, headers: await headers() });
+  // Set up from a link (a label's invite for bands): back to it once setup's done.
+  const next = safePath(str(fd, "next") || null, "");
+  if (next) (await cookies()).set(AFTER_SETUP_COOKIE, next, { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 });
   revalidatePath("/", "layout");
   redirect("/welcome/setup");
 }
@@ -142,7 +148,10 @@ export async function saveSetupLinks(_: FormState, fd: FormData): Promise<FormSt
 export async function saveSetupMe(_: FormState, fd: FormData): Promise<FormState> {
   const ctx = await requireAdmin();
   const { orgId, user } = ctx;
-  const done = ctx.org.kind === "band" ? "/directory" : "/";
+  const jar = await cookies();
+  const after = safePath(jar.get(AFTER_SETUP_COOKIE)?.value ?? null, "");
+  if (after) jar.delete(AFTER_SETUP_COOKIE);
+  const done = after || (ctx.org.kind === "band" ? "/directory" : "/");
   if (str(fd, "inIt") !== "yes") redirect(done);
   const name = str(fd, "name").slice(0, 120);
   if (!name) return { error: "Enter your name." };

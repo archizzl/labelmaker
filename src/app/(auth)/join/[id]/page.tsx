@@ -135,7 +135,7 @@ async function JoinLabelAsBand({ id, label, session }: { id: string; label: { id
             Sign in
           </LinkButton>
           <p className="text-center text-sm text-muted">
-            Your band isn’t here yet? <Link href="/signup">Create an account</Link>, set up the band, then open
+            Your band isn’t here yet? <Link href={`/signup?next=${encodeURIComponent(`/join/${id}`)}`}>Create an account</Link>, set up the band, then open
             this link again.
           </p>
         </div>
@@ -146,7 +146,7 @@ async function JoinLabelAsBand({ id, label, session }: { id: string; label: { id
           {groups.length
             ? groups.map((g) => `${g.name} is ${g.why}.`).join(" ")
             : "You don’t run a band here yet."}{" "}
-          <Link href="/welcome">Set up your band</Link>, then open this link again.
+          <Link href={`/welcome?next=${encodeURIComponent(`/join/${id}`)}`}>Set up your band</Link>, then open this link again.
         </p>
       )}
     </>

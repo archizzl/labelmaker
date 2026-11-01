@@ -4,17 +4,19 @@ import { redirect } from "next/navigation";
 import { CreateAccountForm } from "@/components/auth-forms";
 import { DeleteLogin } from "@/components/delete-login";
 import { accountsFor, getSession } from "@/server/context";
+import { safePath } from "@/lib/safe-path";
 
 export const metadata = { title: "welcome" };
 
 /** After signing up: set up a label or band account, or open an invite into someone else's. */
-export default async function WelcomePage() {
+export default async function WelcomePage({ searchParams }: PageProps<"/welcome">) {
   const session = await getSession();
   if (!session) redirect("/login?next=/welcome");
   const { user } = session;
   // (Invites aren't listed here by email: nobody's email is checked, so anyone could sign up with
   // an invited person's. An invite is joined only through its link, which the admin sends them.)
   const accounts = await accountsFor(user.id);
+  const q = await searchParams;
   const first = user.name.split(" ")[0];
 
   return (
@@ -22,7 +24,7 @@ export default async function WelcomePage() {
       <h1 className="mb-1 text-xl font-bold">Welcome, {first}</h1>
 
       <p className="mb-5 text-sm text-muted">Set up your label or band.</p>
-      <CreateAccountForm />
+      <CreateAccountForm next={safePath(typeof q.next === "string" ? q.next : null, "") || undefined} />
 
       <div className="mt-5 flex flex-wrap items-center gap-4 text-sm text-muted">
         {accounts.length > 0 && <Link href="/">Back to {accounts[0].name}</Link>}
