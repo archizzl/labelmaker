@@ -13,6 +13,7 @@ import { BandsInviteLink, StandingInviteLink } from "@/components/band-invite-li
 import { db, schema } from "@/db";
 import { payHandlesSummary } from "@/lib/paypal-export";
 import { bandScope, can } from "@/lib/permissions";
+import { someNames } from "@/lib/plural";
 import { addMember, deletePerson, mergePeopleAction, removeMember, savePerson, updateMembership } from "@/server/actions";
 import { type Context, requireAccess } from "@/server/context";
 import { labelHost } from "@/server/data";
@@ -213,7 +214,11 @@ export default async function DirectoryPage() {
                           .join(", ") || "no band"}
                       </span>
                     </span>
-                    <SubmitButton size="sm" variant="secondary">
+                    <SubmitButton
+                      size="sm"
+                      variant="secondary"
+                      confirm={`Merge ${someNames(group.filter((p) => p.id !== keep.id).map((p) => p.name))} into ${keep.name}? This can’t be undone.`}
+                    >
                       keep this one
                     </SubmitButton>
                   </form>
