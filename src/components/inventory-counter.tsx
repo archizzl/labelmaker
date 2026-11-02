@@ -126,7 +126,7 @@ export function InventoryCounter({ id, onHand, ideal, low }: { id: number; onHan
           className="!h-7 !w-16 !px-1 text-center text-sm tabular-nums"
         />
       </label>
-      {ideal !== null && count < ideal && <div className="text-xs text-muted">{ideal - count} short</div>}
+      {/* {ideal !== null && count < ideal && <div className="text-xs text-muted">{ideal - count} short</div>} */}
       {error && <p className="max-w-48 text-xs text-bad">{error}</p>}
     </div>
   );
