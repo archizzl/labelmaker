@@ -88,8 +88,8 @@ function itemsFor(
   ];
 }
 
-/** Pick which of your accounts (labels and bands) you're working in. */
-function AccountSwitcher({ account, accounts, photos }: { account: Account; accounts: Account[]; photos: Record<string, string> }) {
+/** Pick which of your accounts (labels and bands) you're working in, or set up another one. */
+function AccountSwitcher({ account, accounts, photos, viewing }: { account: Account; accounts: Account[]; photos: Record<string, string>; viewing: boolean }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   // Closes on a click anywhere else, or Escape.
@@ -110,7 +110,8 @@ function AccountSwitcher({ account, accounts, photos }: { account: Account; acco
       <span className="hidden max-w-48 truncate sm:inline">{account.name}</span>
     </>
   );
-  if (accounts.length < 2) return <span className="flex items-center gap-2 text-sm text-muted">{current}</span>;
+  // (Viewing as someone else: no switching.)
+  if (viewing) return <span className="flex items-center gap-2 text-sm text-muted">{current}</span>;
   return (
     <div ref={box} className="relative">
       <button
@@ -143,6 +144,9 @@ function AccountSwitcher({ account, accounts, photos }: { account: Account; acco
               {a.id === account.id && <span aria-hidden>✓</span>}
             </button>
           ))}
+          <Link href="/welcome" role="menuitem" className="block border-t border-border px-3 py-2 text-sm text-link hover:bg-surface-2">
+            + New group
+          </Link>
         </form>
       )}
     </div>
@@ -244,7 +248,7 @@ export function Nav({
             </Link>
           )}
           {/* The group you're in (a label or band), and switching to another. */}
-          <AccountSwitcher account={account} accounts={accounts} photos={groupPhotos} />
+          <AccountSwitcher account={account} accounts={accounts} photos={groupPhotos} viewing={!!viewing} />
           {abel && <AbelButton />}
           {!viewing && (
             <form action={signOut}>
