@@ -230,7 +230,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
           )
         }
       />
-      <SalesTabs active="browse" unrouted={unrouted} canImport={canImport} canAdd={!!adder} />
+      <SalesTabs active="browse" unrouted={unrouted} canImport={canImport} canAdd={!!adder || can(ctx.access, "sales", "edit")} />
 
       <Card title={main ? `${page.count.toLocaleString("en-US")} sale${page.count === 1 ? "" : "s"}` : "Sales"}>
         <Filters f={f} options={options} filtered={filtered} oneBand={labels.length > 0} columns={<ColumnsMenu list="sales" hidden={hiddenColumns} without={showPaidTo ? [] : ["paidTo"]} />} />

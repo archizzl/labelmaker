@@ -166,7 +166,7 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
   return (
     <>
       <PageHeader title="Sales" />
-      <SalesTabs active="import" canAdd={bands.length > 0} />
+      <SalesTabs active="import" />
       {justImported && (
         <Fading clearParams={["imported"]}>
           <Callout tone="good">
