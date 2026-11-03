@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { connection } from "next/server";
 import { ActionForm, CopyButton, SaveWhenChanged, SubmitButton } from "@/components/client";
