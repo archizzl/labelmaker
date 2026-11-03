@@ -427,9 +427,6 @@ export async function updateMembership(fd: FormData) {
   if (m) await syncOwnPeopleForBand(orgId, m.bandId);
   done();
 }
-export async function updateMembershipForm(_: ActionState, fd: FormData): Promise<ActionState> {
-  return asFormResult(() => updateMembership(fd), "Saved.");
-}
 
 /** updateMembership for its form: errors shown beside it. */
 export async function updateMembershipForm(_: ActionState, fd: FormData): Promise<ActionState> {
@@ -446,9 +443,6 @@ export async function removeMember(fd: FormData) {
     .returning({ bandId: bandMemberships.bandId });
   if (gone) await syncOwnPeopleForBand(orgId, gone.bandId);
   done();
-}
-export async function removeMemberForm(_: ActionState, fd: FormData): Promise<ActionState> {
-  return asFormResult(() => removeMember(fd));
 }
 
 /** removeMember for its form: errors shown beside it. */

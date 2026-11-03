@@ -90,7 +90,7 @@ export async function refreshOrders() {
   forgetOpenOrders(orgId);
   revalidatePath("/orders");
 }
-export async function refreshOrdersForm(_: ShipState): Promise<ShipState> {
+export async function refreshOrdersForm(): Promise<ShipState> {
   return asFormResult(() => refreshOrders());
 }
 
@@ -176,6 +176,6 @@ export async function hideOrdersNotice() {
 }
 
 /** hideOrdersNotice for its form: errors shown beside it. */
-export async function hideOrdersNoticeForm(_: ShipState, _fd: FormData): Promise<ShipState> {
+export async function hideOrdersNoticeForm(): Promise<ShipState> {
   return asFormResult(() => hideOrdersNotice());
 }

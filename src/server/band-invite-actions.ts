@@ -241,7 +241,7 @@ export async function resetBandsLink() {
 }
 
 /** resetBandsLink for its form: errors shown beside it. */
-export async function resetBandsLinkForm(_: InviteLinkState, _fd: FormData): Promise<InviteLinkState> {
+export async function resetBandsLinkForm(): Promise<InviteLinkState> {
   return asFormResult(() => resetBandsLink(), "Reset.");
 }
 
