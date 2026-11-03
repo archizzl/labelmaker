@@ -14,7 +14,7 @@ import { db, schema } from "@/db";
 import { payHandlesSummary } from "@/lib/paypal-export";
 import { bandScope, can } from "@/lib/permissions";
 import { someNames } from "@/lib/plural";
-import { addMember, deletePerson, mergePeopleAction, removeMember, savePersonForm, updateMembership } from "@/server/actions";
+import { addMember, addMemberForm, deletePerson, mergePeopleAction, removeMember, savePersonForm, updateMembership } from "@/server/actions";
 import { type Context, requireAccess } from "@/server/context";
 import { labelHost } from "@/server/data";
 import { type BandAccountSummary, bandAccountSummaries, ensureBandAccounts } from "@/server/band-accounts";
@@ -265,6 +265,13 @@ export default async function DirectoryPage() {
                     <span className="hidden lg:block" />
                   </div>
                 ))}
+                {canEdit && !ctx.ownLogin && (
+                  <div className="mt-3">
+                    <Disclosure summary="+ Add someone without an account">
+                      <AddByHand bandId={b.id} payDetails={!ctx.lens} />
+                    </Disclosure>
+                  </div>
+                )}
                 {runsLogins && (
                   <div className="mt-3">
                     <StandingInviteLink bandOrgId={orgId} createdBy={ctx.user.id} />
@@ -650,6 +657,43 @@ function BandRoles({ person: p, membership: m, canRemove }: { person: Person; me
         </form>
       )}
     </div>
+  );
+}
+
+/**
+ * Someone in a band who won't sign in (a producer, a member with no email): a payee only. Everyone
+ * else comes in with an invite link. Where they're paid isn't a band's own account's to set.
+ */
+function AddByHand({ bandId, payDetails }: { bandId: number; payDetails: boolean }) {
+  return (
+    <ActionForm action={addMemberForm} className="grid gap-4 sm:grid-cols-2">
+      <input type="hidden" name="bandId" value={bandId} />
+      <Field label="Name">
+        <input name="name" required />
+      </Field>
+      <Field label="Roles (optional)" hint="Comma-separated.">
+        <input name="roles" />
+      </Field>
+      {payDetails && (
+        <>
+          <Field label="PayPal email">
+            <input name="email" type="email" />
+          </Field>
+          <Field label="PayPal.me handle">
+            <input name="paypalMe" />
+          </Field>
+          <Field label="Venmo username" hint="US only.">
+            <input name="venmo" placeholder="@yourname" />
+          </Field>
+          <Field label="Cash App $cashtag">
+            <input name="cashtag" placeholder="$yourname" />
+          </Field>
+        </>
+      )}
+      <div className="sm:col-span-2">
+        <SubmitButton>Add</SubmitButton>
+      </div>
+    </ActionForm>
   );
 }
 

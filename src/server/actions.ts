@@ -247,7 +247,7 @@ export async function deleteBand(fd: FormData) {
 
 // ---------- people & memberships ----------
 
-/** saveBand, deleteBand and savePerson for their forms: errors shown beside them. */
+/** saveBand, deleteBand, savePerson and addMember for their forms: errors shown beside them. */
 export async function saveBandForm(_: ActionState, fd: FormData): Promise<ActionState> {
   return asFormResult(() => saveBand(fd), "Saved.");
 }
@@ -256,6 +256,9 @@ export async function deleteBandForm(_: ActionState, fd: FormData): Promise<Acti
 }
 export async function savePersonForm(_: ActionState, fd: FormData): Promise<ActionState> {
   return asFormResult(() => savePerson(fd), "Saved.");
+}
+export async function addMemberForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => addMember(fd), "Added.");
 }
 
 export async function savePerson(fd: FormData) {
