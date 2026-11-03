@@ -66,3 +66,49 @@ export function salesRangeDates(range: string | undefined, today: string): { key
       return { key: "all" };
   }
 }
+
+// Dates shown to people. Each reads the date (and time) straight from the string, never the
+// machine's time zone, so the server and the browser always agree.
+
+const SHORT_MONTHS = MONTHS.map((m) => m.slice(0, 3));
+
+/** Year, month and day (and hour and minute when there's a time) from "2026-01-31", "2026-01-31 14:03:00" or "2026-01-31T14:03:00Z". */
+function parts(value: string | Date) {
+  const s = value instanceof Date ? value.toISOString() : value;
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(s);
+  if (!m) return null;
+  return {
+    y: Number(m[1]),
+    m: Number(m[2]),
+    d: Number(m[3]),
+    hour: m[4] === undefined ? null : Number(m[4]),
+    minute: m[5] === undefined ? null : Number(m[5]),
+  };
+}
+
+/** "2026-01-31" (or a timestamp) → "Jan 31, 2026". Empty → "—". */
+export function formatDate(value: string | Date | null | undefined): string {
+  if (!value) return "—";
+  const p = parts(value);
+  return p ? `${SHORT_MONTHS[p.m - 1]} ${p.d}, ${p.y}` : String(value);
+}
+
+/** "Jan 1 – 31, 2026", "Jan 1 – Feb 3, 2026" or "Dec 30, 2025 – Jan 2, 2026"; a single day is just that date. */
+export function formatRange(start: string, end: string): string {
+  const a = parts(start);
+  const b = parts(end);
+  if (!a || !b || a.y !== b.y) return `${formatDate(start)} – ${formatDate(end)}`;
+  if (a.m !== b.m) return `${SHORT_MONTHS[a.m - 1]} ${a.d} – ${SHORT_MONTHS[b.m - 1]} ${b.d}, ${b.y}`;
+  if (a.d !== b.d) return `${SHORT_MONTHS[a.m - 1]} ${a.d} – ${b.d}, ${b.y}`;
+  return formatDate(start);
+}
+
+/** "2026-09-27 14:03:00" → "Sep 27, 2026, 2:03 PM", the time as stored. Just the date when there's no time. Empty → "—". */
+export function formatDateTime(value: string | Date | null | undefined): string {
+  if (!value) return "—";
+  const p = parts(value);
+  if (!p) return String(value);
+  if (p.hour === null || p.minute === null) return formatDate(value);
+  const h = p.hour % 12 || 12;
+  return `${formatDate(value)}, ${h}:${String(p.minute).padStart(2, "0")} ${p.hour < 12 ? "AM" : "PM"}`;
+}

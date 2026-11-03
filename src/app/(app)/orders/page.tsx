@@ -12,6 +12,7 @@ import { bandScope, can, inBandScope } from "@/lib/permissions";
 import { requireAccess } from "@/server/context";
 import { loadOpenOrders, type OrderSale, salesForOrders } from "@/server/merch-orders";
 import { markHandedOff, markOrderPickup, markOrderShipped, refreshOrders, savePickupNote } from "@/server/order-actions";
+import { formatDate, formatDateTime } from "@/lib/dates";
 
 export const metadata = { title: "orders" };
 
@@ -186,7 +187,7 @@ export default async function OrdersPage({ searchParams }: PageProps<"/orders">)
         </>
       )}
       <p className="mt-6 text-xs text-muted">
-        Straight from Bandcamp as of {new Date(open.fetchedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}.
+        Straight from Bandcamp as of {formatDateTime(new Date(open.fetchedAt))}.
       </p>
     </>
   );
@@ -215,7 +216,7 @@ function OrderList({
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="font-bold">{o.buyer.name || "Buyer"}</span>
-              <span className="text-sm text-muted">{o.date}</span>
+              <span className="text-sm text-muted">{formatDate(o.date)}</span>
               {o.preorderUntil ? (
                 <Badge>pre-order, ships from {o.preorderUntil}</Badge>
               ) : o.failed ? (
@@ -382,7 +383,7 @@ function OrderDetails({ order: o, sales, bandName }: { order: MerchOrder; sales:
         <dt className="text-muted">Bandcamp payment</dt>
         <dd className="tabular-nums">{o.paymentId}</dd>
         <dt className="text-muted">Ordered</dt>
-        <dd>{o.date}</dd>
+        <dd>{formatDate(o.date)}</dd>
         <dt className="text-muted">Payment</dt>
         <dd>{o.failed ? <span className="text-bad">failed: don’t ship</span> : (o.paymentState ?? "paid")}</dd>
         {o.preorderUntil && (
@@ -494,7 +495,7 @@ function PickupList({ pickups, bandName, canEdit }: { pickups: PickupRow[]; band
             <div className="min-w-0 space-y-1">
               <div className="flex flex-wrap items-baseline gap-x-3">
                 <span className="font-bold">{p.buyerName}</span>
-                <span className="text-sm text-muted">ordered {p.orderDate}</span>
+                <span className="text-sm text-muted">ordered {formatDate(p.orderDate)}</span>
                 {/* <Badge>marked shipped {p.createdAt.slice(0, 10)}</Badge> */}
               </div>
               <ul className="text-sm">

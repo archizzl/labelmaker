@@ -16,6 +16,7 @@ import { bandcampCredentials } from "@/server/bandcamp-api";
 import { getContext } from "@/server/context";
 import { type PayoutScope, payoutNote, type periodView, type previewView } from "@/server/period-view";
 import { PayQueue, type QueueItem } from "./pay-queue";
+import { formatDate, formatRange } from "@/lib/dates";
 
 type View = NonNullable<Awaited<ReturnType<typeof periodView>>> | Awaited<ReturnType<typeof previewView>>;
 
@@ -115,7 +116,7 @@ export async function PayoutView({
             ) : (
               "whole label"
             )}{" "}
-            · {scope.startDate} → {scope.endDate} · {plural(live.results.length, "sale")}
+            · {formatRange(scope.startDate, scope.endDate)} · {plural(live.results.length, "sale")}
           </>
         }
         actions={
@@ -441,7 +442,7 @@ export async function PayoutView({
                     {finalized && !canEdit && (
                       <td>
                         {l.status === "paid" ? (
-                          <Badge tone="good">Paid {l.paidAt?.slice(0, 10)}</Badge>
+                          <Badge tone="good">Paid {formatDate(l.paidAt)}</Badge>
                         ) : l.status === "kept" ? (
                           <Badge tone="good">Kept in the label’s bank account</Badge>
                         ) : (
@@ -455,7 +456,7 @@ export async function PayoutView({
                           <input type="hidden" name="id" value={l.payoutId!} />
                           {l.status === "paid" ? (
                             <>
-                              <Badge tone="good">Paid {l.paidAt?.slice(0, 10)}</Badge>
+                              <Badge tone="good">Paid {formatDate(l.paidAt)}</Badge>
                               {l.reference && <span className="text-xs text-muted">{l.reference}</span>}
                               <input type="hidden" name="status" value="pending" />
                               <SubmitButton variant="ghost" size="sm" confirm="Mark this payment as not paid yet? Its paid date and reference are cleared.">
@@ -590,7 +591,7 @@ export async function PayoutView({
                     const sale = live.saleById.get(r.saleId)!;
                     return (
                       <tr key={r.saleId}>
-                        <td data-col="date" className="whitespace-nowrap text-muted">{sale.date}</td>
+                        <td data-col="date" className="whitespace-nowrap text-muted">{formatDate(sale.date)}</td>
                         <td>
                           <div>{sale.itemName}</div>
                           <div className="text-xs text-muted">

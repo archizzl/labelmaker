@@ -22,6 +22,7 @@ import { computeAllTime } from "@/server/data";
 import { labelPartFor } from "@/server/own-books";
 import { nameMaps } from "@/server/data";
 import { LABEL_RELEASES_SOURCE, labelIncome, SHIPPING_SOURCE, type Totals } from "@/server/label-income";
+import { formatDate } from "@/lib/dates";
 
 export const metadata = { title: "funds" };
 
@@ -213,7 +214,7 @@ export default async function FundsPage({ searchParams }: PageProps<"/funds">) {
                 <tbody>
                   {shown.slice((f.page - 1) * f.per, f.page * f.per).map((l, i) => (
                     <tr key={`${l.saleId}-${l.source}-${i}`}>
-                      <td data-col="date" className="whitespace-nowrap text-muted">{l.date}</td>
+                      <td data-col="date" className="whitespace-nowrap text-muted">{formatDate(l.date)}</td>
                       <td data-col="toLabel" className="num font-medium">{formatCents(l.cents, l.currency)}</td>
                       <td data-col="source" className="text-sm">{l.source}</td>
                       <td>{l.item || <span className="text-muted">(no name)</span>}</td>
@@ -252,7 +253,7 @@ export default async function FundsPage({ searchParams }: PageProps<"/funds">) {
                   .sort((a, b) => b.when.localeCompare(a.when) || b.e.id - a.e.id)
                   .map(({ e, when }) => (
                     <tr key={e.id}>
-                      <td className="whitespace-nowrap text-muted">{when}</td>
+                      <td className="whitespace-nowrap text-muted">{formatDate(when)}</td>
                       <td>
                         {e.description}
                         {e.bandId && <div className="text-xs text-muted">{names.band.get(e.bandId)}</div>}
@@ -335,7 +336,7 @@ function HeldByBands({
             .filter((r) => held.some((h) => h.bandId === r.bandId))
             .map((r) => (
               <li key={r.id} className="flex flex-wrap items-center gap-x-3">
-                <span className="text-muted">{r.date}</span>
+                <span className="text-muted">{formatDate(r.date)}</span>
                 <span>{bandName(r.bandId)}</span>
                 <Money cents={r.amountCents} currency={r.currency} />
                 {r.note && <span className="text-xs text-muted">{r.note}</span>}
@@ -445,7 +446,7 @@ async function BandFund({ ctx }: { ctx: Context }) {
                 <tbody>
                   {spent.map((e) => (
                     <tr key={e.id}>
-                      <td className="whitespace-nowrap text-muted">{e.date}</td>
+                      <td className="whitespace-nowrap text-muted">{formatDate(e.date)}</td>
                       <td>{e.description}</td>
                       <td className="num">{formatCents(e.amountCents, e.currency)}</td>
                     </tr>

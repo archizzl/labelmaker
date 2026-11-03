@@ -33,6 +33,7 @@ import {
   salesFilterOptions,
   summarizeSales,
 } from "@/server/sales-browse";
+import { formatDate, formatRange } from "@/lib/dates";
 
 export const metadata = { title: "sales" };
 
@@ -124,7 +125,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
   // One sale's row (inOrder: how many items its order has, when it's shown under the order's row).
   const saleRow = (s: SaleRow, inOrder = 0) => (
         <tr key={s.id} className={`align-top ${inOrder ? "bg-surface-2/40" : ""}`}>
-          <td data-col="date" className="whitespace-nowrap text-muted">{s.date}</td>
+          <td data-col="date" className="whitespace-nowrap text-muted">{formatDate(s.date)}</td>
           <td className={`min-w-48 ${inOrder ? "pl-7" : ""}`}>
             <details>
               <summary className="cursor-pointer">
@@ -282,7 +283,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
       {main && (
         <>
           <h2 className="mt-10 mb-3 text-sm font-bold">
-            Totals and breakdowns <span className="font-normal text-muted">({main.first} to {main.last})</span>
+            Totals and breakdowns <span className="font-normal text-muted">({formatRange(main.first, main.last)})</span>
           </h2>
           <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Stat label="Net received" value={formatCents(main.net, main.currency)} />
@@ -519,7 +520,7 @@ function OrderCells({ order, paidTo }: { order: SaleRow[]; paidTo?: (s: SaleRow)
   const net = order.reduce((a, s) => a + s.netCents, 0);
   return (
     <>
-      <td data-col="date" className="whitespace-nowrap text-muted">{first.date}</td>
+      <td data-col="date" className="whitespace-nowrap text-muted">{formatDate(first.date)}</td>
       <td className="min-w-48">
         <span className="mr-1 inline-block text-xs text-muted transition group-aria-expanded:rotate-90">▸</span>
         {order.map(itemLabel).join(", ")}

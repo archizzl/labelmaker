@@ -1,5 +1,6 @@
 import { Money } from "@/components/ui";
 import type { periodView } from "@/server/period-view";
+import { formatRange } from "@/lib/dates";
 
 type View = NonNullable<Awaited<ReturnType<typeof periodView>>>;
 
@@ -17,7 +18,7 @@ export function BandStatement({ view, bandId }: { view: View; bandId: number }) 
         <p className="text-sm text-muted">Earnings statement</p>
         <h1 className="text-2xl font-semibold">{names.band.get(bandId)}</h1>
         <p className="text-sm text-muted">
-          {period.name} · {period.startDate} to {period.endDate}
+          {period.name} · {formatRange(period.startDate, period.endDate)}
         </p>
       </header>
       {currencies.map((cur) => {

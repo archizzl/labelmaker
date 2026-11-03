@@ -12,6 +12,7 @@ import { loadLayout } from "@/server/chart-layouts";
 import { requireAccess } from "@/server/context";
 import { deleteFans } from "@/server/fan-actions";
 import { type FanFilter, fanStats, listFans, type Purchase } from "@/server/fans";
+import { formatDate } from "@/lib/dates";
 
 export const metadata = { title: "fans" };
 
@@ -233,7 +234,7 @@ export default async function FansPage({ searchParams }: PageProps<"/fans">) {
                   <li key={i.id} className="flex flex-wrap gap-x-2">
                     <span>{i.filename}</span>
                     <span className="text-muted">
-                      · {i.createdAt.slice(0, 10)} · {i.rowCount} in file, {i.addedCount} new
+                      · {formatDate(i.createdAt)} · {i.rowCount} in file, {i.addedCount} new
                       {i.bandId ? ` · ${bandName.get(i.bandId) ?? ""}` : ""}
                     </span>
                   </li>
@@ -260,7 +261,7 @@ function Bought({ purchases, bandName }: { purchases: Purchase[]; bandName: Map<
       <ul className="mt-1 space-y-0.5 text-xs text-muted">
         {purchases.slice(0, 20).map((p, i) => (
           <li key={i}>
-            {p.date} · {p.itemName}
+            {formatDate(p.date)} · {p.itemName}
             {p.bandId ? ` (${bandName.get(p.bandId) ?? p.artist})` : p.artist ? ` (${p.artist})` : ""} · {formatCents(p.netCents, p.currency)}
           </li>
         ))}

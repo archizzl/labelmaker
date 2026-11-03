@@ -10,6 +10,7 @@ import { labelFunds, nameMaps } from "@/server/data";
 import { incomeSources, labelIncome } from "@/server/label-income";
 import { SentTo } from "./pay-person";
 import { type SourceInfo, SourceSelect } from "./source-select";
+import { formatDate } from "@/lib/dates";
 
 type Transfer = typeof schema.labelTransfers.$inferSelect;
 
@@ -185,7 +186,7 @@ export async function LabelFunds({ bandId, showTotals = true }: { bandId?: numbe
             <tbody>
               {transfers.map((t) => (
                 <tr key={t.id}>
-                  <td className="whitespace-nowrap text-muted">{t.date}</td>
+                  <td className="whitespace-nowrap text-muted">{formatDate(t.date)}</td>
                   <td>
                     <div className="font-medium">{t.recipient}</div>
                     {t.note && <div className="text-xs text-muted">{t.note}</div>}

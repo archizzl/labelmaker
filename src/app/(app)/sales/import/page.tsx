@@ -15,6 +15,7 @@ import { SyncFooter } from "@/components/sync-status";
 import { requireAccess } from "@/server/context";
 import { redirect } from "next/navigation";
 import { nameMaps, unroutedGroups } from "@/server/data";
+import { formatDateTime } from "@/lib/dates";
 
 export const metadata = { title: "import sales" };
 
@@ -341,7 +342,7 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
                   {history.map((h) => (
                     <tr key={h.id}>
                       <td>{h.filename}</td>
-                      <td className="text-muted">{h.importedAt.replace("T", " ").slice(0, 16)}</td>
+                      <td className="text-muted">{formatDateTime(h.importedAt)}</td>
                       <td className="num">{h.addedCount}</td>
                       <td className="num">{h.duplicateCount}</td>
                       <td className="text-right">

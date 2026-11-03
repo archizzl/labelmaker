@@ -6,6 +6,7 @@ import { deleteDeduction } from "@/server/actions";
 import { DeductionForm, type ReleaseOption } from "./deduction-form";
 import { SubmitButton } from "./client";
 import { Badge, Disclosure } from "./ui";
+import { formatDate, formatRange } from "@/lib/dates";
 
 type Deduction = typeof deductionsTable.$inferSelect;
 type Option = { id: number; name: string };
@@ -45,7 +46,14 @@ export function describeDeduction(d: Deduction, names: Names) {
   ]
     .filter(Boolean)
     .join(" · ");
-  const window = d.effectiveFrom || d.effectiveTo ? `${d.effectiveFrom ?? "…"} → ${d.effectiveTo ?? "…"}` : null;
+  const window =
+    d.effectiveFrom && d.effectiveTo
+      ? formatRange(d.effectiveFrom, d.effectiveTo)
+      : d.effectiveFrom
+        ? `from ${formatDate(d.effectiveFrom)}`
+        : d.effectiveTo
+          ? `until ${formatDate(d.effectiveTo)}`
+          : null;
   return { amount, destination, scope, window };
 }
 

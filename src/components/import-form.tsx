@@ -6,6 +6,7 @@ import { formatCents } from "@/lib/money";
 import { commitImport, type ImportPreview, previewImport } from "@/server/actions";
 import { plural } from "@/lib/plural";
 import { buttonClass, Stat } from "./ui";
+import { formatRange } from "@/lib/dates";
 
 export function ImportForm() {
   const [file, setFile] = useState<File | null>(null);
@@ -88,7 +89,7 @@ export function ImportForm() {
               </div>
               {preview.dateRange && (
                 <p className="mb-3 text-sm text-muted">
-                  Dates {preview.dateRange[0]} → {preview.dateRange[1]}
+                  Dates {formatRange(preview.dateRange[0], preview.dateRange[1])}
                 </p>
               )}
               {preview.byBand.length > 0 && (

@@ -17,6 +17,7 @@ import { nameMaps } from "@/server/data";
 import { expenseFileList } from "@/server/expenses";
 import { deleteProject } from "@/server/project-actions";
 import { accountProjects, projectNumbers } from "@/server/projects";
+import { formatDate } from "@/lib/dates";
 
 export const metadata = { title: "project" };
 
@@ -79,7 +80,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
         subtitle={
           <>
             {project.bandId ? <Link href={`/bands/${project.bandId}`}>{names.band.get(project.bandId)}</Link> : "whole label"}
-            {project.startDate && <> · started {project.startDate}</>}
+            {project.startDate && <> · started {formatDate(project.startDate)}</>}
             {n.firstSale && <> · first sale {n.firstSale}</>}
             {project.notes && <> · {project.notes}</>}
           </>

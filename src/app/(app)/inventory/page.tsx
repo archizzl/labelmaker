@@ -13,6 +13,7 @@ import { requireAccess } from "@/server/context";
 import { addFromCatalog, archiveInventoryItem, restoreInventoryItem, saveInventoryItem } from "@/server/inventory-actions";
 import { merchPhotoUrl, ownPhotoId } from "@/server/merch-photos";
 import { InventoryPhoto } from "@/components/inventory-photo";
+import { formatDate } from "@/lib/dates";
 
 /** A photo from Bandcamp (not one uploaded here): it can't be changed here. */
 const fromBandcamp = (url: string | null | undefined) => !!url && ownPhotoId(url) === null;
@@ -268,7 +269,7 @@ function History({ moves }: { moves: Move[] }) {
         <tbody>
           {moves.map((m) => (
             <tr key={m.id}>
-              <td className="text-xs text-muted">{m.createdAt.slice(0, 10)}</td>
+              <td className="text-xs text-muted">{formatDate(m.createdAt)}</td>
               <td>
                 {moveLabel(m)}
                 {m.note && <span className="text-muted"> · {m.note}</span>}

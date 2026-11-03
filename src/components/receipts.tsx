@@ -8,6 +8,7 @@ import { deleteExpense, deleteExpenseFile, reviewExpenseForm, saveExpense, setRe
 import { coverageLines, type Expense, owedReimbursement } from "@/server/expenses";
 import type { Payee } from "./pay-person";
 import { ReimburseButtons } from "./reimburse-buttons";
+import { formatDate } from "@/lib/dates";
 
 type Band = Pick<typeof schema.bands.$inferSelect, "id" | "name">;
 type Release = Pick<typeof schema.releases.$inferSelect, "id" | "title" | "bandId">;
@@ -366,7 +367,7 @@ export function ExpenseTable({
         const mode = label ? "member" : tableMode;
         return (
           <li key={e.id} className="grid gap-2 py-3 sm:grid-cols-[6rem_minmax(0,1fr)_auto]">
-            <span className="text-sm text-muted">{e.date}</span>
+            <span className="text-sm text-muted">{formatDate(e.date)}</span>
             <div className="min-w-0 space-y-1">
               <div className="flex flex-wrap items-baseline gap-x-2">
                 <span className="font-medium">{e.description}</span>
