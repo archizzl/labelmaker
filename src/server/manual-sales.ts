@@ -10,8 +10,11 @@ import { ownBand } from "./data";
  * Who may add sales by hand, and for which bands: anyone who can change sales (just their bands, if
  * that's how far it goes), and any band member for the bands they're in. In a band's own group,
  * whoever's signed in is the band. Null for anyone else.
+ *
+ * A label can always sell as itself (a label tape, its own merch), bands or not: its band for "the
+ * label itself" (bands.isLabel, where the label keeps everything) is made the first time it's needed.
  */
-export async function saleAdder(): Promise<{ ctx: Context; bands: { id: number; name: string }[]; onlyBands: number[] | null } | null> {
+export async function saleAdder(): Promise<{ ctx: Context; bands: { id: number; name: string; isLabel?: boolean }[]; onlyBands: number[] | null } | null> {
   const lens = await getContext();
   if (lens.managedBy) {
     const ctx = await ownBooksOf(lens);
@@ -19,13 +22,22 @@ export async function saleAdder(): Promise<{ ctx: Context; bands: { id: number; 
     return band ? { ctx, bands: [{ id: band.id, name: band.name }], onlyBands: null } : null;
   }
   const ctx = lens;
-  const all = await db
-    .select({ id: schema.bands.id, name: schema.bands.name })
+  const rows = await db
+    .select({ id: schema.bands.id, name: schema.bands.name, isLabel: schema.bands.isLabel })
     .from(schema.bands)
     .where(and(eq(schema.bands.orgId, ctx.orgId), eq(schema.bands.active, true)))
-    .orderBy(asc(schema.bands.name));
+    .orderBy(asc(schema.bands.isLabel), asc(schema.bands.name));
+  const scope = bandScope(ctx.access, "sales");
+  if (ctx.org?.kind === "label" && can(ctx.access, "sales", "edit") && !scope && !ctx.viewingAs && !rows.some((b) => b.isLabel)) {
+    const [made] = await db
+      .insert(schema.bands)
+      .values({ orgId: ctx.orgId, name: ctx.org.name, isLabel: true })
+      .returning({ id: schema.bands.id, name: schema.bands.name, isLabel: schema.bands.isLabel });
+    rows.push(made);
+  }
+  // (The label itself last.)
+  const all = rows;
   if (can(ctx.access, "sales", "edit")) {
-    const scope = bandScope(ctx.access, "sales");
     const bands = scope ? all.filter((b) => scope.includes(b.id)) : all;
     return bands.length ? { ctx, bands, onlyBands: scope } : null;
   }

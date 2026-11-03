@@ -4,7 +4,7 @@ import { ManualSaleFields, type MerchChoice } from "@/components/manual-sale-fie
 import { addManualSale, deleteManualSale } from "@/server/manual-sale-actions";
 
 /** Sales → Import: add a sale that didn't go through Bandcamp (a show, merch sold in person). */
-export function ManualSaleForm({ bands, merch, currency }: { bands: { id: number; name: string }[]; merch: MerchChoice[]; currency: string }) {
+export function ManualSaleForm({ bands, merch, currency }: { bands: { id: number; name: string; isLabel?: boolean }[]; merch: MerchChoice[]; currency: string }) {
   const today = new Date().toLocaleDateString("en-CA");
   return (
     <ActionForm action={addManualSale} keepOpen className="grid gap-4 sm:grid-cols-3">

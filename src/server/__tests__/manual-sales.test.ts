@@ -6,7 +6,8 @@ import { newAccount, testDb } from "../../../test/helpers/db";
 let orgId = "";
 let testUser = "";
 let managedBy: { labelOrgId: string; bandId: number } | null = null;
-const ctx = () => ({ orgId, managedBy, person: null, access: { admin: true, permissions: {}, bandAreas: [], bandIds: [] }, user: { id: testUser, name: "Tester" } });
+let org: { kind: "label" | "band"; name: string } | undefined;
+const ctx = () => ({ orgId, org, managedBy, person: null, access: { admin: true, permissions: {}, bandAreas: [], bandIds: [] }, user: { id: testUser, name: "Tester" } });
 vi.mock("../context", () => ({
   requireAccess: async () => ctx(),
   getContext: async () => ctx(),
@@ -29,6 +30,7 @@ const pkg = (bandcampId: number, title: string) => ({ bandcampId, title, typeNam
 
 async function setup() {
   managedBy = null;
+  org = undefined;
   orgId = await newAccount("Band", "band");
   const [band] = await db.insert(schema.bands).values({ orgId, name: "Glass Harbor" }).returning();
   const [other] = await db.insert(schema.bands).values({ orgId, name: "Someone Else" }).returning();
@@ -104,6 +106,20 @@ describe("adding a sale by hand", () => {
     expect(await actions.addManualSale(null, form({ bandId: band.id, kind: "merch", [`each:${theirs.id}:`]: "9", [`sold:${theirs.id}:`]: 1 }))).toEqual({
       error: "That item isn’t the band’s.",
     });
+  });
+
+  it("lets a label with no bands sell as itself, made once", async () => {
+    managedBy = null;
+    orgId = await newAccount("Tiny Kick", "label");
+    org = { kind: "label", name: "Tiny Kick" };
+    const { saleAdder } = await import("../manual-sales");
+    const adder = await saleAdder();
+    expect(adder?.bands).toMatchObject([{ name: "Tiny Kick", isLabel: true }]);
+    await saleAdder();
+    const label = await db.select().from(schema.bands).where(eq(schema.bands.orgId, orgId));
+    expect(label).toHaveLength(1);
+    await actions.addManualSale(null, form({ bandId: label[0].id, kind: "show", itemName: "Tape night", amount: "50" }));
+    expect(await lastSale()).toMatchObject({ bandId: label[0].id, artist: "Tiny Kick", netCents: 5000 });
   });
 
   it("adds a show as one amount", async () => {

@@ -34,7 +34,7 @@ export default async function Dashboard() {
   const canImport = can(ctx.access, "sales", "edit") && !bandScope(ctx.access, "sales");
   // A band account the label made: its own books, with what the label has for its band added in.
   const m = ctx.managedBy;
-  const [bands, memberships, defaults, saleRows, periods, outside, { summary }, people, releaseRows, fundExpenses] = await Promise.all([
+  const [bandRows, memberships, defaults, saleRows, periods, outside, { summary }, people, releaseRows, fundExpenses] = await Promise.all([
     db.select().from(schema.bands).where(eq(schema.bands.orgId, orgId)),
     db.select().from(schema.bandMemberships).where(eq(schema.bandMemberships.orgId, orgId)),
     db
@@ -53,6 +53,8 @@ export default async function Dashboard() {
       .from(schema.expenses)
       .where(and(eq(schema.expenses.orgId, orgId), eq(schema.expenses.status, "approved"), eq(schema.expenses.paidBy, "band_fund"))),
   ]);
+  // The label itself (its own sales, where it keeps everything) needs no members or split.
+  const bands = bandRows.filter((b) => !b.isLabel);
   const saleCount = saleRows.length;
   const unrouted = saleRows.filter((s) => s.bandId === null).length;
   const needContacts = outside.filter((r) => r.needsContact);

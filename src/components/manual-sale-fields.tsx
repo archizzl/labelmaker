@@ -17,7 +17,7 @@ const detail = (name: (typeof SHOW_DETAILS)[number]["name"]) => SHOW_DETAILS.fin
  * where it was if wanted; anything else is one amount and a quantity; merch is every merch item the
  * band has, each with its price and how many were sold (and a line for anything not in the catalog).
  */
-export function ManualSaleFields({ bands, merch, currency }: { bands: { id: number; name: string }[]; merch: MerchChoice[]; currency: string }) {
+export function ManualSaleFields({ bands, merch, currency }: { bands: { id: number; name: string; isLabel?: boolean }[]; merch: MerchChoice[]; currency: string }) {
   const [bandId, setBandId] = useState(bands.length === 1 ? String(bands[0].id) : "");
   const [kind, setKind] = useState<string>("merch");
   const [paidWith, setPaidWith] = useState<string>(PAYMENT_METHODS[0]);
@@ -57,7 +57,7 @@ export function ManualSaleFields({ bands, merch, currency }: { bands: { id: numb
             </option>
             {bands.map((b) => (
               <option key={b.id} value={b.id}>
-                {b.name}
+                {b.isLabel ? `${b.name} (the label itself)` : b.name}
               </option>
             ))}
           </select>
