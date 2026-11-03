@@ -14,7 +14,6 @@ import { approveAccountApplicationForm, rejectAccountApplicationForm } from "@/s
 import { listApplications } from "@/server/applications";
 import { inviteStatus, listInvites } from "@/server/signup-invites";
 import { requireSiteAdmin } from "@/server/site-admin";
-import { startSiteViewAs } from "@/server/view-as-actions";
 import { testsAvailable } from "@/server/test-runner";
 import { AdminTests } from "@/components/admin-tests";
 import { AdminAbel } from "@/components/admin-abel";
@@ -39,6 +38,8 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   const h = await headers();
   const base = process.env.BETTER_AUTH_URL ?? `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
   const link = (code: string) => `${base}/signup?code=${code}`;
+  // "View as" opens the app, so it posts to the app's own address (src/app/api/view-as/route.ts).
+  const viewAsUrl = `${base}/api/view-as`;
 
   // The Tests tab is only on a local copy (npm run dev): the live site can't run the tests.
   const tests = testsAvailable();
@@ -161,7 +162,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
               <span className="break-all">{u.email}</span>
               <span className="text-xs text-muted">last signed in {day(seen.get(u.id))}</span>
               <ResetLinkButton userId={u.id} />
-              <form action={startSiteViewAs}>
+              <form action={viewAsUrl} method="post">
                 <input type="hidden" name="userId" value={u.id} />
                 <input type="hidden" name="orgId" value={a.id} />
                 <SubmitButton variant="ghost" size="sm">
@@ -501,7 +502,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                         <td className="text-sm">
                           {groups.length === 0 && <span className="text-muted">none yet</span>}
                           {groups.map((m) => (
-                            <form key={m.orgId} action={startSiteViewAs} className="flex flex-wrap items-center gap-x-2">
+                            <form key={m.orgId} action={viewAsUrl} method="post" className="flex flex-wrap items-center gap-x-2">
                               <input type="hidden" name="userId" value={u.id} />
                               <input type="hidden" name="orgId" value={m.orgId} />
                               <span>{m.org}</span>
