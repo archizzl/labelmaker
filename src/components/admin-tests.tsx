@@ -17,7 +17,7 @@ function Mark({ r }: { r: TestResult | undefined }) {
   if (!r) return <span className="w-4 shrink-0 text-center text-muted">·</span>;
   if (r.status === "passed") return <span className="w-4 shrink-0 text-center text-good">✓</span>;
   if (r.status === "failed") return <span className="w-4 shrink-0 text-center text-bad">✗</span>;
-  return <span className="w-4 shrink-0 text-center text-muted">–</span>;
+  return <span className="w-4 shrink-0 text-center text-muted">—</span>;
 }
 
 /**

@@ -71,7 +71,7 @@ export default async function SlipsPage({ searchParams }: PageProps<"/orders/sli
                     {l.name}
                     {l.artist && <div className="text-xs text-muted">{l.artist}</div>}
                   </td>
-                  <td>{l.option ?? "–"}</td>
+                  <td>{l.option ?? "—"}</td>
                   <td className="num font-bold">{l.quantity}</td>
                 </tr>
               ))}

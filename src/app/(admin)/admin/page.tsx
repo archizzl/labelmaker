@@ -193,7 +193,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                           {app.bandcampUrl}
                         </a>
                       ) : (
-                        "–"
+                        "—"
                       )}
                     </dd>
                     <dt className="text-muted">Website</dt>
@@ -203,7 +203,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                           {app.website}
                         </a>
                       ) : (
-                        "–"
+                        "—"
                       )}
                     </dd>
                     {app.kind === "band" ? (
@@ -214,15 +214,15 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                             ? app.members
                                 .map((m) => [m.name, m.role && `(${m.role})`, m.email && `<${m.email}>`].filter(Boolean).join(" "))
                                 .join(", ")
-                            : "–"}
+                            : "—"}
                         </dd>
                       </>
                     ) : (
                       <>
                         <dt className="text-muted">Artists</dt>
-                        <dd>{app.artists.length ? app.artists.map((a) => a.name).join(", ") : "–"}</dd>
+                        <dd>{app.artists.length ? app.artists.map((a) => a.name).join(", ") : "—"}</dd>
                         <dt className="text-muted">Team</dt>
-                        <dd>{app.team.length ? app.team.map((t) => `${t.name} <${t.email}>`).join(", ") : "–"}</dd>
+                        <dd>{app.team.length ? app.team.map((t) => `${t.name} <${t.email}>`).join(", ") : "—"}</dd>
                       </>
                     )}
                     {app.about && (
@@ -503,7 +503,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                           ))}
                         </td>
                         <td className="num">{a.sales ? a.sales.toLocaleString("en-US") : <span className="text-muted">0</span>}</td>
-                        <td className="text-sm">{a.bandcamp ?? a.bandcampUrl ?? <span className="text-muted">–</span>}</td>
+                        <td className="text-sm">{a.bandcamp ?? a.bandcampUrl ?? <span className="text-muted">—</span>}</td>
                         <td className="whitespace-nowrap text-muted">{formatDate(a.lastSync)}</td>
                       </tr>
                     );

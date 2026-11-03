@@ -101,7 +101,7 @@ export default async function FansPage({ searchParams }: PageProps<"/fans">) {
             <Stat label="Countries" value={stats.byCountry.filter((c) => c.country).length} />
             <Stat
               label="Buyers on the list"
-              value={stats.buyers.known ? stats.buyers.onList.toLocaleString("en-US") : "–"}
+              value={stats.buyers.known ? stats.buyers.onList.toLocaleString("en-US") : "—"}
               note={stats.buyers.known ? `of ${stats.buyers.known.toLocaleString("en-US")}` : undefined}
             />
           </div>
@@ -188,9 +188,9 @@ export default async function FansPage({ searchParams }: PageProps<"/fans">) {
                       {list.rows.map((f) => (
                         <tr key={f.id}>
                           <td className="break-all">{f.email}</td>
-                          <td>{f.name ?? <span className="text-muted">–</span>}</td>
+                          <td>{f.name ?? <span className="text-muted">—</span>}</td>
                           <td>
-                            {f.country ?? <span className="text-muted">–</span>}
+                            {f.country ?? <span className="text-muted">—</span>}
                             {f.postalCode && <span className="text-xs text-muted"> {f.postalCode}</span>}
                           </td>
                           <td className="whitespace-nowrap text-muted">{f.addedOn}</td>
@@ -250,7 +250,7 @@ export default async function FansPage({ searchParams }: PageProps<"/fans">) {
 
 /** "3 · $24.00", opening to the items they bought. */
 function Bought({ purchases, bandName }: { purchases: Purchase[]; bandName: Map<number, string> }) {
-  if (!purchases.length) return <span className="text-muted">–</span>;
+  if (!purchases.length) return <span className="text-muted">—</span>;
   const totals = new Map<string, number>();
   for (const p of purchases) totals.set(p.currency, (totals.get(p.currency) ?? 0) + p.netCents);
   return (

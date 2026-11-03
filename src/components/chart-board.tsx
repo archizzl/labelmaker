@@ -131,7 +131,7 @@ export function ChartView({ chart, format }: { chart: BoardChart; format: ChartF
                   columns={[{ label: "Band or group" }, ...d.parts.map((p) => ({ label: p.label, num: true })), { label: "Total", num: true }]}
                   rows={g.rows.map((r) => [
                     r.people.length ? `${r.name} (${r.people.join(", ")})` : r.name,
-                    ...r.values.map((v) => (v ? formatCents(v, g.currency) : "–")),
+                    ...r.values.map((v) => (v ? formatCents(v, g.currency) : "—")),
                     formatCents(
                       r.values.reduce((a, v) => a + v, 0),
                       g.currency,

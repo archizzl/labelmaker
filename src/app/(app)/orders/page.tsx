@@ -129,7 +129,7 @@ export default async function OrdersPage({ searchParams }: PageProps<"/orders">)
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat label="Orders to ship" value={ready.length} />
         <Stat label="Items to pack" value={pack.reduce((a, p) => a + p.quantity, 0)} />
-        <Stat label="Oldest waiting" value={ready.length ? `${ready[0].daysWaiting} day${ready[0].daysWaiting === 1 ? "" : "s"}` : "–"} />
+        <Stat label="Oldest waiting" value={ready.length ? `${ready[0].daysWaiting} day${ready[0].daysWaiting === 1 ? "" : "s"}` : "—"} />
         <Stat label="Pre-orders not out yet" value={preorders.length} />
       </div>
 
@@ -157,8 +157,8 @@ export default async function OrdersPage({ searchParams }: PageProps<"/orders">)
                     {pack.map((p) => (
                       <tr key={`${p.name}|${p.option}`}>
                         <td>{p.name}</td>
-                        <td>{p.option ?? <span className="text-muted">–</span>}</td>
-                        {pack.some((x) => x.sku) && <td className="text-xs text-muted">{p.sku ?? "–"}</td>}
+                        <td>{p.option ?? <span className="text-muted">—</span>}</td>
+                        {pack.some((x) => x.sku) && <td className="text-xs text-muted">{p.sku ?? "—"}</td>}
                         <td className="num text-muted">{p.orders}</td>
                         <td className="num font-bold">{p.quantity}</td>
                       </tr>
@@ -361,7 +361,7 @@ function OrderList({
 /** Money as Bandcamp reported it ("10", "4.5"), or a dash. */
 function amount(v: string | undefined, currency: string) {
   const n = Number(v);
-  return v === undefined || v === "" || !Number.isFinite(n) ? "–" : formatCents(Math.round(n * 100), currency);
+  return v === undefined || v === "" || !Number.isFinite(n) ? "—" : formatCents(Math.round(n * 100), currency);
 }
 
 /** Everything about one order: Bandcamp's payment, the buyer, where it's going, and (once synced) the money. */
@@ -400,7 +400,7 @@ function OrderDetails({ order: o, sales, bandName }: { order: MerchOrder; sales:
         )}
         <dt className="text-muted">Buyer</dt>
         <dd>
-          {o.buyer.name || "–"}
+          {o.buyer.name || "—"}
           {o.buyer.email && (
             <>
               {" · "}
@@ -410,7 +410,7 @@ function OrderDetails({ order: o, sales, bandName }: { order: MerchOrder; sales:
           {o.buyer.phone && ` · ${o.buyer.phone}`}
         </dd>
         <dt className="text-muted">Ship to</dt>
-        <dd>{o.address.length ? o.address.join(", ") : "–"}</dd>
+        <dd>{o.address.length ? o.address.join(", ") : "—"}</dd>
       </dl>
 
       <div className="overflow-x-auto">
@@ -428,9 +428,9 @@ function OrderDetails({ order: o, sales, bandName }: { order: MerchOrder; sales:
             {o.lines.map((l) => (
               <tr key={l.saleItemId}>
                 <td>{l.name}</td>
-                <td>{l.option ?? "–"}</td>
-                <td className="text-xs text-muted">{l.sku ?? "–"}</td>
-                <td>{l.bandId ? bandName.get(l.bandId) : l.artist || "–"}</td>
+                <td>{l.option ?? "—"}</td>
+                <td className="text-xs text-muted">{l.sku ?? "—"}</td>
+                <td>{l.bandId ? bandName.get(l.bandId) : l.artist || "—"}</td>
                 <td className="num">{l.quantity}</td>
               </tr>
             ))}

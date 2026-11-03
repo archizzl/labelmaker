@@ -122,7 +122,7 @@ export function InventoryCounter({ id, onHand, ideal, low }: { id: number; onHan
           onBlur={saveIdeal}
           onKeyDown={enter}
           disabled={!!readOnly}
-          placeholder="–"
+          placeholder="—"
           className="!h-7 !w-16 !px-1 text-center text-sm tabular-nums"
         />
       </label>

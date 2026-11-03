@@ -190,7 +190,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
                 {s.country}
               </Link>
             ) : (
-              <span className="text-muted">–</span>
+              <span className="text-muted">—</span>
             )}
           </td>
           <td data-col="source" className="max-w-40 truncate text-sm" title={s.source}>
@@ -199,7 +199,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
                 {s.source}
               </Link>
             ) : (
-              <span className="text-muted">–</span>
+              <span className="text-muted">—</span>
             )}
           </td>
           <td data-col="qty" className="num">{s.quantity}</td>
@@ -327,7 +327,7 @@ function PayoutBadge({ state }: { state: keyof typeof PAYOUT_LABEL }) {
  */
 function PayoutCell({ state, periodId, outside }: { state: "paid" | "pending" | "none"; periodId: number | null; outside?: boolean }) {
   if (outside) return <span className="text-muted">Not in payouts</span>;
-  if (state === "none" || !periodId) return <span className="text-muted">–</span>;
+  if (state === "none" || !periodId) return <span className="text-muted">—</span>;
   return (
     <Link href={`/periods/${periodId}`} className="hover:no-underline">
       <PayoutBadge state={state} />
@@ -527,9 +527,9 @@ function OrderCells({ order, paidTo }: { order: SaleRow[]; paidTo?: (s: SaleRow)
       </td>
       <td data-col="band" className="text-sm">{bandNames.join(", ") || <span className="text-bad">not matched</span>}</td>
       <td data-col="type" className="text-sm">{types.join(", ")}</td>
-      <td data-col="country" className="text-sm">{first.country ?? <span className="text-muted">–</span>}</td>
+      <td data-col="country" className="text-sm">{first.country ?? <span className="text-muted">—</span>}</td>
       <td data-col="source" className="max-w-40 truncate text-sm" title={first.source}>
-        {first.source || <span className="text-muted">–</span>}
+        {first.source || <span className="text-muted">—</span>}
       </td>
       <td data-col="qty" className="num">{order.reduce((a, s) => a + s.quantity, 0)}</td>
       <td data-col="net" className={`num ${net < 0 ? "text-bad" : ""}`}>

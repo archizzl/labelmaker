@@ -95,7 +95,7 @@ export default async function InventoryPage({ searchParams }: PageProps<"/invent
         <Stat label="Items" value={items.length} />
         <Stat label="Units on hand" value={units} />
         <Stat label="Running low" value={low.length} tone={low.length > 0 ? "warn" : undefined} />
-        <Stat label="Value at cost" value={value.size ? [...value].map(([cur, c]) => formatCents(c, cur)).join(" · ") : "–"} />
+        <Stat label="Value at cost" value={value.size ? [...value].map(([cur, c]) => formatCents(c, cur)).join(" · ") : "—"} />
       </div>
 
       {low.length > 0 && (
@@ -203,7 +203,7 @@ function ItemTable({
               <div className="text-xs text-muted">
                 {[i.bandId && bandName.get(i.bandId), i.sku && `SKU ${i.sku}`, i.location && `kept at ${i.location}`, i.priceCents !== null && `${formatCents(i.priceCents, i.currency)} each`, i.unitCostCents !== null && `costs ${formatCents(i.unitCostCents, i.currency)}`]
                   .filter(Boolean)
-                  .join(" · ") || "–"}
+                  .join(" · ") || "—"}
               </div>
               {i.notes && <p className="text-xs text-muted">{i.notes}</p>}
               <DisclosureRow
