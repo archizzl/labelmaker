@@ -4,7 +4,7 @@ import { Fading, SubmitButton } from "@/components/client";
 import { ImportForm } from "@/components/import-form";
 import { Badge, Callout, Card, Empty, MoneyList, PageHeader } from "@/components/ui";
 import { db, schema } from "@/db";
-import { addBandFromArtist, assignArtistToBand, assignRouting, createReleaseFromSales, deleteImport } from "@/server/actions";
+import { addBandFromArtist, assignArtistToBand, assignRouting, createReleaseFromSales, deleteImport, deleteRoutingOverride, rerouteAction } from "@/server/actions";
 import { bandcampSubdomain } from "@/lib/applications";
 import { bandScope, can } from "@/lib/permissions";
 import { MANUAL_IMPORT } from "@/lib/manual-sales";
@@ -14,7 +14,7 @@ import { SalesTabs } from "@/components/sales-tabs";
 import { SyncFooter } from "@/components/sync-status";
 import { requireAccess } from "@/server/context";
 import { redirect } from "next/navigation";
-import { unroutedGroups } from "@/server/data";
+import { nameMaps, unroutedGroups } from "@/server/data";
 
 export const metadata = { title: "import sales" };
 
@@ -143,7 +143,7 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
   const { orgId } = ctx;
   const canAddBands = can(ctx.access, "roster", "edit");
   const importedId = Number((await searchParams).imported) || null;
-  const [allImports, noBand, noRelease, bands, releases, tracks, creds] = await Promise.all([
+  const [allImports, noBand, noRelease, bands, releases, tracks, creds, remembered, names] = await Promise.all([
     db.select().from(schema.imports).where(eq(schema.imports.orgId, orgId)).orderBy(desc(schema.imports.importedAt)),
     unroutedGroups(orgId, "no_band"),
     unroutedGroups(orgId, "no_release"),
@@ -151,6 +151,8 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
     db.select().from(schema.releases).where(eq(schema.releases.orgId, orgId)).orderBy(asc(schema.releases.title)),
     db.select().from(schema.tracks).where(eq(schema.tracks.orgId, orgId)).orderBy(asc(schema.tracks.position)),
     bandcampCredentials(orgId),
+    db.select().from(schema.routingOverrides).where(eq(schema.routingOverrides.orgId, orgId)).orderBy(asc(schema.routingOverrides.matchKey)),
+    nameMaps(orgId),
   ]);
   const [settings] = await db.select({ url: schema.accountSettings.bandcampUrl }).from(schema.accountSettings).where(eq(schema.accountSettings.orgId, orgId));
   const labelSubdomain = settings?.url ? bandcampSubdomain(settings.url) : null;
@@ -264,6 +266,57 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
                 <Group key={g.key} g={g} mode="no_release" catalog={catalog} />
               ))}
             </ul>
+          </details>
+        </Card>
+      )}
+
+      {remembered.length > 0 && (
+        <Card
+          title={<>Remembered matches <Badge>{remembered.length}</Badge></>}
+          actions={
+            <form action={rerouteAction}>
+              <SubmitButton variant="secondary" size="sm">
+                Re-match all sales
+              </SubmitButton>
+            </form>
+          }
+        >
+          <details>
+            <summary className="text-sm font-medium text-accent">Show matches</summary>
+            <div className="mt-3 overflow-x-auto">
+              <table className="data">
+                <thead>
+                  <tr>
+                    <th>Sales matching</th>
+                    <th>Go to</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {remembered.map((o) => {
+                    const match = o.matchKey.replace(/^(url|name):/, "");
+                    return (
+                      <tr key={o.id}>
+                        <td className="font-mono text-xs break-all">{match}</td>
+                        <td className="text-sm">
+                          {names.band.get(o.bandId)}
+                          {o.releaseId && ` › ${names.release.get(o.releaseId)}`}
+                          {o.trackId && ` › ${names.track.get(o.trackId)}`}
+                        </td>
+                        <td className="text-right">
+                          <form action={deleteRoutingOverride}>
+                            <input type="hidden" name="id" value={o.id} />
+                            <SubmitButton variant="ghost" size="sm" confirm={`Forget this match? Sales matching ${match} are matched again by their artist and address.`}>
+                              Forget
+                            </SubmitButton>
+                          </form>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </details>
         </Card>
       )}
