@@ -11,7 +11,7 @@
   --border: #d9d9d9;
   --text: #333333;
   --muted: #7a7a7a;
-  --accent: #1da0c3;
+  --accent: #17819d; /* 4.5:1 with white (was #1da0c3, 3.1:1) */
   --accent-fg: #ffffff;
   --link: #0687f5;
   --good: #3d8c40;
@@ -44,7 +44,7 @@
     --text: #e6e6e6;
     --muted: #9a9a9a;
     --accent: #2bb3d6;
-    --accent-fg: #ffffff;
+    --accent-fg: #161616; /* 7.3:1 on the dark accent (white was 2.5:1) */
     --link: #4aa8ff;
     --good: #6cc070;
     --good-bg: #1f3320;
