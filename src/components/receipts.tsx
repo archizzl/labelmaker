@@ -3,7 +3,7 @@ import { ActionForm, SaveWhenChanged, SubmitButton } from "@/components/client";
 import { Badge, Empty, Field, Money } from "@/components/ui";
 import type { schema } from "@/db";
 import { centsToDecimal } from "@/lib/money";
-import { deleteExpense, deleteExpenseFile, reviewExpenseForm, saveExpense, setReimbursed, submitReceipt } from "@/server/expense-actions";
+import { deleteExpenseForm, deleteExpenseFileForm, reviewExpenseForm, saveExpense, setReimbursedForm, submitReceipt } from "@/server/expense-actions";
 import { coverageLines, type Expense, owedReimbursement } from "@/server/expenses";
 import type { Payee } from "./pay-person";
 import { ReimburseButtons } from "./reimburse-buttons";
@@ -305,12 +305,12 @@ function Files({ files, admin, removedAt }: { files: ReceiptFile[]; admin: boole
             )}
           </a>
           {admin && (
-            <form action={deleteExpenseFile}>
+            <ActionForm action={deleteExpenseFileForm}>
               <input type="hidden" name="id" value={f.id} />
               <SubmitButton variant="danger-ghost" size="sm" confirm={`Delete ${f.filename}?`}>
                 ×
               </SubmitButton>
-            </form>
+            </ActionForm>
           )}
         </span>
       ))}
@@ -408,24 +408,24 @@ export function ExpenseTable({
                     </p>
                   ))}
                   {mode === "admin" && e.reimbursedAt && e.paidBy === "person" && !e.recoup && (
-                    <form action={setReimbursed} className="mt-2">
+                    <ActionForm action={setReimbursedForm} className="mt-2">
                       <input type="hidden" name="id" value={e.id} />
                       <input type="hidden" name="reimbursed" value="false" />
                       <button type="submit" className="text-xs text-link hover:underline">
                         Undo reimbursed
                       </button>
-                    </form>
+                    </ActionForm>
                   )}
                 </div>
                 {mode === "admin" && edit && (
                   <>
                     <div className="border-t border-border pt-4">{edit(e)}</div>
-                    <form action={deleteExpense} className="border-t border-border pt-4">
+                    <ActionForm action={deleteExpenseForm} className="border-t border-border pt-4">
                       <input type="hidden" name="id" value={e.id} />
                       <SubmitButton size="sm" variant="danger" confirm={`Delete “${e.description}” and its receipts?`}>
                         Delete
                       </SubmitButton>
-                    </form>
+                    </ActionForm>
                   </>
                 )}
               </div>
@@ -458,7 +458,7 @@ export function ExpenseTable({
                 </ActionForm>
               )}
               {mode === "admin" && e.status === "approved" && e.paidBy === "person" && !e.recoup && !e.reimbursedAt && (
-                <form action={setReimbursed} className="flex flex-wrap items-center gap-2 pt-1">
+                <ActionForm action={setReimbursedForm} className="flex flex-wrap items-center gap-2 pt-1">
                   <input type="hidden" name="id" value={e.id} />
                   <input type="hidden" name="reimbursed" value="true" />
                   <ReimburseButtons
@@ -476,15 +476,15 @@ export function ExpenseTable({
                     note={`Reimbursement: ${e.description}`}
                   />
                   <input name="reference" placeholder="Transaction ID (optional)" className="!w-44 !py-1 !text-xs" />
-                </form>
+                </ActionForm>
               )}
               {mode === "member" && e.status === "pending" && e.submittedByUserId === userId && (
-                <form action={deleteExpense} className="pt-1">
+                <ActionForm action={deleteExpenseForm} className="pt-1">
                   <input type="hidden" name="id" value={e.id} />
                   <SubmitButton size="sm" variant="danger-ghost" confirm={`Withdraw “${e.description}”?`}>
                     Withdraw
                   </SubmitButton>
-                </form>
+                </ActionForm>
               )}
             </div>
           </li>

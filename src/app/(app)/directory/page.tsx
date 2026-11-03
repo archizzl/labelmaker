@@ -14,7 +14,7 @@ import { db, schema } from "@/db";
 import { payHandlesSummary } from "@/lib/paypal-export";
 import { bandScope, can } from "@/lib/permissions";
 import { someNames } from "@/lib/plural";
-import { addMember, addMemberForm, deletePerson, mergePeopleAction, removeMember, updateMembership } from "@/server/actions";
+import { addMemberForm, deletePerson, mergePeopleForm, removeMemberForm, updateMembershipForm } from "@/server/actions";
 import { type Context, requireAccess } from "@/server/context";
 import { labelHost } from "@/server/data";
 import { type BandAccountSummary, bandAccountSummaries, ensureBandAccounts } from "@/server/band-accounts";
@@ -198,7 +198,7 @@ export default async function DirectoryPage() {
             {shownDuplicates.map((group) => (
               <li key={group.map((p) => p.id).join("-")} className="space-y-1.5 border-l-2 border-accent pl-3">
                 {group.map((keep) => (
-                  <form key={keep.id} action={mergePeopleAction} className="flex flex-wrap items-center gap-3 text-sm">
+                  <ActionForm key={keep.id} action={mergePeopleForm} className="flex flex-wrap items-center gap-3 text-sm">
                     <input type="hidden" name="intoId" value={keep.id} />
                     {group
                       .filter((p) => p.id !== keep.id)
@@ -222,7 +222,7 @@ export default async function DirectoryPage() {
                     >
                       keep this one
                     </SubmitButton>
-                  </form>
+                  </ActionForm>
                 ))}
               </li>
             ))}
@@ -528,7 +528,7 @@ function PersonRow({
           <PersonBands person={p} bandsOf={bandsOf} bands={bands} limited={limited} />
         )}
         {everyone.length > 1 && (
-          <form action={mergePeopleAction} className="flex flex-wrap items-end gap-2 border-t border-border pt-4">
+          <ActionForm action={mergePeopleForm} className="flex flex-wrap items-end gap-2 border-t border-border pt-4">
             <input type="hidden" name="fromId" value={p.id} />
             <Field label={`Merge ${p.name} into…`} hint="Their bands, splits and payouts move to that person, then this record is removed.">
               <select name="intoId" required defaultValue="" className="!w-64">
@@ -548,7 +548,7 @@ function PersonRow({
             <SubmitButton size="sm" variant="secondary" confirm={`Merge ${p.name} into the chosen person? This can’t be undone.`}>
               merge
             </SubmitButton>
-          </form>
+          </ActionForm>
         )}
         {ctx.isAdmin && ctx.org.kind === "label" && (
           <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4 text-sm">
@@ -589,15 +589,15 @@ function PersonBands({ person: p, bandsOf: all, bands, limited }: { person: Pers
                 </Link>
               )}
               {!m.active && <span className="text-xs text-muted">former member</span>}
-              <form action={updateMembership} className="flex items-center gap-2">
+              <ActionForm action={updateMembershipForm} className="flex items-center gap-2" keepOpen>
                 <input type="hidden" name="membershipId" value={m.id} />
                 {m.active && <input type="hidden" name="active" value="on" />}
                 <input name="roles" defaultValue={m.roles.join(", ")} placeholder="Roles (comma-separated)" aria-label={`Roles in ${m.band.name}`} className="!w-56 !py-0.5 text-sm" />
                 <SaveWhenChanged>
                   <SubmitButton size="sm">Save</SubmitButton>
                 </SaveWhenChanged>
-              </form>
-              <form action={removeMember} className="ml-auto">
+              </ActionForm>
+              <ActionForm action={removeMemberForm} className="ml-auto">
                 <input type="hidden" name="membershipId" value={m.id} />
                 <SubmitButton
                   variant="danger-ghost"
@@ -606,13 +606,13 @@ function PersonBands({ person: p, bandsOf: all, bands, limited }: { person: Pers
                 >
                   remove
                 </SubmitButton>
-              </form>
+              </ActionForm>
             </li>
           ))}
         </ul>
       )}
       {notIn.length > 0 && (
-        <form action={addMember} className="flex flex-wrap items-center gap-2">
+        <ActionForm action={addMemberForm} className="flex flex-wrap items-center gap-2" keepOpen>
           <input type="hidden" name="personId" value={p.id} />
           <select name="bandId" required defaultValue="" className="!w-56">
             <option value="" disabled>
@@ -627,7 +627,7 @@ function PersonBands({ person: p, bandsOf: all, bands, limited }: { person: Pers
           <SubmitButton size="sm" variant="secondary">
             add
           </SubmitButton>
-        </form>
+        </ActionForm>
       )}
     </div>
   );
@@ -637,16 +637,16 @@ function PersonBands({ person: p, bandsOf: all, bands, limited }: { person: Pers
 function BandRoles({ person: p, membership: m, canRemove }: { person: Person; membership: Membership; canRemove: boolean }) {
   return (
     <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4 text-sm">
-      <form action={updateMembership} className="flex items-center gap-2">
+      <ActionForm action={updateMembershipForm} className="flex items-center gap-2" keepOpen>
         <input type="hidden" name="membershipId" value={m.id} />
         {m.active && <input type="hidden" name="active" value="on" />}
         <input name="roles" defaultValue={m.roles.join(", ")} placeholder="Roles (comma-separated)" aria-label="Roles" className="!w-56 !py-0.5 text-sm" />
         <SaveWhenChanged>
           <SubmitButton size="sm">Save</SubmitButton>
         </SaveWhenChanged>
-      </form>
+      </ActionForm>
       {canRemove && m.active && (
-        <form action={removeMember} className="ml-auto">
+        <ActionForm action={removeMemberForm} className="ml-auto">
           <input type="hidden" name="membershipId" value={m.id} />
           <SubmitButton
             variant="danger-ghost"
@@ -655,7 +655,7 @@ function BandRoles({ person: p, membership: m, canRemove }: { person: Person; me
           >
             remove
           </SubmitButton>
-        </form>
+        </ActionForm>
       )}
     </div>
   );

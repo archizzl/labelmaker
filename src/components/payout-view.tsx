@@ -10,7 +10,7 @@ import { centsToDecimal } from "@/lib/money";
 import { formatCents } from "@/lib/money";
 import { payHandlesSummary, payMethods } from "@/lib/paypal-export";
 import { STATUS_LABEL, STATUS_TONE } from "@/lib/status";
-import { finalizePayout, markAllPaid, releaseUnpaidSales, resyncPreview, setPayoutStatus, undoFinalize } from "@/server/actions";
+import { finalizePayout, markAllPaidForm, releaseUnpaidSalesForm, resyncPreviewForm, setPayoutStatusForm, undoFinalizeForm } from "@/server/actions";
 import { plural, possessive, someNames } from "@/lib/plural";
 import { bandcampCredentials } from "@/server/bandcamp-api";
 import { getContext } from "@/server/context";
@@ -128,7 +128,7 @@ export async function PayoutView({
               {canEdit && lines.some((l) => l.status === "paid") ? (
                 <span className="text-xs text-muted">To undo finalizing, mark the paid lines unpaid first.</span>
               ) : canEdit && (
-                <form action={undoFinalize}>
+                <ActionForm action={undoFinalizeForm}>
                   <input type="hidden" name="id" value={id} />
                   <SubmitButton
                     variant="danger"
@@ -137,19 +137,19 @@ export async function PayoutView({
                   >
                     Undo finalize
                   </SubmitButton>
-                </form>
+                </ActionForm>
               )}
             </>
           ) : (
             <>
               {canSync && (
-                <form action={resyncPreview}>
+                <ActionForm action={resyncPreviewForm}>
                   <ScopeFields scope={scope} />
                   <input type="hidden" name="name" value={name} />
                   <SubmitButton variant="secondary" size="sm">
                     Sync from Bandcamp
                   </SubmitButton>
-                </form>
+                </ActionForm>
               )}
               <LinkButton href={`/periods${scope.bandId ? `?band=${scope.bandId}` : ""}`} size="sm" variant="ghost">
                 Cancel
@@ -212,12 +212,12 @@ export async function PayoutView({
             now. Let go of them and they’re owed again: the next payout pays them once they have a band and a split.
           </p>
           {canEdit && (
-            <form action={releaseUnpaidSales} className="mt-2">
+            <ActionForm action={releaseUnpaidSalesForm} className="mt-2">
               <input type="hidden" name="id" value={id!} />
               <SubmitButton variant="secondary" size="sm" confirm="Let go of the sales nobody was paid for? They'll be owed again, for a later payout.">
                 Leave them for a later payout
               </SubmitButton>
-            </form>
+            </ActionForm>
           )}
         </Callout>
       )}
@@ -452,7 +452,7 @@ export async function PayoutView({
                     )}
                     {finalized && canEdit && (
                       <td>
-                        <form action={setPayoutStatus} className="flex flex-wrap items-center gap-2">
+                        <ActionForm action={setPayoutStatusForm} className="flex flex-wrap items-center gap-2">
                           <input type="hidden" name="id" value={l.payoutId!} />
                           {l.status === "paid" ? (
                             <>
@@ -480,7 +480,7 @@ export async function PayoutView({
                               </SubmitButton>
                             </>
                           )}
-                        </form>
+                        </ActionForm>
                       </td>
                     )}
                   </tr>
@@ -507,13 +507,13 @@ export async function PayoutView({
               Paid → Payouts → upload the <i>PayPal bulk payout file</i>. It includes {labelSends.filter((l) => l.email).length} of{" "}
               {labelSends.length} unpaid people (the ones with an email). Otherwise, use <b>Pay next</b> above to go through everyone.
             </p>
-            <form action={markAllPaid} className="flex flex-wrap items-center gap-2">
+            <ActionForm action={markAllPaidForm} className="flex flex-wrap items-center gap-2">
               <input type="hidden" name="periodId" value={id} />
               <input name="reference" placeholder="Batch ID (optional)" className="!w-56" />
               <SubmitButton variant="secondary" confirm={`Mark ${plural(labelSends.length, "unpaid payout")} as paid?`}>
                 Mark all as paid
               </SubmitButton>
-            </form>
+            </ActionForm>
           </div>
         )}
 

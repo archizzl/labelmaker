@@ -1,7 +1,7 @@
 import type { deductions as deductionsTable } from "@/db/schema";
 import { formatCents } from "@/lib/money";
-import { deleteDeduction, saveItemCost } from "@/server/actions";
-import { SubmitButton } from "./client";
+import { deleteDeductionForm, saveItemCostForm } from "@/server/actions";
+import { ActionForm, SubmitButton } from "./client";
 import { Disclosure } from "./ui";
 
 type Deduction = typeof deductionsTable.$inferSelect;
@@ -39,18 +39,18 @@ export function ItemCosts({
           </span>
           {/* Only costs made for exactly this item can be removed here; broader ones live on the band / label rules pages. */}
           {!readOnly && d.releaseId === releaseId && (d.packageId ?? null) === (packageId ?? null) && (
-            <form action={deleteDeduction}>
+            <ActionForm action={deleteDeductionForm}>
               <input type="hidden" name="id" value={d.id} />
               <SubmitButton variant="danger-ghost" size="sm" confirm={`Remove the ${formatCents(d.amountCents ?? 0, d.currency ?? "USD")} cost?`}>
                 Remove
               </SubmitButton>
-            </form>
+            </ActionForm>
           )}
         </div>
       ))}
       {!readOnly && (
       <Disclosure summary="+ cost">
-        <form action={saveItemCost} className="flex flex-wrap items-end gap-3">
+        <ActionForm action={saveItemCostForm} className="flex flex-wrap items-end gap-3">
           <input type="hidden" name="releaseId" value={releaseId} />
           {packageId != null && <input type="hidden" name="packageId" value={packageId} />}
           <input type="hidden" name="currency" value={currency} />
@@ -70,7 +70,7 @@ export function ItemCosts({
             </select>
           </label>
           <SubmitButton size="sm">add cost</SubmitButton>
-        </form>
+        </ActionForm>
       </Disclosure>
       )}
     </div>

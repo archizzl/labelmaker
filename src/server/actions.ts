@@ -331,6 +331,11 @@ export async function mergePeopleAction(fd: FormData) {
   done();
 }
 
+/** mergePeopleAction for its form: errors shown beside it. */
+export async function mergePeopleForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => mergePeopleAction(fd));
+}
+
 export async function deletePerson(_: ActionState, fd: FormData): Promise<ActionState> {
   const access = await scoped("roster");
   const { orgId } = access;
@@ -426,6 +431,11 @@ export async function updateMembershipForm(_: ActionState, fd: FormData): Promis
   return asFormResult(() => updateMembership(fd), "Saved.");
 }
 
+/** updateMembership for its form: errors shown beside it. */
+export async function updateMembershipForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => updateMembership(fd), "Saved.");
+}
+
 export async function removeMember(fd: FormData) {
   const access = await scoped("roster");
   const { orgId } = access;
@@ -437,6 +447,11 @@ export async function removeMember(fd: FormData) {
   if (gone) await syncOwnPeopleForBand(orgId, gone.bandId);
   done();
 }
+export async function removeMemberForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => removeMember(fd));
+}
+
+/** removeMember for its form: errors shown beside it. */
 export async function removeMemberForm(_: ActionState, fd: FormData): Promise<ActionState> {
   return asFormResult(() => removeMember(fd));
 }
@@ -909,6 +924,11 @@ export async function deleteImport(fd: FormData) {
   done();
 }
 
+/** deleteImport for its form: errors shown beside it. */
+export async function deleteImportForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => deleteImport(fd));
+}
+
 /** Route every sale with this key to a band / release / track, and remember the choice. */
 export async function assignRouting(fd: FormData) {
   const { orgId } = await allSales();
@@ -944,6 +964,11 @@ export async function assignRouting(fd: FormData) {
   done();
 }
 
+/** assignRouting for its form: errors shown beside it. */
+export async function assignRoutingForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => assignRouting(fd));
+}
+
 /**
  * Import: an artist whose sales matched no band becomes a band (matched by its name, and by its own
  * Bandcamp subdomain when it has one). Its sales are matched straight away.
@@ -961,6 +986,11 @@ export async function addBandFromArtist(fd: FormData) {
   await ensureBandAccounts(orgId);
   await reRouteAll(orgId);
   done();
+}
+
+/** addBandFromArtist for its form: errors shown beside it. */
+export async function addBandFromArtistForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => addBandFromArtist(fd));
 }
 
 /**
@@ -992,11 +1022,21 @@ export async function assignArtistToBand(fd: FormData) {
   done();
 }
 
+/** assignArtistToBand for its form: errors shown beside it. */
+export async function assignArtistToBandForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => assignArtistToBand(fd));
+}
+
 export async function deleteRoutingOverride(fd: FormData) {
   const { orgId } = await allSales();
   await db.delete(routingOverrides).where(and(eq(routingOverrides.orgId, orgId), eq(routingOverrides.id, int(fd, "id"))));
   await reRouteAll(orgId);
   done();
+}
+
+/** deleteRoutingOverride for its form: errors shown beside it. */
+export async function deleteRoutingOverrideForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => deleteRoutingOverride(fd));
 }
 
 /** One-click: create a release from an unmatched sale group and route it there. */
@@ -1034,10 +1074,20 @@ export async function createReleaseFromSales(fd: FormData) {
   done();
 }
 
+/** createReleaseFromSales for its form: errors shown beside it. */
+export async function createReleaseFromSalesForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => createReleaseFromSales(fd));
+}
+
 export async function rerouteAction() {
   const { orgId } = await allSales();
   await reRouteAll(orgId);
   done();
+}
+
+/** rerouteAction for its form: errors shown beside it. */
+export async function rerouteForm(): Promise<ActionState> {
+  return asFormResult(() => rerouteAction(), "Re-matched.");
 }
 
 // ---------- periods & payouts ----------
@@ -1088,6 +1138,11 @@ export async function resyncPreview(fd: FormData) {
   const sync = await syncOutcome(orgId);
   done();
   redirect(previewUrl(scope, { ...sync, ...(str(fd, "name") ? { name: str(fd, "name") } : {}) }));
+}
+
+/** resyncPreview for its form: errors shown beside it. */
+export async function resyncPreviewForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => resyncPreview(fd));
 }
 
 /** Lock in a previewed payout: store the amounts owed to each person, ready to pay. */
@@ -1194,6 +1249,11 @@ export async function releaseUnpaidSales(fd: FormData) {
   done();
 }
 
+/** releaseUnpaidSales for its form: errors shown beside it. */
+export async function releaseUnpaidSalesForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => releaseUnpaidSales(fd));
+}
+
 /**
  * Undo a finalized payout: its records are removed and it's a preview again. Not once anyone's been
  * marked paid (by the label, or a band paying its members): those are marked unpaid first. Lines
@@ -1213,6 +1273,11 @@ export async function undoFinalize(fd: FormData) {
     .returning();
   done();
   redirect(p ? previewUrl(p, { name: p.name }) : "/periods");
+}
+
+/** undoFinalize for its form: errors shown beside it. */
+export async function undoFinalizeForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => undoFinalize(fd));
 }
 
 async function syncAllPeriodStatuses(orgId: string) {
@@ -1238,6 +1303,11 @@ export async function setPayoutStatus(fd: FormData) {
   done();
 }
 
+/** setPayoutStatus for its form: errors shown beside it. */
+export async function setPayoutStatusForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => setPayoutStatus(fd));
+}
+
 export async function markAllPaid(fd: FormData) {
   const { orgId } = await requireAccess("payouts", "edit");
   const periodId = int(fd, "periodId");
@@ -1249,6 +1319,11 @@ export async function markAllPaid(fd: FormData) {
     .where(and(eq(payouts.orgId, orgId), eq(payouts.periodId, periodId), eq(payouts.status, "pending"), gt(payouts.amountCents, 0), isNull(payouts.paidByBandId)));
   await syncPeriodStatus(orgId, periodId);
   done();
+}
+
+/** markAllPaid for its form: errors shown beside it. */
+export async function markAllPaidForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => markAllPaid(fd));
 }
 
 /**
@@ -1423,6 +1498,11 @@ export async function saveOutsideArtistContact(fd: FormData) {
   done();
 }
 
+/** saveOutsideArtistContact for its form: errors shown beside it. */
+export async function saveOutsideArtistContactForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => saveOutsideArtistContact(fd), "Saved.");
+}
+
 /** Don't pay an outside artist (e.g. a donated track): the label keeps their share. Or undo that. */
 export async function setOutsideArtistDismissed(fd: FormData) {
   const access = await scoped("roster");
@@ -1439,6 +1519,11 @@ export async function setOutsideArtistDismissed(fd: FormData) {
   done();
 }
 
+/** setOutsideArtistDismissed for its form: errors shown beside it. */
+export async function setOutsideArtistDismissedForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => setOutsideArtistDismissed(fd));
+}
+
 export async function clearOutsideArtistContact(fd: FormData) {
   const access = await scoped("roster");
   access.labelWide();
@@ -1448,6 +1533,11 @@ export async function clearOutsideArtistContact(fd: FormData) {
     .set({ contactPersonId: null })
     .where(and(eq(outsideArtists.orgId, orgId), eq(outsideArtists.id, int(fd, "artistId"))));
   done();
+}
+
+/** clearOutsideArtistContact for its form: errors shown beside it. */
+export async function clearOutsideArtistContactForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => clearOutsideArtistContact(fd));
 }
 
 /** "refresh from Bandcamp" on a release page. */
@@ -1503,4 +1593,9 @@ export async function saveItemCost(fd: FormData) {
     itemCategory: "merch",
   });
   done();
+}
+
+/** saveItemCost for its form: errors shown beside it. */
+export async function saveItemCostForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => saveItemCost(fd), "Added.");
 }

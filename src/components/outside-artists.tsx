@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
 import Link from "next/link";
 import { db, schema } from "@/db";
-import { clearOutsideArtistContact, saveOutsideArtistContact, setOutsideArtistDismissed } from "@/server/actions";
+import { clearOutsideArtistContactForm, saveOutsideArtistContactForm, setOutsideArtistDismissedForm } from "@/server/actions";
 import { getContext } from "@/server/context";
-import { SubmitButton } from "./client";
+import { ActionForm, SubmitButton } from "./client";
 import { Card } from "./ui";
 
 /** Outside artists that appear on the label's releases, with the tracks they're on and their contact. */
@@ -59,7 +59,7 @@ export async function OutsideArtists() {
         }
         actions={
           waiting.length > 1 && (
-            <form action={setOutsideArtistDismissed}>
+            <ActionForm action={setOutsideArtistDismissedForm}>
               <input type="hidden" name="dismissed" value="true" />
               {waiting.map((r) => (
                 <input key={r.artist.id} type="hidden" name="artistId" value={r.artist.id} />
@@ -67,7 +67,7 @@ export async function OutsideArtists() {
               <SubmitButton variant="secondary" size="sm" confirm={`Don’t pay any of these ${waiting.length} artists? The label keeps their share. You can undo this per artist.`}>
                 don’t pay any of these
               </SubmitButton>
-            </form>
+            </ActionForm>
           )
         }
       >
@@ -102,27 +102,27 @@ export async function OutsideArtists() {
                   </summary>
                   <div className="mb-3 flex flex-wrap items-center gap-2 border border-border bg-surface-2 p-4">
                     {contact ? (
-                      <form action={clearOutsideArtistContact}>
+                      <ActionForm action={clearOutsideArtistContactForm}>
                         <input type="hidden" name="artistId" value={artist.id} />
                         <SubmitButton variant="danger-ghost" size="sm" confirm={`Stop paying ${contact.name} for ${artist.name}? You can then choose someone else.`}>
                           remove
                         </SubmitButton>
-                      </form>
+                      </ActionForm>
                     ) : (
                       <>
-                        <form action={saveOutsideArtistContact} className="flex flex-wrap items-center gap-2">
+                        <ActionForm action={saveOutsideArtistContactForm} className="flex flex-wrap items-center gap-2">
                           <input type="hidden" name="artistId" value={artist.id} />
                           <input name="name" required defaultValue={artist.name} aria-label={`Contact name for ${artist.name}`} className="!w-44" />
                           <input name="email" type="email" required placeholder="PayPal email" aria-label={`PayPal email for ${artist.name}`} className="!w-56" />
                           <SubmitButton size="sm">save</SubmitButton>
-                        </form>
-                        <form action={setOutsideArtistDismissed}>
+                        </ActionForm>
+                        <ActionForm action={setOutsideArtistDismissedForm}>
                           <input type="hidden" name="artistId" value={artist.id} />
                           <input type="hidden" name="dismissed" value="true" />
                           <SubmitButton variant="ghost" size="sm">
                             don’t pay
                           </SubmitButton>
-                        </form>
+                        </ActionForm>
                       </>
                     )}
                   </div>
@@ -143,13 +143,13 @@ export async function OutsideArtists() {
                     <span className="text-muted">{artist.name}</span>
                     <TracksLine tracks={tracks} />
                   </div>
-                  <form action={setOutsideArtistDismissed}>
+                  <ActionForm action={setOutsideArtistDismissedForm}>
                     <input type="hidden" name="artistId" value={artist.id} />
                     <input type="hidden" name="dismissed" value="false" />
                     <SubmitButton variant="ghost" size="sm">
                       Undo
                     </SubmitButton>
-                  </form>
+                  </ActionForm>
                 </li>
               ))}
             </ul>

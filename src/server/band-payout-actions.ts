@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db, schema } from "@/db";
 import { parseCents } from "@/lib/money";
 import { requireAdmin } from "./context";
+import { asFormResult } from "./form-result";
 import { syncPeriodStatus } from "./period-status";
 import { labelsOfBand } from "./sales-browse";
 
@@ -34,6 +35,11 @@ export async function markBandPayout(fd: FormData) {
     .where(and(eq(schema.payouts.orgId, label.orgId), eq(schema.payouts.id, id), eq(schema.payouts.paidByBandId, label.bandId)));
   await syncPeriodStatus(label.orgId, line.periodId);
   revalidatePath("/", "layout");
+}
+
+/** markBandPayout for its form: errors shown beside it. */
+export async function markBandPayoutForm(_: BandPayoutState, fd: FormData): Promise<BandPayoutState> {
+  return asFormResult(() => markBandPayout(fd));
 }
 
 /** Record money the band sent a label: the label's share of sales Bandcamp paid the band for. */
@@ -66,4 +72,9 @@ export async function deletePaymentToLabel(fd: FormData) {
   if (!row || !labels.some((l) => l.orgId === row.orgId && l.bandId === row.bandId)) throw new Error("That isn’t one of your band’s payments.");
   await db.delete(schema.bandRemittances).where(and(eq(schema.bandRemittances.orgId, row.orgId), eq(schema.bandRemittances.id, id)));
   revalidatePath("/", "layout");
+}
+
+/** deletePaymentToLabel for its form: errors shown beside it. */
+export async function deletePaymentToLabelForm(_: BandPayoutState, fd: FormData): Promise<BandPayoutState> {
+  return asFormResult(() => deletePaymentToLabel(fd));
 }
