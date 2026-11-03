@@ -7,6 +7,7 @@ import { db, schema } from "@/db";
 import { parseCents } from "@/lib/money";
 import { requireAdmin } from "./context";
 import { requireProjects } from "./features";
+import { asFormResult } from "./form-result";
 
 const { projects, projectReleases, releases, bands } = schema;
 
@@ -78,4 +79,9 @@ export async function deleteProject(fd: FormData) {
   await db.delete(projects).where(and(eq(projects.orgId, orgId), eq(projects.id, Number(fd.get("id")))));
   revalidatePath("/", "layout");
   redirect("/projects");
+}
+
+/** deleteProject for its form: errors shown beside it (the redirect still happens). */
+export async function deleteProjectForm(_: ProjectState, fd: FormData): Promise<ProjectState> {
+  return asFormResult(() => deleteProject(fd));
 }

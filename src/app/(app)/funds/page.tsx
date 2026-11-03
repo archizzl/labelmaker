@@ -7,7 +7,7 @@ import { PAGE_SIZES, Pager } from "@/components/pager";
 import Link from "next/link";
 import { buttonClass, Card, Disclosure, Empty, Field, Money, MoneyList, PageHeader, Stat } from "@/components/ui";
 import { ActionForm, SubmitButton } from "@/components/client";
-import { deleteBandRemittance, saveBandRemittance } from "@/server/actions";
+import { deleteBandRemittanceForm, saveBandRemittance } from "@/server/actions";
 import { type BoardChart, breakdownChart, seriesChart } from "@/lib/chart-data";
 import { formatCents } from "@/lib/money";
 import { plural } from "@/lib/plural";
@@ -341,12 +341,12 @@ function HeldByBands({
                 <Money cents={r.amountCents} currency={r.currency} />
                 {r.note && <span className="text-xs text-muted">{r.note}</span>}
                 {editable && (
-                  <form action={deleteBandRemittance} className="ml-auto">
+                  <ActionForm action={deleteBandRemittanceForm} className="ml-auto">
                     <input type="hidden" name="id" value={r.id} />
                     <SubmitButton variant="danger-ghost" size="sm" confirm={`Delete the ${formatCents(r.amountCents, r.currency)} from ${bandName(r.bandId)}?`}>
                       Delete
                     </SubmitButton>
-                  </form>
+                  </ActionForm>
                 )}
               </li>
             ))}

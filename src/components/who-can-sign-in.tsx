@@ -1,9 +1,9 @@
 import { asc, eq } from "drizzle-orm";
 import { Avatar } from "@/components/avatar";
-import { SubmitButton } from "@/components/client";
+import { ActionForm, SubmitButton } from "@/components/client";
 import { Badge, Card } from "@/components/ui";
 import { db, schema } from "@/db";
-import { removeAccountMember } from "@/server/account-actions";
+import { removeAccountMemberForm } from "@/server/account-actions";
 import type { Context } from "@/server/context";
 import { listMemberTypes, memberTypeOf } from "@/server/member-types";
 import { RolePicker } from "./role-picker";
@@ -114,12 +114,12 @@ export async function WhoCanSignIn({ ctx }: { ctx: Context }) {
                           takenByOthers={new Set([...loginPersons].filter(([u]) => u !== user.id).map(([, p]) => p))}
                         />
                         {member.role !== "owner" && (
-                          <form action={removeAccountMember} className="ml-auto">
+                          <ActionForm action={removeAccountMemberForm} className="ml-auto">
                             <input type="hidden" name="memberId" value={member.id} />
                             <SubmitButton variant="danger-ghost" size="sm" confirm={`Remove ${user.name}'s access? Their payout history stays.`}>
                               Remove
                             </SubmitButton>
-                          </form>
+                          </ActionForm>
                         )}
                       </div>
                     </details>
@@ -164,12 +164,12 @@ export async function WhoCanSignIn({ ctx }: { ctx: Context }) {
                       </td>
                       <td className="text-right">
                         {member.role !== "owner" && !self && (
-                          <form action={removeAccountMember}>
+                          <ActionForm action={removeAccountMemberForm}>
                             <input type="hidden" name="memberId" value={member.id} />
                             <SubmitButton variant="danger-ghost" size="sm" confirm={`Remove ${user.name}'s access? Their payout history stays.`}>
                               Remove
                             </SubmitButton>
-                          </form>
+                          </ActionForm>
                         )}
                       </td>
                     </tr>

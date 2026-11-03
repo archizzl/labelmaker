@@ -645,6 +645,11 @@ export async function deleteSplitRule(fd: FormData) {
   done();
 }
 
+/** deleteSplitRule for its form: errors shown beside it. */
+export async function deleteSplitRuleForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => deleteSplitRule(fd));
+}
+
 // ---------- deductions ----------
 
 export async function saveDeduction(fd: FormData) {
@@ -696,10 +701,20 @@ export async function saveDeduction(fd: FormData) {
   done();
 }
 
+/** saveDeduction for its form: errors shown beside it. */
+export async function saveDeductionForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => saveDeduction(fd), fd.get("id") ? "Saved." : "Added.");
+}
+
 export async function deleteDeduction(fd: FormData) {
   const { orgId } = await requireAccess("rules", "edit");
   await db.delete(deductions).where(and(eq(deductions.orgId, orgId), eq(deductions.id, int(fd, "id"))));
   done();
+}
+
+/** deleteDeduction for its form: errors shown beside it. */
+export async function deleteDeductionForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => deleteDeduction(fd));
 }
 
 // ---------- import ----------
@@ -1279,6 +1294,11 @@ export async function deleteBandRemittance(fd: FormData) {
   done();
 }
 
+/** deleteBandRemittance for its form: errors shown beside it. */
+export async function deleteBandRemittanceForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => deleteBandRemittance(fd));
+}
+
 // ---------- label funds sent elsewhere ----------
 
 /** Record money the label kept and sent on, e.g. a fundraiser's proceeds to an aid group. */
@@ -1335,6 +1355,11 @@ export async function deleteLabelTransfer(fd: FormData) {
   const { orgId } = await requireAccess("funds", "edit");
   await db.delete(labelTransfers).where(and(eq(labelTransfers.orgId, orgId), eq(labelTransfers.id, int(fd, "id"))));
   done();
+}
+
+/** deleteLabelTransfer for its form: errors shown beside it. */
+export async function deleteLabelTransferForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => deleteLabelTransfer(fd));
 }
 
 /**

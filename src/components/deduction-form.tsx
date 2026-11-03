@@ -4,8 +4,8 @@ import { useState } from "react";
 import type { deductions as deductionsTable } from "@/db/schema";
 import { ITEM_CATEGORIES } from "@/lib/bandcamp-csv";
 import { SALE_PARTS } from "@/lib/sale-parts";
-import { saveDeduction } from "@/server/actions";
-import { SubmitButton } from "./client";
+import { saveDeductionForm } from "@/server/actions";
+import { ActionForm, SubmitButton } from "./client";
 import { Field } from "./ui";
 
 type Deduction = typeof deductionsTable.$inferSelect;
@@ -51,7 +51,7 @@ export function DeductionForm({
   );
 
   return (
-    <form action={saveDeduction} className="space-y-4">
+    <ActionForm action={saveDeductionForm} className="space-y-4">
       {d && <input type="hidden" name="id" value={d.id} />}
       {fixedBandId && <input type="hidden" name="bandId" value={fixedBandId} />}
 
@@ -197,6 +197,6 @@ export function DeductionForm({
       </details>
 
       <SubmitButton>{d ? "Save" : "Add deduction"}</SubmitButton>
-    </form>
+    </ActionForm>
   );
 }

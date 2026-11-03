@@ -1,6 +1,6 @@
-import { deleteSplitRule } from "@/server/actions";
+import { deleteSplitRuleForm } from "@/server/actions";
 import type { RuleWithShares } from "@/server/data";
-import { SubmitButton } from "./client";
+import { ActionForm, SubmitButton } from "./client";
 import { type PersonOption, SplitEditor } from "./split-editor";
 import { Badge, Disclosure } from "./ui";
 import { formatDate } from "@/lib/dates";
@@ -89,12 +89,12 @@ export function SplitRules({
                         overridesCatalog={r.overridesCatalog}
                         showOverride={showOverride}
                       />
-                      <form action={deleteSplitRule} className="border-t border-border pt-4">
+                      <ActionForm action={deleteSplitRuleForm} className="border-t border-border pt-4">
                         <input type="hidden" name="ruleId" value={r.id} />
                         <SubmitButton variant="danger" size="sm" confirm="Delete this split?">
                           Delete
                         </SubmitButton>
-                      </form>
+                      </ActionForm>
                     </div>
                   </details>
                 )}

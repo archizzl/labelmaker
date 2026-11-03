@@ -28,6 +28,7 @@ import { ownBand } from "./data";
 import { auth } from "./auth";
 import { cleanCashtag, cleanVenmoHandle } from "@/lib/paypal-export";
 import { getSession, requireAdmin } from "./context";
+import { asFormResult } from "./form-result";
 
 export type InviteLinkState = { ok?: string; error?: string; url?: string } | null;
 
@@ -69,6 +70,11 @@ export async function resetInviteLink(fd: FormData) {
   await resetStandingLink(ctx.orgId, ctx.user.id, { memberTypeId: choice.memberTypeId, admin: choice.role === "admin" });
   revalidatePath("/settings");
   revalidatePath("/directory");
+}
+
+/** resetInviteLink for its form: errors shown beside it. */
+export async function resetInviteLinkForm(_: InviteLinkState, fd: FormData): Promise<InviteLinkState> {
+  return asFormResult(() => resetInviteLink(fd), "Reset.");
 }
 
 /**
@@ -232,6 +238,11 @@ export async function resetBandsLink() {
   if (ctx.org.kind !== "label") throw new Error("Only a label has an invite link for bands.");
   await resetBandsInviteLink(ctx.orgId, ctx.user.id);
   revalidatePath("/directory");
+}
+
+/** resetBandsLink for its form: errors shown beside it. */
+export async function resetBandsLinkForm(_: InviteLinkState, _fd: FormData): Promise<InviteLinkState> {
+  return asFormResult(() => resetBandsLink(), "Reset.");
 }
 
 /**

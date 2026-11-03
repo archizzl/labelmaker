@@ -2,9 +2,9 @@ import type { deductions as deductionsTable } from "@/db/schema";
 import { salePartLabel } from "@/lib/sale-parts";
 import { ITEM_CATEGORIES } from "@/lib/bandcamp-csv";
 import { formatCents } from "@/lib/money";
-import { deleteDeduction } from "@/server/actions";
+import { deleteDeductionForm } from "@/server/actions";
 import { DeductionForm, type ReleaseOption } from "./deduction-form";
-import { SubmitButton } from "./client";
+import { ActionForm, SubmitButton } from "./client";
 import { Badge } from "./ui";
 import { formatDate, formatRange } from "@/lib/dates";
 
@@ -96,12 +96,12 @@ export function DeductionList({
               </summary>
               <div className="space-y-4 border-t border-border bg-surface-2 p-4">
                 <DeductionForm deduction={d} bands={bands} releases={releases} people={people} fixedBandId={fixedBandId} />
-                <form action={deleteDeduction} className="border-t border-border pt-4">
+                <ActionForm action={deleteDeductionForm} className="border-t border-border pt-4">
                   <input type="hidden" name="id" value={d.id} />
                   <SubmitButton variant="danger" size="sm" confirm={`Delete “${d.label}”?`}>
                     Delete
                   </SubmitButton>
-                </form>
+                </ActionForm>
               </div>
             </details>
           </li>
