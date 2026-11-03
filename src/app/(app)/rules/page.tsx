@@ -6,9 +6,9 @@ import { SubmitButton } from "@/components/client";
 import { DeductionForm, DeductionList, describeDeduction } from "@/components/deductions";
 import { ItemSplits } from "@/components/item-splits";
 import { SplitRules } from "@/components/split-rules";
-import { Card, Disclosure, Empty, Field, PageHeader } from "@/components/ui";
+import { Card, Disclosure, Field, PageHeader } from "@/components/ui";
 import { db, schema } from "@/db";
-import { deleteRoutingOverride, rerouteAction, saveDeduction, setLabelKeepsNothing } from "@/server/actions";
+import { saveDeduction, setLabelKeepsNothing } from "@/server/actions";
 import { can } from "@/lib/permissions";
 import { requireAccess } from "@/server/context";
 import { nameMaps, ownBand, ruleFilter, rulesWhere } from "@/server/data";
@@ -25,12 +25,11 @@ export default async function RulesPage({ searchParams }: PageProps<"/rules">) {
     const band = await ownBand(orgId);
     if (band) redirect(`/bands/${band.id}?tab=money`);
   }
-  const [names, bands, releases, orgDeductions, overrides, labelDefault, peopleRows, bandDefaults] = await Promise.all([
+  const [names, bands, releases, orgDeductions, labelDefault, peopleRows, bandDefaults] = await Promise.all([
     nameMaps(orgId),
     db.select().from(schema.bands).where(eq(schema.bands.orgId, orgId)).orderBy(asc(schema.bands.name)),
     db.select().from(schema.releases).where(eq(schema.releases.orgId, orgId)).orderBy(asc(schema.releases.title)),
     db.select().from(schema.deductions).where(eq(schema.deductions.orgId, orgId)).orderBy(asc(schema.deductions.sortOrder)),
-    db.select().from(schema.routingOverrides).where(eq(schema.routingOverrides.orgId, orgId)).orderBy(asc(schema.routingOverrides.matchKey)),
     rulesWhere(orgId, ruleFilter("label_default", {})),
     db.select().from(schema.people).where(eq(schema.people.orgId, orgId)).orderBy(asc(schema.people.name)),
     rulesWhere(orgId, ruleFilter("band_default", {})),
@@ -49,14 +48,15 @@ export default async function RulesPage({ searchParams }: PageProps<"/rules">) {
   const peopleOpts = everyone.map((p) => ({ id: p.id, name: p.name }));
   const withOwnDefault = new Set(bandDefaults.map((r) => r.bandId));
   const usingLabelDefault = bands.filter((b) => !withOwnDefault.has(b.id));
+  const canEdit = can(ctx.access, "rules", "edit");
 
   return (
     <>
       <PageHeader title="Funds" />
       <FundsTabs active="rules" funds={can(ctx.access, "funds")} rules />
 
-      {/* {ctx.org.kind === "label" && (
-        <div id="label-cut">
+      {ctx.org.kind === "label" && (
+        <div id="label-cut" className="scroll-mt-4">
           <Card title="What the label keeps">
             {labelCuts.length > 0 ? (
               <ul className="space-y-1 text-sm">
@@ -64,53 +64,55 @@ export default async function RulesPage({ searchParams }: PageProps<"/rules">) {
                   const desc = describeDeduction(d, names);
                   return (
                     <li key={d.id}>
-                      <b>{d.label}</b>: {desc.amount}
+                      <Link href={d.bandId ? `/bands/${d.bandId}?tab=money#deduction-${d.id}` : `#deduction-${d.id}`} className="font-medium hover:underline">
+                        {d.label}
+                      </Link>
+                      : {desc.amount}
                       {desc.scope && <span className="text-muted"> · {desc.scope}</span>}
                     </li>
                   );
                 })}
-                <li className="pt-1 text-xs text-muted">Change these under Label-wide deductions below (or on a band’s page).</li>
               </ul>
             ) : settings?.keepsNothing ? (
               <div className="flex flex-wrap items-center gap-3 text-sm">
-                <span>The label keeps nothing: everything after Bandcamp’s fees goes to the bands.</span>
+                <span>The label keeps nothing.</span>
+                {canEdit && (
+                  <form action={setLabelKeepsNothing}>
+                    <input type="hidden" name="value" value="0" />
+                    <SubmitButton variant="ghost" size="sm">
+                      Change
+                    </SubmitButton>
+                  </form>
+                )}
+              </div>
+            ) : canEdit ? (
+              <div className="flex flex-wrap items-end gap-3">
+                <form action={saveDeduction} className="flex items-end gap-2">
+                  <input type="hidden" name="label" value="Label’s cut" />
+                  <input type="hidden" name="kind" value="percent" />
+                  <input type="hidden" name="destination" value="label" />
+                  <Field label="The label keeps">
+                    <span className="flex items-center gap-1">
+                      <input name="percent" inputMode="decimal" required className="!w-20 text-right" />
+                      <span className="text-sm text-muted">% of every sale</span>
+                    </span>
+                  </Field>
+                  <SubmitButton size="sm">Save</SubmitButton>
+                </form>
+                <span className="pb-1 text-sm text-muted">or</span>
                 <form action={setLabelKeepsNothing}>
-                  <input type="hidden" name="value" value="0" />
-                  <SubmitButton variant="ghost" size="sm">
-                    Change
+                  <input type="hidden" name="value" value="1" />
+                  <SubmitButton variant="secondary" size="sm">
+                    The label keeps nothing
                   </SubmitButton>
                 </form>
               </div>
             ) : (
-              <>
-                <p className="mb-3 text-sm">Nothing yet, so every sale goes entirely to its band (after Bandcamp’s fees).</p>
-                <div className="flex flex-wrap items-end gap-3">
-                  <form action={saveDeduction} className="flex items-end gap-2">
-                    <input type="hidden" name="label" value="Label’s cut" />
-                    <input type="hidden" name="kind" value="percent" />
-                    <input type="hidden" name="destination" value="label" />
-                    <Field label="The label keeps">
-                      <span className="flex items-center gap-1">
-                        <input name="percent" inputMode="decimal" required placeholder="30" className="!w-20 text-right" />
-                        <span className="text-sm text-muted">% of every sale</span>
-                      </span>
-                    </Field>
-                    <SubmitButton size="sm">Save</SubmitButton>
-                  </form>
-                  <span className="pb-1 text-sm text-muted">or</span>
-                  <form action={setLabelKeepsNothing}>
-                    <input type="hidden" name="value" value="1" />
-                    <SubmitButton variant="secondary" size="sm">
-                      The label keeps nothing
-                    </SubmitButton>
-                  </form>
-                </div>
-                <p className="mt-2 text-xs text-muted">For a cut on only some bands, releases or kinds of item, add it under Label-wide deductions below.</p>
-              </>
+              <p className="text-sm text-muted">Not decided yet.</p>
             )}
           </Card>
         </div>
-      )} */}
+      )}
 
       <Card title="Label-wide default split">
         {/* <p className="mb-3 text-sm text-muted">
@@ -217,60 +219,6 @@ export default async function RulesPage({ searchParams }: PageProps<"/rules">) {
         </div>
       </Card>
 
-      {/* <Card
-        title="How sales are matched to bands"
-        actions={
-          <form action={rerouteAction}>
-            <SubmitButton variant="secondary" size="sm">
-              Re-match all sales
-            </SubmitButton>
-          </form>
-        }
-      >
-        <ol className="mb-4 list-decimal space-y-1 pl-5 text-sm text-muted">
-          <li>A remembered choice you made on the Import page (listed below)</li>
-          <li>The sale’s item URL exactly matches a release or track URL in the catalog</li>
-          <li>The URL matches a band’s Bandcamp URLs (subdomain, host or prefix)</li>
-          <li>The “artist” column matches a band name or alias</li>
-          <li>Within that band, the item name is matched to a release or track title</li>
-        </ol>
-        <h3 className="mb-2 text-sm font-medium">Remembered choices</h3>
-        {overrides.length === 0 ? (
-          <Empty>None yet.</Empty>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>Sales matching</th>
-                  <th>Go to</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {overrides.map((o) => (
-                  <tr key={o.id}>
-                    <td className="font-mono text-xs break-all">{o.matchKey.replace(/^(url|name):/, "")}</td>
-                    <td className="text-sm">
-                      {names.band.get(o.bandId)}
-                      {o.releaseId && ` › ${names.release.get(o.releaseId)}`}
-                      {o.trackId && ` › ${names.track.get(o.trackId)}`}
-                    </td>
-                    <td className="text-right">
-                      <form action={deleteRoutingOverride}>
-                        <input type="hidden" name="id" value={o.id} />
-                        <SubmitButton variant="ghost" size="sm">
-                          Forget
-                        </SubmitButton>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card> */}
     </>
   );
 }
