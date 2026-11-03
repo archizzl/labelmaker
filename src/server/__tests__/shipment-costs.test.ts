@@ -49,7 +49,7 @@ describe("shipping costs on a shipped order", () => {
     const o = order([band.id]);
     const pdf = new File(["%PDF"], "label.pdf", { type: "application/pdf" });
     const read = await costs.readShipmentCosts(orgId, form({ postage: "4.63", packaging: "0.85", costPaidBy: `person:${person.id}`, receipt: pdf }), o);
-    const total = await costs.recordShipmentCosts(orgId, null, o, read!, "USPS");
+    const total = await costs.recordShipmentCosts(orgId, null, o, read!, "USPS", { approved: true });
     expect(total).toBe(548);
     const rows = await db.select().from(schema.expenses).where(eq(schema.expenses.orgId, orgId));
     expect(rows.map((r) => [r.category, r.amountCents, r.bandId, r.paidBy, r.paidByPersonId, r.status, r.vendor])).toEqual([
@@ -59,6 +59,17 @@ describe("shipping costs on a shipped order", () => {
     expect(rows[0].description).toBe("Postage for Ann: 2 × Flags of the World");
     const files = await db.select().from(schema.expenseFiles).where(eq(schema.expenseFiles.orgId, orgId));
     expect(files.map((f) => [f.expenseId, f.filename])).toEqual([[rows[0].id, "label.pdf"]]);
+  });
+
+  it("waits for approval when whoever shipped it can't approve receipts", async () => {
+    const orgId = await newAccount();
+    const [band] = await db.insert(schema.bands).values({ orgId, name: "Flag Day" }).returning();
+    const [person] = await db.insert(schema.people).values({ orgId, name: "Henry" }).returning();
+    const o = order([band.id]);
+    const read = await costs.readShipmentCosts(orgId, form({ postage: "4.63", costPaidBy: `person:${person.id}` }), o);
+    await costs.recordShipmentCosts(orgId, null, o, read!, null, { approved: false });
+    const rows = await db.select().from(schema.expenses).where(eq(schema.expenses.orgId, orgId));
+    expect(rows.map((r) => [r.amountCents, r.status, r.reviewedAt])).toEqual([[463, "pending", null]]);
   });
 
   it("won't charge a band fund for an order spanning several bands, or a person from another account", async () => {

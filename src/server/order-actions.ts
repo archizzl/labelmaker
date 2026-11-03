@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { PICKUP_MESSAGE } from "@/lib/merch-orders";
-import { bandScope, inBandScope } from "@/lib/permissions";
+import { bandScope, can, inBandScope } from "@/lib/permissions";
 import { bandcampCredentials, markMerchShipped } from "./bandcamp-api";
 import { getContext, requireAccess } from "./context";
 import { markSeen } from "./nav-badges";
@@ -57,10 +57,15 @@ export async function markOrderShipped(_: ShipState, fd: FormData): Promise<Ship
   revalidatePath("/");
   // Shipped on Bandcamp; now the costs.
   let recorded = 0;
+  let pending = false;
   let costError = "";
   if (costs) {
     try {
-      recorded = await recordShipmentCosts(orgId, user.id, order, costs, str(fd, "carrier") || null);
+      // Approved straight away only by someone who could approve them on Receipts (in these books, for these bands).
+      const receiptScope = bandScope(access, "receipts");
+      const approved = can(access, "receipts", "edit") && (!receiptScope || order.bandIds.every((b) => receiptScope.includes(b)));
+      recorded = await recordShipmentCosts(orgId, user.id, order, costs, str(fd, "carrier") || null, { approved });
+      if (!approved) pending = true;
       revalidatePath("/receipts");
       revalidatePath("/funds");
     } catch (e) {
@@ -72,7 +77,7 @@ export async function markOrderShipped(_: ShipState, fd: FormData): Promise<Ship
     `/orders?${new URLSearchParams({
       shipped: order.buyer.name || "the buyer",
       ...(notify ? { emailed: "1" } : {}),
-      ...(recorded ? { costs: String(recorded), currency: order.currency } : {}),
+      ...(recorded ? { costs: String(recorded), currency: order.currency, ...(pending ? { pending: "1" } : {}) } : {}),
       ...(costError ? { costError: costError.slice(0, 200) } : {}),
     })}`,
   );

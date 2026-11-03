@@ -105,13 +105,14 @@ export default async function OrdersPage({ searchParams }: PageProps<"/orders">)
         </Fading>
       )}
       {shipped && (
-        <Fading clearParams={["shipped", "emailed", "costs", "currency"]}>
+        <Fading clearParams={["shipped", "emailed", "costs", "currency", "pending"]}>
           <Callout tone="good">
             Marked {shipped}’s order shipped on Bandcamp{sp.emailed ? " and emailed them" : ""}
             {Number(sp.costs) > 0 && (
               <>
                 , and added {formatCents(Number(sp.costs), typeof sp.currency === "string" ? sp.currency : "USD")} of shipping costs to{" "}
                 <Link href="/receipts">Receipts</Link>
+                {sp.pending ? ", waiting for approval" : ""}
               </>
             )}
             .

@@ -56,8 +56,18 @@ export async function readShipmentCosts(orgId: string, fd: FormData, order: Merc
   };
 }
 
-/** Save the costs as approved receipts for the order's band (if it's one band), with the receipt files on the first. */
-export async function recordShipmentCosts(orgId: string, userId: string | null, order: MerchOrder, costs: ShipmentCosts, carrier: string | null) {
+/**
+ * Save the costs as receipts for the order's band (if it's one band), with the receipt files on the
+ * first: approved if whoever shipped it may approve receipts, else waiting for someone who can.
+ */
+export async function recordShipmentCosts(
+  orgId: string,
+  userId: string | null,
+  order: MerchOrder,
+  costs: ShipmentCosts,
+  carrier: string | null,
+  { approved }: { approved: boolean },
+) {
   const today = new Date().toLocaleDateString("en-CA");
   const what = order.lines.map((l) => `${l.quantity} × ${l.name}${l.option ? ` (${l.option})` : ""}`).join(", ");
   const now = new Date().toISOString();
@@ -78,8 +88,8 @@ export async function recordShipmentCosts(orgId: string, userId: string | null, 
           paidBy: costs.paidBy,
           paidByPersonId: costs.paidByPersonId,
           recoup: false,
-          status: "approved",
-          reviewedAt: now,
+          status: approved ? "approved" : "pending",
+          reviewedAt: approved ? now : null,
           submittedByUserId: userId,
         })
         .returning({ id: schema.expenses.id });
