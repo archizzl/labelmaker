@@ -20,12 +20,12 @@ export function ManualSaleForm({ bands, merch, currency }: { bands: { id: number
 }
 
 /** On a hand-added sale in the list: take it back out (until it's paid out), or the whole order it was part of. */
-export function DeleteManualSale({ id, orderItems = 1 }: { id: number; orderItems?: number }) {
+export function DeleteManualSale({ id, name, orderItems = 1 }: { id: number; name: string; orderItems?: number }) {
   return (
     <div className="mt-2 flex flex-wrap gap-2">
       <ActionForm action={deleteManualSale}>
         <input type="hidden" name="id" value={id} />
-        <SubmitButton variant="ghost" size="sm" confirm={orderItems > 1 ? "Delete this item from the order?" : "Delete this sale?"}>
+        <SubmitButton variant="danger-ghost" size="sm" confirm={orderItems > 1 ? `Delete ${name} from the order?` : `Delete the sale of ${name}?`}>
           {orderItems > 1 ? "Delete this item" : "Delete sale"}
         </SubmitButton>
       </ActionForm>
@@ -33,7 +33,7 @@ export function DeleteManualSale({ id, orderItems = 1 }: { id: number; orderItem
         <ActionForm action={deleteManualSale}>
           <input type="hidden" name="id" value={id} />
           <input type="hidden" name="whole" value="1" />
-          <SubmitButton variant="ghost" size="sm" confirm={`Delete the whole order (${orderItems} items)?`}>
+          <SubmitButton variant="danger-ghost" size="sm" confirm={`Delete the whole order (${orderItems} items)?`}>
             Delete the whole order
           </SubmitButton>
         </ActionForm>

@@ -13,10 +13,12 @@ export function PhotoButtons({
   action,
   fields = {},
   hasPhoto,
+  removeConfirm,
 }: {
   action: (state: State, fd: FormData) => Promise<State>;
   fields?: Record<string, string | number>;
   hasPhoto: boolean;
+  removeConfirm: string;
 }) {
   const [state, formAction, pending] = useActionState(action, null);
   const form = useRef<HTMLFormElement>(null);
@@ -48,9 +50,9 @@ export function PhotoButtons({
           value="1"
           disabled={pending}
           onClick={(e) => {
-            if (!confirm("Remove this photo?")) e.preventDefault();
+            if (!confirm(removeConfirm)) e.preventDefault();
           }}
-          className={buttonClass("ghost", "sm")}
+          className={buttonClass("danger-ghost", "sm")}
         >
           Remove photo
         </button>

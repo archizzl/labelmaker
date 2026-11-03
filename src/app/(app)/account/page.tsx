@@ -48,7 +48,7 @@ export default async function AccountPage() {
         <Card title="Photo">
           <div className="flex flex-wrap items-center gap-4">
             <Avatar name={user.name} src={image} size={72} />
-            <PhotoButtons action={saveMyPhoto} hasPhoto={!!image} />
+            <PhotoButtons action={saveMyPhoto} hasPhoto={!!image} removeConfirm="Remove your photo?" />
           </div>
         </Card>
       )}
@@ -104,7 +104,7 @@ export default async function AccountPage() {
               {accounts.length > 1 && (
                 <ActionForm action={leaveAccount} className="ml-auto">
                   <input type="hidden" name="orgId" value={a.id} />
-                  <SubmitButton variant="ghost" size="sm" confirm={`Leave ${a.name}? You won’t be able to see it any more.`}>
+                  <SubmitButton variant="danger-ghost" size="sm" confirm={`Leave ${a.name}? You won’t be able to see it any more.`}>
                     Leave
                   </SubmitButton>
                 </ActionForm>

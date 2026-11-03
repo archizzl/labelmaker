@@ -306,7 +306,7 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
                         <td className="text-right">
                           <form action={deleteRoutingOverride}>
                             <input type="hidden" name="id" value={o.id} />
-                            <SubmitButton variant="ghost" size="sm" confirm={`Forget this match? Sales matching ${match} are matched again by their artist and address.`}>
+                            <SubmitButton variant="danger-ghost" size="sm" confirm={`Forget this match? Sales matching ${match} are matched again by their artist and address.`}>
                               Forget
                             </SubmitButton>
                           </form>
@@ -347,7 +347,7 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
                       <td className="text-right">
                         <form action={deleteImport}>
                           <input type="hidden" name="id" value={h.id} />
-                          <SubmitButton variant="ghost" size="sm" confirm={`Remove ${h.addedCount === 1 ? "the 1 sale" : `the ${h.addedCount} sales`} from this import? Finalized payouts are not affected.`}>
+                          <SubmitButton variant="danger-ghost" size="sm" confirm={`Remove ${h.addedCount === 1 ? "the 1 sale" : `the ${h.addedCount} sales`} from this import? Finalized payouts are not affected.`}>
                             Undo import
                           </SubmitButton>
                         </form>

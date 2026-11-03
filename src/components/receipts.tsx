@@ -307,7 +307,7 @@ function Files({ files, admin, removedAt }: { files: ReceiptFile[]; admin: boole
           {admin && (
             <form action={deleteExpenseFile}>
               <input type="hidden" name="id" value={f.id} />
-              <SubmitButton variant="ghost" size="sm" confirm={`Delete ${f.filename}?`}>
+              <SubmitButton variant="danger-ghost" size="sm" confirm={`Delete ${f.filename}?`}>
                 ×
               </SubmitButton>
             </form>
@@ -439,7 +439,7 @@ export function ExpenseTable({
                   mode === "member" && e.status === "pending" && e.submittedByUserId === userId && (
                     <form action={deleteExpense}>
                       <input type="hidden" name="id" value={e.id} />
-                      <SubmitButton size="sm" variant="ghost" confirm="Withdraw this receipt?">
+                      <SubmitButton size="sm" variant="danger-ghost" confirm={`Withdraw “${e.description}”?`}>
                         Withdraw
                       </SubmitButton>
                     </form>

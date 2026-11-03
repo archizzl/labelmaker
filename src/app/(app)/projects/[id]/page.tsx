@@ -87,7 +87,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
         actions={
           <form action={deleteProject}>
             <input type="hidden" name="id" value={id} />
-            <SubmitButton variant="ghost" size="sm" confirm={`Delete “${project.name}”? Its expenses stay, just without a project.`}>
+            <SubmitButton variant="danger" size="sm" confirm={`Delete “${project.name}”? Its expenses stay, just without a project.`}>
               Delete project
             </SubmitButton>
           </form>

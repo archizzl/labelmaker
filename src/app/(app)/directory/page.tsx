@@ -599,7 +599,7 @@ function PersonBands({ person: p, bandsOf: all, bands, limited }: { person: Pers
               <form action={removeMember} className="ml-auto">
                 <input type="hidden" name="membershipId" value={m.id} />
                 <SubmitButton
-                  variant="ghost"
+                  variant="danger-ghost"
                   size="sm"
                   confirm={`Take ${p.name} out of ${m.band.name}? They stay in your books with their payout history. If they have a share in the band's split, change that on its Money tab.`}
                 >
@@ -648,7 +648,7 @@ function BandRoles({ person: p, membership: m, canRemove }: { person: Person; me
         <form action={removeMember} className="ml-auto">
           <input type="hidden" name="membershipId" value={m.id} />
           <SubmitButton
-            variant="ghost"
+            variant="danger-ghost"
             size="sm"
             confirm={`Take ${p.name} out of ${m.band.name}? They stay in the books with their payout history.`}
           >

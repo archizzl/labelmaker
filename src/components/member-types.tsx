@@ -61,7 +61,7 @@ export async function MemberTypesCard({ orgId }: { orgId: string }) {
                         <form action={deleteMemberType}>
                           <input type="hidden" name="id" value={t.id} />
                           <SubmitButton
-                            variant="ghost"
+                            variant="danger-ghost"
                             size="sm"
                             confirm={`Delete ${t.name}? Anyone with it goes back to seeing just their own earnings, and its invite link stops working.`}
                           >

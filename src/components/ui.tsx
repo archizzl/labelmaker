@@ -34,6 +34,8 @@ const buttonStyles = {
   secondary: "border border-border bg-surface text-text hover:border-muted",
   danger: "border border-border bg-surface text-bad hover:border-bad",
   ghost: "border border-transparent text-link hover:underline",
+  // A delete or remove in a list: red, without a box, so lists don't turn into walls of red buttons.
+  "danger-ghost": "border border-transparent text-bad hover:underline",
 };
 
 export function buttonClass(variant: keyof typeof buttonStyles = "secondary", size: "sm" | "md" = "md") {

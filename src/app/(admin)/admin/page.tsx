@@ -409,7 +409,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                                 <CopyButton text={link(i.code)} label="Copy link" />
                                 <form action={revokeSignupInvite}>
                                   <input type="hidden" name="id" value={i.id} />
-                                  <SubmitButton size="sm" variant="ghost" confirm="Revoke this invite link? It will stop working.">
+                                  <SubmitButton size="sm" variant="danger-ghost" confirm={`Revoke the invite link for ${i.email ?? "anyone with the link"}? It will stop working.`}>
                                     Revoke
                                   </SubmitButton>
                                 </form>

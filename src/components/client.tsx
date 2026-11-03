@@ -120,7 +120,7 @@ export function SubmitButton({
   disabled = false,
 }: {
   children: ReactNode;
-  variant?: "primary" | "secondary" | "danger" | "ghost";
+  variant?: "primary" | "secondary" | "danger" | "ghost" | "danger-ghost";
   size?: "sm" | "md";
   confirm?: string;
   name?: string;

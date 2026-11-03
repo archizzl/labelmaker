@@ -342,7 +342,7 @@ function HeldByBands({
                 {editable && (
                   <form action={deleteBandRemittance} className="ml-auto">
                     <input type="hidden" name="id" value={r.id} />
-                    <SubmitButton variant="ghost" size="sm" confirm={`Delete the ${formatCents(r.amountCents, r.currency)} from ${bandName(r.bandId)}?`}>
+                    <SubmitButton variant="danger-ghost" size="sm" confirm={`Delete the ${formatCents(r.amountCents, r.currency)} from ${bandName(r.bandId)}?`}>
                       Delete
                     </SubmitButton>
                   </form>
