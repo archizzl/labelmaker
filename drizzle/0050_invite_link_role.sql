@@ -1,0 +1,1 @@
+ALTER TABLE "band_invite_links" ADD COLUMN "role" text;

@@ -351,6 +351,13 @@
       "when": 1793371765288,
       "tag": "0049_site_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1793677653443,
+      "tag": "0050_invite_link_role",
+      "breakpoints": true
     }
   ]
 }

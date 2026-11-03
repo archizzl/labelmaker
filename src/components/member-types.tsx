@@ -6,15 +6,14 @@ import { Card, Disclosure, Empty, Field } from "@/components/ui";
 import { db, schema } from "@/db";
 import { type Area, normalizeBandAreas, normalizePermissions, SHOWN_AREAS } from "@/lib/permissions";
 import { deleteMemberType, saveMemberType } from "@/server/account-actions";
-import { StandingInviteLink } from "./band-invite-links";
 import { listMemberTypes, memberTypeOf } from "@/server/member-types";
 
 /**
  * Member types (Directory, admins): what members of each type can see and change beyond their own
  * earnings, and who has each. Picked for someone under Who can sign in, just above.
  */
-/** `inviteLinksBy`: a label's, with each type's invite link (made by this login). */
-export async function MemberTypesCard({ orgId, inviteLinksBy }: { orgId: string; inviteLinksBy?: string }) {
+/** Each type's invite link is under Who can sign in. */
+export async function MemberTypesCard({ orgId }: { orgId: string }) {
   const [members, types, typeOf] = await Promise.all([
     db
       .select({ member: schema.member, user: schema.user })
@@ -59,13 +58,12 @@ export async function MemberTypesCard({ orgId, inviteLinksBy }: { orgId: string;
                     ]}
                     after={
                       <>
-                        {inviteLinksBy && <StandingInviteLink bandOrgId={orgId} createdBy={inviteLinksBy} memberTypeId={t.id} />}
                         <form action={deleteMemberType}>
                           <input type="hidden" name="id" value={t.id} />
                           <SubmitButton
                             variant="ghost"
                             size="sm"
-                            confirm={`Delete ${t.name}? Anyone with it goes back to seeing just their own earnings${inviteLinksBy ? ", and its invite link stops working" : ""}.`}
+                            confirm={`Delete ${t.name}? Anyone with it goes back to seeing just their own earnings, and its invite link stops working.`}
                           >
                             Delete
                           </SubmitButton>

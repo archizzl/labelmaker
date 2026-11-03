@@ -101,9 +101,9 @@ describe("a member type's invite link", () => {
     const [manager] = await db.insert(schema.memberTypes).values({ orgId, name: "Manager", permissions: {} }).returning();
     const [viewOnly] = await db.insert(schema.memberTypes).values({ orgId, name: "View-only", permissions: {} }).returning();
 
-    const managerLink = await links.standingInviteLink(orgId, null, manager.id);
-    expect(await links.standingInviteLink(orgId, null, manager.id)).toBe(managerLink);
-    expect(await links.standingInviteLink(orgId, null, viewOnly.id)).not.toBe(managerLink);
+    const managerLink = await links.standingInviteLink(orgId, null, { memberTypeId: manager.id });
+    expect(await links.standingInviteLink(orgId, null, { memberTypeId: manager.id })).toBe(managerLink);
+    expect(await links.standingInviteLink(orgId, null, { memberTypeId: viewOnly.id })).not.toBe(managerLink);
     expect(await links.standingInviteLink(orgId, null)).not.toBe(managerLink);
     expect((await links.usableInviteLink(managerLink))?.link.memberTypeId).toBe(manager.id);
 
