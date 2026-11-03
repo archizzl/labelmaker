@@ -3,7 +3,9 @@
 import { and, eq, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, schema } from "@/db";
+import type { ActionState } from "./actions";
 import { requireAdmin } from "./context";
+import { asFormResult } from "./form-result";
 
 const { accountLinks } = schema;
 
@@ -21,4 +23,7 @@ export async function unlink(fd: FormData) {
       ),
     );
   revalidatePath("/", "layout");
+}
+export async function unlinkForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => unlink(fd));
 }

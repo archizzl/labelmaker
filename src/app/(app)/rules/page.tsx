@@ -2,13 +2,13 @@ import { asc, eq } from "drizzle-orm";
 import { FundsTabs } from "@/components/funds-tabs";
 import Link from "next/link";
 import { connection } from "next/server";
-import { SubmitButton } from "@/components/client";
+import { ActionForm, SubmitButton } from "@/components/client";
 import { DeductionForm, DeductionList, describeDeduction } from "@/components/deductions";
 import { ItemSplits } from "@/components/item-splits";
 import { SplitRules } from "@/components/split-rules";
 import { Card, Disclosure, Field, PageHeader } from "@/components/ui";
 import { db, schema } from "@/db";
-import { saveDeduction, setLabelKeepsNothing } from "@/server/actions";
+import { saveDeductionForm, setLabelKeepsNothingForm } from "@/server/actions";
 import { can } from "@/lib/permissions";
 import { requireAccess } from "@/server/context";
 import { nameMaps, ownBand, ruleFilter, rulesWhere } from "@/server/data";
@@ -77,17 +77,17 @@ export default async function RulesPage({ searchParams }: PageProps<"/rules">) {
               <div className="flex flex-wrap items-center gap-3 text-sm">
                 <span>The label keeps nothing.</span>
                 {canEdit && (
-                  <form action={setLabelKeepsNothing}>
+                  <ActionForm action={setLabelKeepsNothingForm}>
                     <input type="hidden" name="value" value="0" />
                     <SubmitButton variant="ghost" size="sm">
                       Change
                     </SubmitButton>
-                  </form>
+                  </ActionForm>
                 )}
               </div>
             ) : canEdit ? (
               <div className="flex flex-wrap items-end gap-3">
-                <form action={saveDeduction} className="flex items-end gap-2">
+                <ActionForm action={saveDeductionForm} className="flex items-end gap-2">
                   <input type="hidden" name="label" value="Label’s cut" />
                   <input type="hidden" name="kind" value="percent" />
                   <input type="hidden" name="destination" value="label" />
@@ -98,14 +98,14 @@ export default async function RulesPage({ searchParams }: PageProps<"/rules">) {
                     </span>
                   </Field>
                   <SubmitButton size="sm">Save</SubmitButton>
-                </form>
+                </ActionForm>
                 <span className="pb-1 text-sm text-muted">or</span>
-                <form action={setLabelKeepsNothing}>
+                <ActionForm action={setLabelKeepsNothingForm}>
                   <input type="hidden" name="value" value="1" />
                   <SubmitButton variant="secondary" size="sm">
                     The label keeps nothing
                   </SubmitButton>
-                </form>
+                </ActionForm>
               </div>
             ) : (
               <p className="text-sm text-muted">Not decided yet.</p>

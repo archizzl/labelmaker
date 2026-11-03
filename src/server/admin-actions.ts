@@ -8,6 +8,7 @@ import { FLAG_AUDIENCES, isFeatureFlag, isFlagAudience } from "@/lib/feature-fla
 import { abelProvider } from "./abel/config";
 import { abelModels, MAX_MODELS, saveModels, SERVICE_NAMES, serviceModels } from "./abel/models";
 import { makeResetLink } from "./auth";
+import { asFormResult } from "./form-result";
 import { requireSiteAdmin } from "./site-admin";
 import { createInvite, revokeInvite } from "./signup-invites";
 import { runTests, testsAvailable } from "./test-runner";
@@ -29,11 +30,17 @@ export async function createSignupInvite(fd: FormData) {
   revalidatePath("/admin");
   redirect(`/admin?tab=invites&created=${invite.id}`);
 }
+export async function createSignupInviteForm(_: AdminState, fd: FormData): Promise<AdminState> {
+  return asFormResult(() => createSignupInvite(fd));
+}
 
 export async function revokeSignupInvite(fd: FormData) {
   await requireSiteAdmin();
   await revokeInvite(Number(str(fd, "id")));
   revalidatePath("/admin");
+}
+export async function revokeSignupInviteForm(_: AdminState, fd: FormData): Promise<AdminState> {
+  return asFormResult(() => revokeSignupInvite(fd));
 }
 
 /** A one-time link (24 hours) for someone to choose a new password; the admin sends it to them. */
@@ -118,4 +125,7 @@ export async function runTestsAction(fd: FormData) {
   if (!testsAvailable()) throw new Error("Tests run only on a local copy (npm run dev).");
   await runTests({ file: str(fd, "file") || undefined, name: str(fd, "name") || undefined });
   revalidatePath("/admin");
+}
+export async function runTestsForm(_: AdminState, fd: FormData): Promise<AdminState> {
+  return asFormResult(() => runTestsAction(fd));
 }

@@ -422,6 +422,9 @@ export async function updateMembership(fd: FormData) {
   if (m) await syncOwnPeopleForBand(orgId, m.bandId);
   done();
 }
+export async function updateMembershipForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => updateMembership(fd), "Saved.");
+}
 
 export async function removeMember(fd: FormData) {
   const access = await scoped("roster");
@@ -433,6 +436,9 @@ export async function removeMember(fd: FormData) {
     .returning({ bandId: bandMemberships.bandId });
   if (gone) await syncOwnPeopleForBand(orgId, gone.bandId);
   done();
+}
+export async function removeMemberForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => removeMember(fd));
 }
 
 // ---------- catalog ----------
@@ -466,6 +472,9 @@ export async function saveRelease(fd: FormData) {
   done();
   if (!id && bool(fd, "open")) redirect(`/catalog/${releaseId}`);
 }
+export async function saveReleaseForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => saveRelease(fd), "Saved.");
+}
 
 export async function deleteRelease(fd: FormData) {
   const access = await scoped("catalog");
@@ -478,6 +487,9 @@ export async function deleteRelease(fd: FormData) {
   await reRouteAll(orgId);
   done();
   redirect(r ? `/bands/${r.bandId}` : "/catalog");
+}
+export async function deleteReleaseForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => deleteRelease(fd));
 }
 
 /** Add tracks: one title per line, optionally "Title | URL". */
@@ -504,6 +516,9 @@ export async function addTracks(fd: FormData) {
   await reRouteAll(orgId);
   done();
 }
+export async function addTracksForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => addTracks(fd), "Added.");
+}
 
 export async function saveTrack(fd: FormData) {
   const access = await scoped("catalog");
@@ -529,6 +544,9 @@ export async function saveTrack(fd: FormData) {
   await reRouteAll(orgId);
   done();
 }
+export async function saveTrackForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => saveTrack(fd), "Saved.");
+}
 
 export async function deleteTrack(fd: FormData) {
   const access = await scoped("catalog");
@@ -537,6 +555,9 @@ export async function deleteTrack(fd: FormData) {
   await db.delete(tracks).where(and(eq(tracks.orgId, orgId), eq(tracks.id, int(fd, "id"))));
   await reRouteAll(orgId);
   done();
+}
+export async function deleteTrackForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => deleteTrack(fd));
 }
 
 // ---------- split rules ----------
@@ -695,6 +716,9 @@ export async function saveDeduction(fd: FormData) {
   else await db.insert(deductions).values({ ...values, orgId });
   done();
 }
+export async function saveDeductionForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => saveDeduction(fd));
+}
 
 export async function deleteDeduction(fd: FormData) {
   const { orgId } = await requireAccess("rules", "edit");
@@ -815,6 +839,9 @@ export async function setSetupHidden(fd: FormData) {
   await db.insert(schema.accountSettings).values({ orgId, ...set }).onConflictDoUpdate({ target: schema.accountSettings.orgId, set });
   done();
 }
+export async function setSetupHiddenForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => setSetupHidden(fd));
+}
 
 /** The label keeps nothing from sales (or, with value 0, hasn't decided): for setup and payouts. */
 export async function setLabelKeepsNothing(fd: FormData) {
@@ -822,6 +849,9 @@ export async function setLabelKeepsNothing(fd: FormData) {
   const set = { labelKeepsNothing: fd.get("value") === "1" };
   await db.insert(schema.accountSettings).values({ orgId, ...set }).onConflictDoUpdate({ target: schema.accountSettings.orgId, set });
   done();
+}
+export async function setLabelKeepsNothingForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => setLabelKeepsNothing(fd));
 }
 
 /** "Sync with Bandcamp now": artists, releases, merch and sales, right away (not waiting for the hour). */
@@ -1234,6 +1264,9 @@ export async function setLabelAccountHolder(fd: FormData) {
   await syncAllPeriodStatuses(orgId);
   done();
 }
+export async function setLabelAccountHolderForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => setLabelAccountHolder(fd), "Saved.");
+}
 
 // ---------- bands Bandcamp pays directly ----------
 
@@ -1250,6 +1283,9 @@ export async function setBandPaidTo(fd: FormData) {
   const paidTo = str(fd, "paidTo") === "band" ? "band" : "label";
   await db.update(bands).set({ paidTo }).where(and(eq(bands.orgId, orgId), eq(bands.id, bandId)));
   done();
+}
+export async function setBandPaidToForm(_: ActionState, fd: FormData): Promise<ActionState> {
+  return asFormResult(() => setBandPaidTo(fd), "Saved.");
 }
 
 /** Record money a band sent the label: its share of sales Bandcamp paid the band for. */

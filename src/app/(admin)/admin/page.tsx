@@ -9,8 +9,8 @@ import { Badge, Callout, Card, Empty, Field, PageHeader } from "@/components/ui"
 import { db, schema } from "@/db";
 import { FEATURE_FLAGS, FLAG_AUDIENCES } from "@/lib/feature-flags";
 import { plural } from "@/lib/plural";
-import { createSignupInvite, revokeSignupInvite, saveFeatureFlag } from "@/server/admin-actions";
-import { approveAccountApplication, rejectAccountApplication } from "@/server/application-actions";
+import { createSignupInviteForm, revokeSignupInviteForm, saveFeatureFlag } from "@/server/admin-actions";
+import { approveAccountApplicationForm, rejectAccountApplicationForm } from "@/server/application-actions";
 import { listApplications } from "@/server/applications";
 import { inviteStatus, listInvites } from "@/server/signup-invites";
 import { requireSiteAdmin } from "@/server/site-admin";
@@ -276,19 +276,19 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                     )}
                   </dl>
                   <div className="flex flex-wrap items-start gap-3">
-                    <form action={approveAccountApplication}>
+                    <ActionForm action={approveAccountApplicationForm}>
                       <input type="hidden" name="id" value={app.id} />
                       <SubmitButton size="sm" confirm={`Approve ${app.name} and set it up for ${user.name}?`}>
                         Approve
                       </SubmitButton>
-                    </form>
-                    <form action={rejectAccountApplication} className="flex flex-wrap items-center gap-2">
+                    </ActionForm>
+                    <ActionForm action={rejectAccountApplicationForm} className="flex flex-wrap items-center gap-2">
                       <input type="hidden" name="id" value={app.id} />
                       <input name="note" placeholder="Why (shown to them, optional)" className="!w-64 !py-1 !text-sm" maxLength={1000} />
                       <SubmitButton variant="ghost" size="sm" confirm={`Turn down ${app.name}? They can apply again.`}>
                         Reject
                       </SubmitButton>
-                    </form>
+                    </ActionForm>
                   </div>
                 </li>
               ))}
@@ -400,7 +400,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
       {tab === "invites" && (
         <>
           <Card title="Invite someone">
-            <form action={createSignupInvite} className="grid gap-4 sm:grid-cols-[1fr_1fr_8rem_auto] sm:items-end">
+            <ActionForm action={createSignupInviteForm} className="grid gap-4 sm:grid-cols-[1fr_1fr_8rem_auto] sm:items-end">
               <Field label="Their email (optional)">
                 <input name="email" type="email" placeholder="anyone with the link" />
               </Field>
@@ -416,7 +416,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                 </select>
               </Field>
               <SubmitButton>Make invite link</SubmitButton>
-            </form>
+            </ActionForm>
           </Card>
 
           <Card title="Invite links">
@@ -455,12 +455,12 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                             {status === "open" && (
                               <div className="flex justify-end gap-2">
                                 <CopyButton text={link(i.code)} label="Copy link" />
-                                <form action={revokeSignupInvite}>
+                                <ActionForm action={revokeSignupInviteForm}>
                                   <input type="hidden" name="id" value={i.id} />
                                   <SubmitButton size="sm" variant="danger-ghost" confirm={`Revoke the invite link for ${i.email ?? "anyone with the link"}? It will stop working.`}>
                                     Revoke
                                   </SubmitButton>
-                                </form>
+                                </ActionForm>
                               </div>
                             )}
                           </td>

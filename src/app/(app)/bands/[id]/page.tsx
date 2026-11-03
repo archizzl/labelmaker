@@ -24,7 +24,7 @@ import { ensureBandAccounts } from "@/server/band-accounts";
 import { linkForLabelBand } from "@/server/links";
 import { LabelFunds } from "@/components/label-funds";
 import { ExpenseForm, ExpenseTable } from "@/components/receipts";
-import { deleteBandForm, removeMember, saveRelease, setBandPaidTo, updateMembership } from "@/server/actions";
+import { deleteBandForm, removeMemberForm, saveReleaseForm, setBandPaidToForm, updateMembershipForm } from "@/server/actions";
 import { bandScope, can } from "@/lib/permissions";
 import { getContext, ownBooksOf, requireAccess } from "@/server/context";
 import { projectsEnabled } from "@/server/features";
@@ -436,7 +436,7 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
           {ctx.org.kind === "label" && !band.isLabel && (
             <Card title="Bandcamp pays">
               {can(ctx.access, "payouts", "edit") ? (
-                <form action={setBandPaidTo} className="flex flex-wrap items-center gap-2">
+                <ActionForm action={setBandPaidToForm} className="flex flex-wrap items-center gap-2">
                   <input type="hidden" name="bandId" value={id} />
                   <select key={band.paidTo} name="paidTo" defaultValue={band.paidTo} className="!w-64" aria-label="Who Bandcamp pays for this band’s sales">
                     <option value="label">The label</option>
@@ -445,7 +445,7 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
                   <SaveWhenChanged>
                     <SubmitButton variant="secondary">Save</SubmitButton>
                   </SaveWhenChanged>
-                </form>
+                </ActionForm>
               ) : (
                 <p className="text-sm">{band.paidTo === "band" ? band.name : "The label"}</p>
               )}
@@ -586,7 +586,7 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
                     <div className="mb-3 space-y-4 border border-border bg-surface-2 p-4">
                       {/* The Directory's person form, then their place in this band. */}
                       <PersonFields person={m.person} labelOnly={!ctx.lens} />
-                      <form action={updateMembership} className="flex flex-wrap items-end gap-4 border-t border-border pt-4">
+                      <ActionForm action={updateMembershipForm} className="flex flex-wrap items-end gap-4 border-t border-border pt-4">
                         <input type="hidden" name="membershipId" value={m.membershipId} />
                         <Field label="Roles in this band (comma-separated)">
                           <input name="roles" defaultValue={m.roles.join(", ")} className="!w-64" />
@@ -597,13 +597,13 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
                         <SaveWhenChanged>
                           <SubmitButton size="sm">Save</SubmitButton>
                         </SaveWhenChanged>
-                      </form>
-                      <form action={removeMember} className="border-t border-border pt-4">
+                      </ActionForm>
+                      <ActionForm action={removeMemberForm} className="border-t border-border pt-4">
                         <input type="hidden" name="membershipId" value={m.membershipId} />
                         <SubmitButton variant="danger" size="sm" confirm={`Remove ${m.person.name} from ${band.name}? They stay in the app and any other bands.`}>
                           Remove from this band
                         </SubmitButton>
-                      </form>
+                      </ActionForm>
                     </div>
                     )}
                   </details>
@@ -630,7 +630,7 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
               itemTable(music)
             )}
             {can(ctx.access, "catalog", "edit") && <Disclosure summary="+ Add release">
-              <form action={saveRelease} className="grid gap-4 sm:grid-cols-2">
+              <ActionForm action={saveReleaseForm} className="grid gap-4 sm:grid-cols-2">
                 <input type="hidden" name="bandId" value={id} />
                 <input type="hidden" name="open" value="true" />
                 <Field label="Title">
@@ -648,7 +648,7 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
                 <div className="sm:col-span-2">
                   <SubmitButton>Add release</SubmitButton>
                 </div>
-              </form>
+              </ActionForm>
             </Disclosure>}
           </Card>
 

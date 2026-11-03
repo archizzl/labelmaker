@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { Avatar } from "@/components/avatar";
+import { ActionForm } from "@/components/client";
 import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
@@ -15,7 +16,7 @@ import { plural, someNames } from "@/lib/plural";
 import { STATUS_LABEL, STATUS_TONE } from "@/lib/status";
 import { outsideArtistRows } from "@/components/outside-artists";
 import { SyncFooter } from "@/components/sync-status";
-import { setSetupHidden } from "@/server/actions";
+import { setSetupHiddenForm } from "@/server/actions";
 import { groupPhotos, requireAccess } from "@/server/context";
 import { bandScope, can } from "@/lib/permissions";
 import { computeAllTime } from "@/server/data";
@@ -237,7 +238,7 @@ export default async function Dashboard() {
         <Card
           title="Getting started"
           actions={
-            <form action={setSetupHidden}>
+            <ActionForm action={setSetupHiddenForm}>
               <input type="hidden" name="hidden" value="1" />
               <button
                 type="submit"
@@ -246,7 +247,7 @@ export default async function Dashboard() {
               >
                 ×
               </button>
-            </form>
+            </ActionForm>
           }
         >
           <ol className="space-y-2">
@@ -320,14 +321,14 @@ export default async function Dashboard() {
 
       {isAdmin && !setupDone && setupHidden && !setupGone && (
         <div className="mt-6 flex items-center justify-center gap-2 text-xs text-muted">
-          <form action={setSetupHidden}>
+          <ActionForm action={setSetupHiddenForm}>
             <input type="hidden" name="hidden" value="0" />
             {stepsLeft} setup step{stepsLeft === 1 ? "" : "s"} left.{" "}
             <button type="submit" className="underline hover:text-text">
               Show the getting started checklist
             </button>
-          </form>
-          <form action={setSetupHidden}>
+          </ActionForm>
+          <ActionForm action={setSetupHiddenForm}>
             <input type="hidden" name="hidden" value="forever" />
             <button
               type="submit"
@@ -336,7 +337,7 @@ export default async function Dashboard() {
             >
               ×
             </button>
-          </form>
+          </ActionForm>
         </div>
       )}
       <SyncFooter orgId={orgId} />
