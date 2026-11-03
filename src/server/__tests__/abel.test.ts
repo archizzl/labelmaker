@@ -325,6 +325,21 @@ describe("Abel's changes", () => {
     expect(card).toBe("Save a deduction: label Label cut, kind percent, percent 10, applies to band Band A");
   });
 
+  it("changes an inventory count as the counter does: add or take off, or set it", async () => {
+    const { orgId, userId } = await setup();
+    as(orgId, userId, ADMIN);
+    const [item] = await db.insert(schema.inventoryItems).values({ orgId, name: "Logo Tee", option: "M", onHand: 5 }).returning();
+    expect(await tool.describeChange(who, agent.ABEL_TOOLS, "change_inventory_count", { itemId: item.id, by: -2 })).toBe("Take 2 off Logo Tee (M)");
+    expect(await run("change_inventory_count", { itemId: item.id, by: -2 })).toEqual({ ok: "Logo Tee (M): 3 on hand." });
+    expect(await run("change_inventory_count", { itemId: item.id, to: 12 })).toEqual({ ok: "Logo Tee (M): 12 on hand." });
+    expect(await run("change_inventory_count", { itemId: item.id })).toMatchObject({ error: expect.any(String) });
+    const moves = await db.select().from(schema.inventoryMoves).where(eq(schema.inventoryMoves.itemId, item.id));
+    expect(moves.map((m) => [m.reason, m.delta])).toEqual([
+      ["other", -2],
+      ["recount", 9],
+    ]);
+  });
+
   it("keeps a band's other spellings when only its name changes", async () => {
     const { orgId, userId, a } = await setup();
     as(orgId, userId, ADMIN);
@@ -340,7 +355,7 @@ describe("Abel's changes", () => {
     const got = await names();
     expect(got).toContain("list_deductions");
     expect(got).not.toContain("save_deduction");
-    expect(got).not.toContain("invite_to_group");
+    expect(got).not.toContain("set_member_role");
     expect(await run("save_deduction", { label: "x", kind: "percent", percent: 5, appliesTo: { type: "everything" } })).toBe("not allowed");
   });
 });

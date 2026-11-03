@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { acceptInvite, createAccount, type FormState, resetPassword, saveSetupLinks, saveSetupMe, signIn, signUp } from "@/server/account-actions";
+import { createAccount, type FormState, resetPassword, saveSetupLinks, saveSetupMe, signIn, signUp } from "@/server/account-actions";
 import { connectExistingAccount, joinLabelAsBand, joinWithInviteLink } from "@/server/band-invite-actions";
 import { buttonClass, Field } from "./ui";
 
@@ -103,26 +103,6 @@ export function CreateAccountForm({ next }: { next?: string }) {
       </Field>
       <Result state={state} />
       <Submit pending={pending}>{kind === "label" ? "Create label" : "Create band"}</Submit>
-    </form>
-  );
-}
-
-/** Accept an invite. `auto`: straight after creating a login for it, accept without another click. */
-export function AcceptInviteForm({ id, auto = false }: { id: string; auto?: boolean }) {
-  const [state, action, pending] = useActionState(acceptInvite, null);
-  const form = useRef<HTMLFormElement>(null);
-  const sent = useRef(false);
-  useEffect(() => {
-    if (auto && !sent.current) {
-      sent.current = true;
-      form.current?.requestSubmit();
-    }
-  }, [auto]);
-  return (
-    <form ref={form} action={action} className="space-y-3">
-      <input type="hidden" name="id" value={id} />
-      <Result state={state} />
-      <Submit pending={pending}>Accept invite</Submit>
     </form>
   );
 }

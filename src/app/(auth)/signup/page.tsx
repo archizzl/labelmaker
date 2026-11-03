@@ -9,8 +9,7 @@ export const metadata = { title: "sign up" };
 
 /**
  * Creating a login. Anyone can, then set up a label or band group on /welcome. A site admin's invite
- * link (/signup?code=…) can be for one email only, and someone invited into an existing group
- * arrives with ?email=….
+ * link (/signup?code=…) can be for one email only, and ?email=… fills the email in.
  */
 export default async function SignupPage({ searchParams }: PageProps<"/signup">) {
   const q = await searchParams;

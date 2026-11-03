@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, gt, gte, inArray, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { formatCents } from "@/lib/money";
@@ -132,21 +132,17 @@ const outsideArtists = abelTool({
 const logins = abelTool({
   name: "who_can_sign_in",
   description:
-    "Who can sign in to this group (member ids, user ids, role, member type), invites not used yet (ids), and the group's member types (ids, and what each can see and change).",
+    "Who can sign in to this group (member ids, user ids, role, member type), and the group's member types (ids, and what each can see and change).",
   params: z.object({}),
   needs: "admin",
   run: async (ctx) => {
     const orgId = ctx.org.id;
-    const [members, invites, types, assignments] = await Promise.all([
+    const [members, types, assignments] = await Promise.all([
       db
         .select({ memberId: schema.member.id, userId: schema.member.userId, role: schema.member.role, name: schema.user.name, email: schema.user.email })
         .from(schema.member)
         .innerJoin(schema.user, eq(schema.user.id, schema.member.userId))
         .where(eq(schema.member.organizationId, orgId)),
-      db
-        .select()
-        .from(schema.invitation)
-        .where(and(eq(schema.invitation.organizationId, orgId), eq(schema.invitation.status, "pending"), gt(schema.invitation.expiresAt, new Date()))),
       db.select().from(schema.memberTypes).where(eq(schema.memberTypes.orgId, orgId)).orderBy(asc(schema.memberTypes.name)),
       db.select().from(schema.memberTypeAssignments).where(eq(schema.memberTypeAssignments.orgId, orgId)),
     ]);
@@ -156,7 +152,6 @@ const logins = abelTool({
         const type = assignments.find((a) => a.userId === m.userId)?.memberTypeId;
         return { memberId: m.memberId, userId: m.userId, name: m.name, email: m.email, role: m.role, memberType: type ? (typeName.get(type) ?? null) : null };
       }),
-      invites: invites.map((i) => ({ inviteId: i.id, email: i.email, role: i.role, expires: i.expiresAt })),
       memberTypes: types.map((t) => ({
         id: t.id,
         name: t.name,

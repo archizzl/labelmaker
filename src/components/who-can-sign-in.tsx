@@ -1,11 +1,11 @@
-import { and, asc, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { Avatar } from "@/components/avatar";
-import { CopyButton, SubmitButton } from "@/components/client";
+import { SubmitButton } from "@/components/client";
 import { Badge, Card } from "@/components/ui";
 import { db, schema } from "@/db";
-import { cancelInvite, removeAccountMember } from "@/server/account-actions";
+import { removeAccountMember } from "@/server/account-actions";
 import type { Context } from "@/server/context";
-import { inviteMemberTypes, listMemberTypes, memberTypeOf } from "@/server/member-types";
+import { listMemberTypes, memberTypeOf } from "@/server/member-types";
 import { RolePicker } from "./role-picker";
 import { InviteLinks, LoginEditToggle, LoginIdentity } from "./band-invite-links";
 import { bandMembers } from "@/server/band-member";
@@ -15,28 +15,23 @@ const ROLE_LABEL: Record<string, string> = { owner: "owner", admin: "admin", mem
 
 /**
  * Directory → Who can sign in (admins only): everyone with a login to this account and what they can
- * do, open invites, and inviting someone new.
+ * do.
  */
 export async function WhoCanSignIn({ ctx }: { ctx: Context }) {
   // A label's sub-account for a band: everyone there is an admin of it (it's just the label's view).
   const managed = !!ctx.managedBy;
   const { orgId } = ctx;
-  const [members, invites, people, types, typeOf] = await Promise.all([
+  const [members, people, types, typeOf] = await Promise.all([
     db
       .select({ member: schema.member, user: schema.user })
       .from(schema.member)
       .innerJoin(schema.user, eq(schema.user.id, schema.member.userId))
       .where(eq(schema.member.organizationId, orgId))
       .orderBy(asc(schema.user.name)),
-    db
-      .select()
-      .from(schema.invitation)
-      .where(and(eq(schema.invitation.organizationId, orgId), eq(schema.invitation.status, "pending"))),
     db.select().from(schema.people).where(eq(schema.people.orgId, orgId)).orderBy(asc(schema.people.name)),
     listMemberTypes(orgId),
     memberTypeOf(orgId),
   ]);
-  const inviteTypes = await inviteMemberTypes(invites.map((i) => i.id));
   const typeName = (id: number | undefined) => types.find((t) => t.id === id)?.name;
   // The role picker's value for someone: "admin", "member", or "type:<id>".
   const roleValue = (role: string, typeId: number | undefined) => (role === "member" ? (typeId && typeName(typeId) ? `type:${typeId}` : "member") : "admin");
@@ -52,8 +47,6 @@ export async function WhoCanSignIn({ ctx }: { ctx: Context }) {
     </>
   );
   const personOf = (userId: string) => people.find((p) => p.userId === userId);
-  const base = process.env.BETTER_AUTH_URL ?? "";
-  const openInvites = invites.filter((i) => i.expiresAt > new Date());
   // A band account: its members in the label's books (for invite links), its open links, and which
   // member each personal login is (the rest are the band's shared login).
   const [loginNames, loginPersons, bandPeople] = ctx.managedBy
@@ -139,35 +132,6 @@ export async function WhoCanSignIn({ ctx }: { ctx: Context }) {
                             </form>
                           )}
                           {managed && !self && <LoginEditToggle />}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {openInvites.map((i) => {
-                  const who = i.personId ? people.find((p) => p.id === i.personId)?.name : null;
-                  return (
-                    <tr key={i.id}>
-                      <td>
-                        <div className="font-medium">
-                          {i.email} <Badge tone="warn">invited</Badge>
-                        </div>
-                      </td>
-                      {!managed && <td className="text-sm">{who ?? <span className="text-muted">not linked</span>}</td>}
-                      {!managed && (
-                        <td>
-                          <Badge>{i.role === "member" ? (typeName(inviteTypes.get(i.id)) ?? "member") : (i.role ?? "member")}</Badge>
-                        </td>
-                      )}
-                      <td className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <CopyButton text={`${base}/invite/${i.id}`} label="Copy invite link" />
-                          <form action={cancelInvite}>
-                            <input type="hidden" name="id" value={i.id} />
-                            <SubmitButton variant="ghost" size="sm" confirm={`Cancel the invite for ${i.email}? Its link stops working.`}>
-                              Cancel invite
-                            </SubmitButton>
-                          </form>
                         </div>
                       </td>
                     </tr>

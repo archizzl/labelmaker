@@ -11,7 +11,7 @@ import { auth } from "./auth";
 import { accountContext, accountsFor, type Context, getSession, mayDeleteGroup, requireAdmin, VIEW_AS_COOKIE } from "./context";
 import { joinedLabel, labelReachNote, renameJoinedBand, syncJoinedPeople } from "./own-books";
 import { AREAS, type Area, HIDDEN_AREAS, normalizeBandAreas, normalizePermissions } from "@/lib/permissions";
-import { assignMemberType, memberTypeForInvite, parseRoleChoice, setInviteMemberType, setManagedBands } from "./member-types";
+import { assignMemberType, parseRoleChoice, setManagedBands } from "./member-types";
 import { applyMyDetails, normalizeEmail } from "./people";
 import { deleteAccountsWithBooks, soleAccounts } from "./account-deletion";
 import { ownBand, reRouteAll } from "./data";
@@ -26,7 +26,7 @@ import { clearOldPhotos, removeProfilePhoto, setProfilePhoto } from "./profile-p
 
 /*
  * Logins and accounts: signing up and in, creating a label or band account, switching between
- * accounts, inviting people, and account settings.
+ * accounts, who can sign in, and account settings.
  */
 
 export type FormState = { error?: string; ok?: string } | null;
@@ -324,48 +324,6 @@ export async function testBandcampConnection(): Promise<FormState> {
 
 // ---------- members & invites ----------
 
-/**
- * Invite someone to this account by email. There's no email service yet: the invite link is shown
- * on the Members page to copy and send. `personId` links the invite to their payee record.
- */
-export async function inviteMember(_: FormState, fd: FormData): Promise<FormState> {
-  const { orgId } = await requireAdmin();
-  const email = normalizeEmail(str(fd, "email"));
-  let choice;
-  try {
-    choice = await parseRoleChoice(orgId, str(fd, "role"));
-  } catch (e) {
-    return { error: (e as Error).message };
-  }
-  const { role } = choice;
-  const personId = Number(str(fd, "personId")) || undefined;
-  if (!email.includes("@")) return { error: "Enter their email address." };
-  if (personId) {
-    const [p] = await db
-      .select()
-      .from(schema.people)
-      .where(and(eq(schema.people.orgId, orgId), eq(schema.people.id, personId)));
-    if (!p) return { error: "That person isn't in this group." };
-    if (p.userId) return { error: `${p.name} already has an account linked.` };
-  }
-  try {
-    const invite = await auth.api.createInvitation({ body: { email, role, organizationId: orgId, personId }, headers: await headers() });
-    if (choice.memberTypeId !== null && invite?.id) await setInviteMemberType(invite.id, choice.memberTypeId);
-  } catch (e) {
-    return { error: messageOf(e, "Couldn't create the invite.") };
-  }
-  revalidatePath("/directory");
-  revalidatePath("/settings");
-  return { ok: `Invited ${email}.` };
-}
-
-export async function cancelInvite(fd: FormData) {
-  await requireAdmin();
-  await auth.api.cancelInvitation({ body: { invitationId: str(fd, "id") }, headers: await headers() });
-  revalidatePath("/directory");
-  revalidatePath("/settings");
-}
-
 /** Change what someone can do here: admin, a plain member, or a member with a member type. */
 export async function setMemberRole(fd: FormData) {
   const { orgId } = await requireAdmin();
@@ -454,49 +412,6 @@ export async function removeAccountMember(fd: FormData) {
     .where(and(eq(schema.people.orgId, orgId), eq(schema.people.userId, m.userId)));
   revalidatePath("/directory");
   revalidatePath("/settings");
-}
-
-/** Accept an invite as the signed-in user, and link their login to their payee record. */
-export async function acceptInvite(_: FormState, fd: FormData): Promise<FormState> {
-  const session = await getSession();
-  const id = str(fd, "id");
-  if (!session) redirect(`/login?next=/invite/${id}`);
-  const [invite] = await db.select().from(schema.invitation).where(eq(schema.invitation.id, id));
-  if (!invite) return { error: "This invite doesn't exist any more." };
-  try {
-    await auth.api.acceptInvitation({ body: { invitationId: id }, headers: await headers() });
-  } catch (e) {
-    return { error: messageOf(e, "Couldn't accept the invite.") };
-  }
-  const orgId = invite.organizationId;
-  const { user } = session;
-  // Their payee record: the one the invite named, else one with their email, else a new one.
-  const [named] = invite.personId
-    ? await db
-        .select()
-        .from(schema.people)
-        .where(and(eq(schema.people.orgId, orgId), eq(schema.people.id, invite.personId), isNull(schema.people.userId)))
-    : [];
-  const byEmail = named
-    ? undefined
-    : (await db.select().from(schema.people).where(and(eq(schema.people.orgId, orgId), isNull(schema.people.userId)))).find(
-        (p) => normalizeEmail(p.email) === normalizeEmail(user.email),
-      );
-  const person = named ?? byEmail;
-  if (person) {
-    await db
-      .update(schema.people)
-      .set({ userId: user.id, email: person.email ?? user.email })
-      .where(eq(schema.people.id, person.id));
-  } else {
-    await db.insert(schema.people).values({ orgId, userId: user.id, name: user.name, email: user.email });
-  }
-  // The member type the invite gave, if any.
-  const memberTypeId = invite.role === "member" ? await memberTypeForInvite(orgId, invite.id) : null;
-  if (memberTypeId !== null) await assignMemberType(orgId, user.id, memberTypeId);
-  await auth.api.setActiveOrganization({ body: { organizationId: orgId }, headers: await headers() });
-  revalidatePath("/", "layout");
-  redirect("/");
 }
 
 /** Link your login to a payee record in this account (admins, for themselves). */

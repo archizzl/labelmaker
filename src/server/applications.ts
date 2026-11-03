@@ -8,24 +8,12 @@ import { auth } from "./auth";
 import { ensureBandAccounts } from "./band-accounts";
 
 /*
- * Applications for new label and band accounts (src/lib/applications.ts). Anyone can create a login
- * and apply; a site admin approves or rejects from the admin dashboard. Approving sets the account
- * up from the application. People who signed up with an admin's invite link skip this.
+ * Applications for new label and band accounts, from before anyone could set one up. A site admin
+ * still approves or rejects the old ones from the admin dashboard. Approving sets the account up
+ * from the application.
  */
 
-const { accountApplications, signupInvites } = schema;
-
-/** Someone's latest application, if any. */
-export async function latestApplication(userId: string) {
-  const [row] = await db.select().from(accountApplications).where(eq(accountApplications.userId, userId)).orderBy(desc(accountApplications.id)).limit(1);
-  return row ?? null;
-}
-
-/** Signed up with an admin's invite link: may create an account without applying. */
-export async function preapproved(userId: string) {
-  const [row] = await db.select({ id: signupInvites.id }).from(signupInvites).where(eq(signupInvites.usedByUserId, userId)).limit(1);
-  return !!row;
-}
+const { accountApplications } = schema;
 
 export const listApplications = () => db.select({ app: accountApplications, user: schema.user }).from(accountApplications).innerJoin(schema.user, eq(schema.user.id, accountApplications.userId)).orderBy(desc(accountApplications.createdAt));
 

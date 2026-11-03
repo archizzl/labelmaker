@@ -114,7 +114,7 @@ Never write to the live database by hand. Changes go through migrations and the 
   - Payouts are at `/periods`, label funds at `/funds` with the label's splits and deductions (`/rules`) as its Rules tab, a member's own earnings at `/me`.
   - Also: sales (with `/sales/import` and `/sales/add`), orders, inventory, receipts, catalog, projects (feature flag), fans (hidden from the nav), from-label (a linked band's view of its label), settings, account.
   - The nav is `src/components/nav.tsx`; what members see is set by member types (`src/lib/permissions.ts`).
-- **`src/app/(auth)`:** sign-in, sign-up, password reset, invites, join links and the welcome page (anyone can set up a group there).
+- **`src/app/(auth)`:** sign-in, sign-up, password reset, join links and the welcome page (anyone can set up a group there).
 - **`src/app/(admin)`:** the site admin dashboard (old group applications, invite links, accounts, groups, feature flags, and Abel's models: `src/server/abel/models.ts`, kept in `site_settings`, ahead of `ABEL_MODEL`).
 - **`src/app/api`:** Better Auth, the hourly cron sync (`cron/sync`, called by `cloudflare/worker.ts`), sync status.
 - **`src/server`:** data and server actions.

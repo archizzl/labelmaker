@@ -3,7 +3,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, schema } from "@/db";
-import { applyMove, catalogCandidates, isMoveReason } from "@/lib/inventory";
+import { applyMove, catalogCandidates } from "@/lib/inventory";
 import { parseCents } from "@/lib/money";
 import { bandScope } from "@/lib/permissions";
 import { type Context, requireAccess } from "./context";
@@ -85,7 +85,7 @@ export async function setInventoryPhoto(_: InventoryState, fd: FormData): Promis
   }
 }
 
-/** Add an item, or change its details (not its count: that's adjustInventory). */
+/** Add an item, or change its details (not its count: that's changeCount). */
 export async function saveInventoryItem(_: InventoryState, fd: FormData): Promise<InventoryState> {
   const ctx = await requireAccess("inventory", "edit");
   const { orgId } = ctx;
@@ -172,44 +172,11 @@ export async function saveInventoryItem(_: InventoryState, fd: FormData): Promis
   }
 }
 
-/** Change an item's count (received, used, sold, recount…), keeping a record of it. */
-export async function adjustInventory(_: InventoryState, fd: FormData): Promise<InventoryState> {
-  const ctx = await requireAccess("inventory", "edit");
-  try {
-    const item = await ownItem(ctx, optInt(fd, "id") ?? -1);
-    const reason = str(fd, "reason");
-    if (!isMoveReason(reason)) return { error: "Choose what happened." };
-    const amount = optInt(fd, "amount");
-    if (amount === null || (reason !== "recount" && amount === 0)) return { error: reason === "recount" ? "Enter the count." : "Enter how many." };
-    let after = 0;
-    await db.transaction(async (tx) => {
-      // The count as it is now (someone else may have just changed it).
-      const [cur] = await tx.select({ onHand: inventoryItems.onHand }).from(inventoryItems).where(eq(inventoryItems.id, item.id)).for("update");
-      const { delta, onHandAfter } = applyMove(cur.onHand, reason, amount);
-      after = onHandAfter;
-      await tx.update(inventoryItems).set({ onHand: onHandAfter }).where(eq(inventoryItems.id, item.id));
-      await tx.insert(inventoryMoves).values({
-        orgId: ctx.orgId,
-        itemId: item.id,
-        delta,
-        reason,
-        note: str(fd, "note").slice(0, 300) || null,
-        onHandAfter,
-        byUserId: ctx.user.id,
-      });
-    });
-    done();
-    return { ok: `${item.name}${item.option ? ` (${item.option})` : ""}: ${after} on hand.` };
-  } catch (e) {
-    return { error: (e as Error).message };
-  }
-}
-
 export type CountState = { onHand?: number; error?: string };
 
 /**
- * The counter on the Inventory page: add or take off some (`by`), or set the count (`to`). Kept in
- * the history as "other" (+/−) or a recount.
+ * Change an item's count, from the counter on the Inventory page or Abel: add or take off some
+ * (`by`), or set the count (`to`). Kept in the history as "other" (+/−) or a recount.
  */
 export async function changeCount(id: number, change: { by: number } | { to: number }): Promise<CountState> {
   const ctx = await requireAccess("inventory", "edit");

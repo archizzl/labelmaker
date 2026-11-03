@@ -4,7 +4,7 @@ import { safePath } from "../safe-path";
 describe("a page to send someone to", () => {
   it("keeps paths on this site", () => {
     expect(safePath("/periods/3?tab=people#p4")).toBe("/periods/3?tab=people#p4");
-    expect(safePath("/invite/abc")).toBe("/invite/abc");
+    expect(safePath("/join/abc")).toBe("/join/abc");
   });
 
   it("refuses anything that leads to another site", () => {

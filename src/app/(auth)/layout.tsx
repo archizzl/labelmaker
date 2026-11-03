@@ -4,7 +4,7 @@ import { FixSignIn } from "@/components/fix-sign-in";
 import { Mark } from "@/components/nav";
 import { hasDuplicateSession } from "@/lib/auth-cookies";
 
-/** Signing in, signing up, invites: a simple page without the app's navigation. */
+/** Signing in, signing up, joining: a simple page without the app's navigation. */
 export default async function AuthLayout({ children }: LayoutProps<"/">) {
   const staleCookie = hasDuplicateSession((await headers()).get("cookie"));
   return (

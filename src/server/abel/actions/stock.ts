@@ -46,7 +46,7 @@ const saveItem = actionTool({
   name: "save_inventory_item",
   label: "Save an inventory item",
   description:
-    "Add an item to inventory, or change one (give its id; only the fields given change; counts change with adjust_inventory). kind: product (sold) or supply (used up). A release and its format (packageId) tie it to the catalog. onHand: the starting count of a new item. lowAt: warn below this count. desired: the ideal count, how many they'd like to have on hand.",
+    "Add an item to inventory, or change one (give its id; only the fields given change; counts change with change_inventory_count). kind: product (sold) or supply (used up). A release and its format (packageId) tie it to the catalog. onHand: the starting count of a new item. lowAt: warn below this count. desired: the ideal count, how many they'd like to have on hand.",
   params: z.object({
     id: id.optional(),
     name: z.string().min(1).max(200).optional(),

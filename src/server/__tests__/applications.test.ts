@@ -84,11 +84,11 @@ describe("account applications", () => {
     expect(links.every((l) => l.managed && l.status === "active")).toBe(true);
   });
 
-  it("rejecting keeps the note for them, and they can see their latest application", async () => {
+  it("rejecting keeps the note for them", async () => {
     const me = await applicant("Zed");
     const [app] = await db.insert(schema.accountApplications).values({ userId: me.id, kind: "band", name: "Nope" }).returning();
     await apps.rejectApplication(app.id, me.id, "Not a music project");
-    expect(await apps.latestApplication(me.id)).toMatchObject({ status: "rejected", reviewNote: "Not a music project" });
-    expect(await apps.preapproved(me.id)).toBe(false);
+    const [row] = await db.select().from(schema.accountApplications).where(eq(schema.accountApplications.id, app.id));
+    expect(row).toMatchObject({ status: "rejected", reviewNote: "Not a music project" });
   });
 });

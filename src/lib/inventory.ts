@@ -2,6 +2,10 @@
  * Inventory rules, kept free of the database so they can be tested on their own.
  */
 
+/**
+ * What changed a count, for its history. The counter records only "other" (+/−) and "recount", and
+ * sales record "sold"; the rest are on older rows.
+ */
 export const MOVE_REASONS = [
   { key: "received", label: "Received", sign: 1 },
   { key: "sold", label: "Sold (shows, in person)", sign: -1 },
@@ -13,8 +17,6 @@ export const MOVE_REASONS = [
 ] as const;
 
 export type MoveReason = (typeof MOVE_REASONS)[number]["key"];
-
-export const isMoveReason = (s: string): s is MoveReason => MOVE_REASONS.some((r) => r.key === s);
 
 /**
  * What a move does to the count. Received adds; sold, used, given and damaged take away (whatever
