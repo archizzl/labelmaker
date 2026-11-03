@@ -699,14 +699,19 @@ export async function saveDeduction(fd: FormData) {
   const [formatRelease, formatPackage] = str(fd, "formatKey").split(":").map(Number);
   const packageId = Number.isFinite(formatPackage) && formatPackage > 0 ? formatPackage : null;
   if (destination === "person" && !personId) throw new Error("Choose who gets paid");
+  // A typo isn't a deduction of nothing.
+  const percent = Number.parseFloat(str(fd, "percent"));
+  const amount = Number.parseFloat(str(fd, "amount"));
+  if (kind === "percent" && !(percent >= 0 && percent <= 100)) throw new Error("Enter a percentage from 0 to 100.");
+  if ((kind === "per_unit" || kind === "fixed") && !(amount >= 0)) throw new Error("Enter an amount.");
   const values = {
     label:
       str(fd, "label") ||
       (kind === "percent" ? "Deduction" : kind === "per_unit" ? "Per-item cost" : kind === "sale_part" ? salePartLabel(salePart) : "Recoupable cost"),
     kind,
     salePart,
-    percentBps: kind === "percent" ? Math.round(Number.parseFloat(str(fd, "percent")) * 100) || 0 : null,
-    amountCents: kind === "per_unit" || kind === "fixed" ? Math.round(Number.parseFloat(str(fd, "amount")) * 100) || 0 : null,
+    percentBps: kind === "percent" ? Math.round(percent * 100) : null,
+    amountCents: kind === "per_unit" || kind === "fixed" ? Math.round(amount * 100) : null,
     currency: kind === "per_unit" || kind === "fixed" ? str(fd, "currency").toUpperCase() || "USD" : null,
     destination,
     personId,
