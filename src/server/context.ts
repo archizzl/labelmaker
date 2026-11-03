@@ -143,9 +143,8 @@ export async function groupPhotos(accounts: Pick<Account, "id" | "kind">[]): Pro
  * instead, and nothing can be changed: server actions are refused.
  *
  * A label-made band account sees the label's books narrowed to its band (bandLens), in pages and
- * in actions alike (an action re-draws the page it came from). The lens only lets it change its
- * orders, and stock counts through requireAccess's bandMay; its own settings and logins go through
- * accountContext / requireAdmin. It keeps its own books too (made on its first visit), like a band
+ * in actions alike (an action re-draws the page it came from). What the lens lets it change is
+ * LENS_ACCESS; its own settings and logins go through accountContext / requireAdmin. It keeps its own books too (made on its first visit), like a band
  * that runs its own account: its dashboard, sales, payouts, receipts and splits are those
  * (requireAccess), with the label's part for it shown beside them, read-only.
  */
@@ -213,10 +212,11 @@ export const accountContext = cache(async (): Promise<Context> => {
 
 /**
  * What a band account sees of the label's books: its own band's part. It changes what isn't about
- * money: its orders, inventory, catalog and people. Not the band itself (saveBand), and nothing that
- * moves money: splits and costs need "rules" (except splits on its own band's items: splitBooks in
- * src/server/actions.ts), and the catalog fields sales are matched by (Bandcamp URL, ISRC, catalog
- * number) stay the label's (saveRelease, saveTrack, addTracks).
+ * money: its orders, inventory (items and counts), catalog and people. Nothing that moves money:
+ * splits and costs need "rules" (except splits on its own band's items: splitBooks in
+ * src/server/actions.ts); the names and addresses sales are matched by, on the band (saveBand,
+ * saveBandSettings) and in the catalog (Bandcamp URL, ISRC, catalog number: saveRelease, saveTrack,
+ * addTracks), stay the label's; and so do where its people are paid (payDetails in actions.ts).
  */
 const LENS_ACCESS = {
   permissions: { sales: "view", orders: "edit", inventory: "edit", payouts: "view", funds: "view", receipts: "view", catalog: "edit", roster: "edit" },
@@ -455,10 +455,8 @@ export async function accessFor(orgId: string, userId: string, isAdmin: boolean,
 export async function requireAccess(
   area: Area,
   level: "view" | "edit" = "view",
-  /** A band account may do this to its own band's part of the label's books (recounting stock, say). */
-  { bandMay = false }: { bandMay?: boolean } = {},
 ): Promise<Context> {
-  const ctx = await contextFor(area, level, { bandMay });
+  const ctx = await contextFor(area, level);
   if (!ctx) redirect("/me");
   return ctx;
 }
@@ -470,11 +468,9 @@ export async function requireAccess(
 export async function contextFor(
   area: Area,
   level: "view" | "edit" = "view",
-  { bandMay = false, from }: { bandMay?: boolean; from?: Context } = {},
+  { from }: { from?: Context } = {},
 ): Promise<Context | null> {
   let ctx = from ?? (await getContext());
-  // A band login may do this one thing to its band's part of the label's books.
-  if (ctx.lens && bandMay) ctx = { ...ctx, access: { ...ctx.access, permissions: { ...ctx.access.permissions, [area]: level } } };
   // A band account the label made: these are its own books.
   if (ctx.lens && OWN_BOOKS_AREAS.includes(area)) ctx = await ownBooksOf(ctx);
   return can(ctx.access, area, level) ? ctx : null;

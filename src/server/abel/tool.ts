@@ -24,7 +24,7 @@ export type Needs =
   | "anyone"
   /** An admin of the account (Settings, who can sign in): as requireAdmin. */
   | "admin"
-  | { area: Area; level?: "view" | "edit"; bandMay?: boolean };
+  | { area: Area; level?: "view" | "edit" };
 
 /** An admin of the account they're in (for a band account the label made: of that small account, as the nav has it). */
 export const isAccountAdmin = (ctx: Context) => (ctx.lens ? ctx.org.role !== "member" : ctx.isAdmin);
@@ -54,11 +54,11 @@ export async function toolContext(ctx: Context, tool: AbelTool): Promise<Context
   if (tool.available && !(await tool.available(ctx))) return null;
   if (tool.needs === "anyone") return ctx;
   if (tool.needs === "admin") return isAccountAdmin(ctx) ? ctx : null;
-  const { area, level = "view", bandMay = false } = tool.needs;
+  const { area, level = "view" } = tool.needs;
   const known = sections.get(ctx) ?? new Map<string, Promise<Context | null>>();
   sections.set(ctx, known);
-  const key = `${area}|${level}|${bandMay}`;
-  if (!known.has(key)) known.set(key, contextFor(area, level, { bandMay, from: ctx }));
+  const key = `${area}|${level}`;
+  if (!known.has(key)) known.set(key, contextFor(area, level, { from: ctx }));
   return known.get(key)!;
 }
 

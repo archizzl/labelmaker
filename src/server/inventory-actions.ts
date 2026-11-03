@@ -174,8 +174,7 @@ export async function saveInventoryItem(_: InventoryState, fd: FormData): Promis
 
 /** Change an item's count (received, used, sold, recount…), keeping a record of it. */
 export async function adjustInventory(_: InventoryState, fd: FormData): Promise<InventoryState> {
-  // A band's own account can recount its band's stock (nothing else in inventory).
-  const ctx = await requireAccess("inventory", "edit", { bandMay: true });
+  const ctx = await requireAccess("inventory", "edit");
   try {
     const item = await ownItem(ctx, optInt(fd, "id") ?? -1);
     const reason = str(fd, "reason");
@@ -213,7 +212,7 @@ export type CountState = { onHand?: number; error?: string };
  * the history as "other" (+/−) or a recount.
  */
 export async function changeCount(id: number, change: { by: number } | { to: number }): Promise<CountState> {
-  const ctx = await requireAccess("inventory", "edit", { bandMay: true });
+  const ctx = await requireAccess("inventory", "edit");
   try {
     const item = await ownItem(ctx, id);
     const set = "to" in change;
@@ -237,7 +236,7 @@ export async function changeCount(id: number, change: { by: number } | { to: num
 
 /** How many they'd like to have on hand (null for none). */
 export async function setIdealCount(id: number, ideal: number | null): Promise<{ error?: string }> {
-  const ctx = await requireAccess("inventory", "edit", { bandMay: true });
+  const ctx = await requireAccess("inventory", "edit");
   try {
     const item = await ownItem(ctx, id);
     const n = ideal === null || !Number.isFinite(ideal) || ideal <= 0 ? null : Math.trunc(ideal);

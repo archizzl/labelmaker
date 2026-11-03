@@ -156,7 +156,7 @@ const changeStock = abelTool({
     amount: z.number().int(),
     note: z.string().max(300).optional(),
   }),
-  needs: { area: "inventory", level: "edit", bandMay: true },
+  needs: { area: "inventory", level: "edit" },
   write: true,
   summary: async (ctx, a) => {
     const item = await itemName(ctx, a.itemId);

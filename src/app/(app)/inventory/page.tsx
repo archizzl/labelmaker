@@ -27,11 +27,9 @@ type CatalogOption = { value: string; label: string; bandId: number };
 /** What the label (or band) has on hand: merch and formats it sells, and supplies it uses. */
 export default async function InventoryPage({ searchParams }: PageProps<"/inventory">) {
   await connection();
-  const { orgId, access, lens } = await requireAccess("inventory");
+  const { orgId, access } = await requireAccess("inventory");
   const scope = bandScope(access, "inventory");
   const canEdit = can(access, "inventory", "edit");
-  // A band's own account can change its counts, not the items.
-  const canCount = canEdit || lens;
   const band = Number((await searchParams).band) || null;
 
   const [itemRows, bandRows, releaseRows] = await Promise.all([
@@ -129,7 +127,7 @@ export default async function InventoryPage({ searchParams }: PageProps<"/invent
         {products.length === 0 ? (
           <Empty>Nothing yet.</Empty>
         ) : (
-          <ItemTable items={products} bandName={bandName} movesOf={movesOf} photoOf={photoOf} canEdit={canEdit} canCount={canCount} bands={bands} catalog={catalog} ownBandsOnly={!!scope} />
+          <ItemTable items={products} bandName={bandName} movesOf={movesOf} photoOf={photoOf} canEdit={canEdit} bands={bands} catalog={catalog} ownBandsOnly={!!scope} />
         )}
       </Card>
 
@@ -137,7 +135,7 @@ export default async function InventoryPage({ searchParams }: PageProps<"/invent
         {supplies.length === 0 ? (
           <Empty>Nothing yet.</Empty>
         ) : (
-          <ItemTable items={supplies} bandName={bandName} movesOf={movesOf} canEdit={canEdit} canCount={canCount} bands={bands} catalog={catalog} ownBandsOnly={!!scope} />
+          <ItemTable items={supplies} bandName={bandName} movesOf={movesOf} canEdit={canEdit} bands={bands} catalog={catalog} ownBandsOnly={!!scope} />
         )}
       </Card>
 
@@ -182,7 +180,6 @@ function ItemTable({
   movesOf,
   photoOf,
   canEdit,
-  canCount,
   bands,
   catalog,
   ownBandsOnly,
@@ -193,7 +190,6 @@ function ItemTable({
   /** For sale only: a photo beside each item (a blank square when it has none, so the names line up). */
   photoOf?: (i: Item) => string | null;
   canEdit: boolean;
-  canCount: boolean;
   bands: Option[];
   catalog: CatalogOption[];
   ownBandsOnly: boolean;
@@ -244,7 +240,7 @@ function ItemTable({
               />
             </div>
             <div className={photoOf ? "col-start-2 md:col-start-auto" : ""}>
-              {canCount ? (
+              {canEdit ? (
                 <InventoryCounter id={i.id} onHand={i.onHand} ideal={i.desired} low={isLow(i)} />
               ) : (
                 <div className="text-2xl font-bold whitespace-nowrap tabular-nums md:text-right">
