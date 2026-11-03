@@ -79,41 +79,54 @@ export async function OutsideArtists() {
         {rows.length > 0 && (
           <ul className="divide-y divide-border border-b border-border">
             {rows.map(({ artist, contact, tracks }) => (
-              <li key={artist.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2.5 text-sm">
-                <div className="min-w-[12rem] flex-1">
-                  <b>{artist.name}</b>
-                  <TracksLine tracks={tracks} />
-                </div>
-                {contact ? (
-                  <div className="flex items-center gap-3">
-                    <span>
-                      paid to <b>{contact.name}</b>
-                      <span className="text-muted">{contact.email ? ` · ${contact.email}` : " · no PayPal email yet"}</span>
+              <li key={artist.id} className="text-sm">
+                {/* The row opens and closes its contact form. */}
+                <details className="group/row">
+                  <summary className="flex flex-wrap items-center gap-x-4 gap-y-2 px-2.5 py-2.5 hover:bg-surface-2">
+                    <span className="block min-w-[12rem] flex-1">
+                      <b>{artist.name}</b>
+                      <TracksLine tracks={tracks} />
                     </span>
-                    <form action={clearOutsideArtistContact}>
-                      <input type="hidden" name="artistId" value={artist.id} />
-                      <SubmitButton variant="danger-ghost" size="sm" confirm={`Stop paying ${contact.name} for ${artist.name}? You can then choose someone else.`}>
-                        remove
-                      </SubmitButton>
-                    </form>
+                    {contact ? (
+                      <span>
+                        paid to <b>{contact.name}</b>
+                        <span className="text-muted">{contact.email ? ` · ${contact.email}` : " · no PayPal email yet"}</span>
+                      </span>
+                    ) : (
+                      <span className="text-warn">needs a contact</span>
+                    )}
+                    <span className="text-xs text-link">
+                      <span className="group-open/row:hidden">edit</span>
+                      <span className="hidden group-open/row:inline">close</span>
+                    </span>
+                  </summary>
+                  <div className="mb-3 flex flex-wrap items-center gap-2 border border-border bg-surface-2 p-4">
+                    {contact ? (
+                      <form action={clearOutsideArtistContact}>
+                        <input type="hidden" name="artistId" value={artist.id} />
+                        <SubmitButton variant="danger-ghost" size="sm" confirm={`Stop paying ${contact.name} for ${artist.name}? You can then choose someone else.`}>
+                          remove
+                        </SubmitButton>
+                      </form>
+                    ) : (
+                      <>
+                        <form action={saveOutsideArtistContact} className="flex flex-wrap items-center gap-2">
+                          <input type="hidden" name="artistId" value={artist.id} />
+                          <input name="name" required defaultValue={artist.name} aria-label={`Contact name for ${artist.name}`} className="!w-44" />
+                          <input name="email" type="email" required placeholder="PayPal email" aria-label={`PayPal email for ${artist.name}`} className="!w-56" />
+                          <SubmitButton size="sm">save</SubmitButton>
+                        </form>
+                        <form action={setOutsideArtistDismissed}>
+                          <input type="hidden" name="artistId" value={artist.id} />
+                          <input type="hidden" name="dismissed" value="true" />
+                          <SubmitButton variant="ghost" size="sm">
+                            don’t pay
+                          </SubmitButton>
+                        </form>
+                      </>
+                    )}
                   </div>
-                ) : (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <form action={saveOutsideArtistContact} className="flex flex-wrap items-center gap-2">
-                      <input type="hidden" name="artistId" value={artist.id} />
-                      <input name="name" required defaultValue={artist.name} aria-label={`Contact name for ${artist.name}`} className="!w-44" />
-                      <input name="email" type="email" required placeholder="PayPal email" aria-label={`PayPal email for ${artist.name}`} className="!w-56" />
-                      <SubmitButton size="sm">save</SubmitButton>
-                    </form>
-                    <form action={setOutsideArtistDismissed}>
-                      <input type="hidden" name="artistId" value={artist.id} />
-                      <input type="hidden" name="dismissed" value="true" />
-                      <SubmitButton variant="ghost" size="sm">
-                        don’t pay
-                      </SubmitButton>
-                    </form>
-                  </div>
-                )}
+                </details>
               </li>
             ))}
           </ul>

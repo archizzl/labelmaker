@@ -2,7 +2,6 @@ import { asc, desc, eq, inArray } from "drizzle-orm";
 import { BandFilter } from "@/components/band-filter";
 import { connection } from "next/server";
 import { ActionForm, SaveWhenChanged, SubmitButton } from "@/components/client";
-import { DisclosureRow } from "@/components/disclosure-row";
 import { Badge, Callout, Card, Disclosure, Empty, Field, PageHeader, Stat } from "@/components/ui";
 import { db, schema } from "@/db";
 import { isLow, MOVE_REASONS } from "@/lib/inventory";
@@ -194,43 +193,45 @@ function ItemTable({
           <li key={i.id} className={`grid gap-3 py-3 ${photoOf ? "grid-cols-[3rem_minmax(0,1fr)] md:grid-cols-[3rem_minmax(0,1fr)_auto]" : "md:grid-cols-[minmax(0,1fr)_auto]"}`}>
             {/* A photo from Bandcamp stays; anything else can be given one here. */}
             {photoOf && <InventoryPhoto id={i.id} src={photo ?? null} editable={canEdit && !fromBandcamp(photo)} />}
-            <div className="min-w-0 space-y-1">
-              <div className="flex flex-wrap items-baseline gap-x-2">
-                <span className="font-medium">{i.name}</span>
-                {i.option && <Badge>{i.option}</Badge>}
-                {isLow(i) && <Badge tone="warn">running low</Badge>}
+            {/* The row opens and closes its form and history (the counter beside it changes the count). */}
+            <details className="group/row min-w-0">
+              <summary className="flex items-start gap-3 hover:bg-surface-2">
+                <span className="block min-w-0 flex-1 space-y-1">
+                  <span className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="font-medium">{i.name}</span>
+                    {i.option && <Badge>{i.option}</Badge>}
+                    {isLow(i) && <Badge tone="warn">running low</Badge>}
+                  </span>
+                  <span className="block text-xs text-muted">
+                    {[i.bandId && bandName.get(i.bandId), i.sku && `SKU ${i.sku}`, i.location && `kept at ${i.location}`, i.priceCents !== null && `${formatCents(i.priceCents, i.currency)} each`, i.unitCostCents !== null && `costs ${formatCents(i.unitCostCents, i.currency)}`]
+                      .filter(Boolean)
+                      .join(" · ") || "—"}
+                  </span>
+                  {i.notes && <span className="block text-xs text-muted">{i.notes}</span>}
+                </span>
+                <span className="shrink-0 text-xs text-link">
+                  <span className="group-open/row:hidden">{canEdit ? "edit" : "history"}</span>
+                  <span className="hidden group-open/row:inline">close</span>
+                </span>
+              </summary>
+              <div className="mt-3 space-y-4 border border-border bg-surface-2 p-4">
+                {canEdit && (
+                  <>
+                    <ItemForm item={i} bands={bands} catalog={catalog} ownBandsOnly={ownBandsOnly} photo={photoOf?.(i) ?? null} />
+                    <form action={archiveInventoryItem}>
+                      <input type="hidden" name="id" value={i.id} />
+                      <SubmitButton variant="ghost" size="sm" confirm={`Remove ${itemLabel(i)} from the inventory? Its history is kept.`}>
+                        Remove from inventory
+                      </SubmitButton>
+                    </form>
+                  </>
+                )}
+                <div className={canEdit ? "border-t border-border pt-4" : ""}>
+                  {canEdit && <h3 className="mb-2 text-sm font-bold">history</h3>}
+                  <History moves={movesOf(i.id)} />
+                </div>
               </div>
-              <div className="text-xs text-muted">
-                {[i.bandId && bandName.get(i.bandId), i.sku && `SKU ${i.sku}`, i.location && `kept at ${i.location}`, i.priceCents !== null && `${formatCents(i.priceCents, i.currency)} each`, i.unitCostCents !== null && `costs ${formatCents(i.unitCostCents, i.currency)}`]
-                  .filter(Boolean)
-                  .join(" · ") || "—"}
-              </div>
-              {i.notes && <p className="text-xs text-muted">{i.notes}</p>}
-              <DisclosureRow
-                className="pt-1"
-                panels={[
-                  { label: "History", content: <History moves={movesOf(i.id)} /> },
-                  ...(canEdit
-                    ? [
-                        {
-                          label: "Edit",
-                          content: (
-                            <>
-                              <ItemForm item={i} bands={bands} catalog={catalog} ownBandsOnly={ownBandsOnly} photo={photoOf?.(i) ?? null} />
-                              <form action={archiveInventoryItem} className="mt-3">
-                                <input type="hidden" name="id" value={i.id} />
-                                <SubmitButton variant="ghost" size="sm" confirm={`Remove ${itemLabel(i)} from the inventory? Its history is kept.`}>
-                                  Remove from inventory
-                                </SubmitButton>
-                              </form>
-                            </>
-                          ),
-                        },
-                      ]
-                    : []),
-                ]}
-              />
-            </div>
+            </details>
             <div className={photoOf ? "col-start-2 md:col-start-auto" : ""}>
               {canEdit ? (
                 <InventoryCounter id={i.id} onHand={i.onHand} ideal={i.desired} low={isLow(i)} />

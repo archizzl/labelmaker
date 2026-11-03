@@ -282,7 +282,7 @@ export default async function ReleasePage({ params, searchParams }: PageProps<"/
                           <span className="text-muted">{trackFallback}</span>
                         )}
                       </span>
-                      <span className="shrink-0 text-xs text-link group-open:hidden">manage</span>
+                      <span className="shrink-0 text-xs text-link group-open:hidden">edit</span>
                       <span className="hidden shrink-0 text-xs text-link group-open:inline">close</span>
                     </summary>
                     <div className="mb-3 ml-9 space-y-5 border border-border bg-surface-2 p-4">

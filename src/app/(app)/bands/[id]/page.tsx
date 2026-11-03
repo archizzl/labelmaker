@@ -32,6 +32,7 @@ import { accountExpenses, expenseFileList } from "@/server/expenses";
 import { accountProjects, projectNumbers } from "@/server/projects";
 import { loginEmails, personPhotos } from "@/server/people";
 import { Avatar } from "@/components/avatar";
+import { PersonFields } from "@/components/person-fields";
 import { bandAssociatedPeople, bandMembers, computeAllTime, labelHost, nameMaps, ruleFilter, rulesWhere } from "@/server/data";
 import { formatRange } from "@/lib/dates";
 
@@ -582,37 +583,22 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
                       </span>
                     </summary>
                     {!ownBooks && (
-                    <div className="mb-3 border border-border bg-surface-2 p-4">
-                      <form action={updateMembership} className="grid gap-4 sm:grid-cols-2">
+                    <div className="mb-3 space-y-4 border border-border bg-surface-2 p-4">
+                      {/* The Directory's person form, then their place in this band. */}
+                      <PersonFields person={m.person} labelOnly={!ctx.lens} />
+                      <form action={updateMembership} className="flex flex-wrap items-end gap-4 border-t border-border pt-4">
                         <input type="hidden" name="membershipId" value={m.membershipId} />
-                        <Field label="Name">
-                          <input name="name" required defaultValue={m.person.name} />
-                        </Field>
                         <Field label="Roles in this band (comma-separated)">
-                          <input name="roles" defaultValue={m.roles.join(", ")} />
+                          <input name="roles" defaultValue={m.roles.join(", ")} className="!w-64" />
                         </Field>
-                        <Field label="PayPal email">
-                          <input name="email" type="email" defaultValue={m.person.email ?? ""} />
-                        </Field>
-                        <Field label="PayPal.me handle (optional)">
-                          <input name="paypalMe" defaultValue={m.person.paypalMe ?? ""} placeholder="yourname" />
-                        </Field>
-                        <Field label="Venmo username (optional)">
-                          <input name="venmo" defaultValue={m.person.venmo ?? ""} placeholder="@yourname" />
-                        </Field>
-                        <Field label="Cash App $cashtag (optional)">
-                          <input name="cashtag" defaultValue={m.person.cashtag ?? ""} placeholder="$yourname" />
-                        </Field>
-                        <label className="flex items-center gap-2 text-sm">
+                        <label className="flex items-center gap-2 pb-2 text-sm">
                           <input type="checkbox" name="active" defaultChecked={m.active} /> Current member
                         </label>
-                        <div className="flex justify-end">
-                          <SaveWhenChanged>
-                            <SubmitButton size="sm">Save</SubmitButton>
-                          </SaveWhenChanged>
-                        </div>
+                        <SaveWhenChanged>
+                          <SubmitButton size="sm">Save</SubmitButton>
+                        </SaveWhenChanged>
                       </form>
-                      <form action={removeMember} className="mt-4 border-t border-border pt-3">
+                      <form action={removeMember} className="border-t border-border pt-4">
                         <input type="hidden" name="membershipId" value={m.membershipId} />
                         <SubmitButton variant="danger" size="sm" confirm={`Remove ${m.person.name} from ${band.name}? They stay in the app and any other bands.`}>
                           Remove from this band

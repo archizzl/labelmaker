@@ -5,7 +5,7 @@ import { formatCents } from "@/lib/money";
 import { deleteDeduction } from "@/server/actions";
 import { DeductionForm, type ReleaseOption } from "./deduction-form";
 import { SubmitButton } from "./client";
-import { Badge, Disclosure } from "./ui";
+import { Badge } from "./ui";
 import { formatDate, formatRange } from "@/lib/dates";
 
 type Deduction = typeof deductionsTable.$inferSelect;
@@ -78,25 +78,32 @@ export function DeductionList({
       {items.map((d) => {
         const desc = describeDeduction(d, names);
         return (
-          <li key={d.id} id={`deduction-${d.id}`} className="scroll-mt-6 rounded-md border border-border p-3 target:border-accent">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium">{d.label}</span>
-              <Badge tone="accent">{desc.amount}</Badge>
-              <span className="text-xs">{desc.destination}</span>
-              <span className="text-xs text-muted">{desc.scope}</span>
-              {desc.window && <span className="text-xs text-muted">{desc.window}</span>}
-            </div>
-            <div className="mt-2 flex flex-wrap items-start gap-2">
-              <Disclosure summary="Edit">
+          <li key={d.id} id={`deduction-${d.id}`} className="scroll-mt-6 rounded-md border border-border target:border-accent">
+            {/* The row opens and closes its form. */}
+            <details className="group/row">
+              <summary className="flex items-start gap-3 p-3 hover:bg-surface-2">
+                <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                  <span className="font-medium">{d.label}</span>
+                  <Badge tone="accent">{desc.amount}</Badge>
+                  <span className="text-xs">{desc.destination}</span>
+                  <span className="text-xs text-muted">{desc.scope}</span>
+                  {desc.window && <span className="text-xs text-muted">{desc.window}</span>}
+                </span>
+                <span className="shrink-0 text-xs text-link">
+                  <span className="group-open/row:hidden">edit</span>
+                  <span className="hidden group-open/row:inline">close</span>
+                </span>
+              </summary>
+              <div className="space-y-4 border-t border-border bg-surface-2 p-4">
                 <DeductionForm deduction={d} bands={bands} releases={releases} people={people} fixedBandId={fixedBandId} />
-              </Disclosure>
-              <form action={deleteDeduction}>
-                <input type="hidden" name="id" value={d.id} />
-                <SubmitButton variant="danger" size="sm" confirm={`Delete “${d.label}”?`}>
-                  Delete
-                </SubmitButton>
-              </form>
-            </div>
+                <form action={deleteDeduction} className="border-t border-border pt-4">
+                  <input type="hidden" name="id" value={d.id} />
+                  <SubmitButton variant="danger" size="sm" confirm={`Delete “${d.label}”?`}>
+                    Delete
+                  </SubmitButton>
+                </form>
+              </div>
+            </details>
           </li>
         );
       })}

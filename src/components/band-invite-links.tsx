@@ -1,5 +1,4 @@
 import { ActionForm, CopyButton, SaveWhenChanged, SubmitButton } from "@/components/client";
-import { buttonClass } from "@/components/ui";
 import { resetBandsLink, resetInviteLink, setLoginIdentity } from "@/server/band-invite-actions";
 import { bandsInviteLink, standingInviteLink } from "@/server/band-invite-links";
 
@@ -126,19 +125,5 @@ export function LoginIdentity({
         <SubmitButton size="sm">Save</SubmitButton>
       </SaveWhenChanged>
     </ActionForm>
-  );
-}
-
-/**
- * "Edit" for a band login's row: ticking it shows the row's Signs in as setting (marked
- * group-has-[.login-edit:checked]), with no script needed. The row is the `group`.
- */
-export function LoginEditToggle() {
-  return (
-    <label className={`${buttonClass("ghost", "sm")} cursor-pointer`}>
-      <input type="checkbox" className="login-edit hidden" />
-      <span className="group-has-[.login-edit:checked]:hidden">edit</span>
-      <span className="hidden group-has-[.login-edit:checked]:inline">close</span>
-    </label>
   );
 }

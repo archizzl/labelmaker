@@ -14,6 +14,10 @@ import { formatDate } from "@/lib/dates";
 
 type Transfer = typeof schema.labelTransfers.$inferSelect;
 
+/** The money-sent-out rows' columns (on a phone, one under another): with and without "how". */
+const TRANSFER_COLUMNS = "grid gap-x-3 gap-y-1 sm:grid-cols-[6rem_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(5rem,auto)_2.5rem]";
+const TRANSFER_COLUMNS_HOW = "grid gap-x-3 gap-y-1 sm:grid-cols-[6rem_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(5rem,auto)_minmax(0,1fr)_2.5rem]";
+
 async function TransferForm({ transfer, bandId, sources }: { transfer?: Transfer; bandId?: number; sources: SourceInfo[] }) {
   const { orgId } = await getContext();
   const [bands, releases, payees] = await Promise.all([
@@ -171,54 +175,65 @@ export async function LabelFunds({ bandId, showTotals = true }: { bandId?: numbe
       {transfers.length === 0 ? (
         <Empty>Nothing sent out yet.</Empty>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Sent to</th>
-                <th>From</th>
-                <th className="num">Amount</th>
-                {anyHow && <th>How</th>}
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {transfers.map((t) => (
-                <tr key={t.id}>
-                  <td className="whitespace-nowrap text-muted">{formatDate(t.date)}</td>
-                  <td>
-                    <div className="font-medium">{t.recipient}</div>
-                    {t.note && <div className="text-xs text-muted">{t.note}</div>}
-                  </td>
-                  <td className="text-sm">
-                    {t.source ?? (causeName(t) ? null : <span className="text-muted">—</span>)}
-                    {/* (Not when the source's name already says it.) */}
-                    {causeName(t) && !t.source?.includes(causeName(t)) && <div className={t.source ? "text-xs text-muted" : ""}>{causeName(t)}</div>}
-                  </td>
-                  <td className="num font-medium">
-                    <Money cents={t.amountCents} currency={t.currency} />
-                  </td>
-                  {anyHow && <td className="text-xs text-muted">{[t.method, t.reference].filter(Boolean).join(" · ") || "—"}</td>}
-                  <td className="text-right">
-                    {editable && (
-                    <div className="flex items-start justify-end gap-2">
-                      <Disclosure summary="Edit">
-                        <TransferForm transfer={t} sources={sources} />
-                        <form action={deleteLabelTransfer} className="mt-3 border-t border-border pt-3">
-                          <input type="hidden" name="id" value={t.id} />
-                          <SubmitButton variant="danger" size="sm" confirm={`Delete the ${centsToDecimal(t.amountCents)} ${t.currency} sent to ${t.recipient}?`}>
-                            Delete
-                          </SubmitButton>
-                        </form>
-                      </Disclosure>
-                    </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        // Rows open full-width to edit, as in the Directory.
+        <div className="text-sm">
+          <div className={`${anyHow ? TRANSFER_COLUMNS_HOW : TRANSFER_COLUMNS} hidden border-b border-border px-2.5 py-1.5 text-xs text-muted lowercase sm:grid`}>
+            <span>date</span>
+            <span>sent to</span>
+            <span>from</span>
+            <span className="text-right">amount</span>
+            {anyHow && <span>how</span>}
+            <span />
+          </div>
+          {transfers.map((t) => {
+            const cells = (
+              <>
+                <span className="whitespace-nowrap text-muted">{formatDate(t.date)}</span>
+                <span className="block min-w-0">
+                  <span className="block font-medium">{t.recipient}</span>
+                  {t.note && <span className="block text-xs text-muted">{t.note}</span>}
+                </span>
+                <span className="block min-w-0">
+                  {t.source ?? (causeName(t) ? null : <span className="text-muted">—</span>)}
+                  {/* (Not when the source's name already says it.) */}
+                  {causeName(t) && !t.source?.includes(causeName(t)) && <span className={`block ${t.source ? "text-xs text-muted" : ""}`}>{causeName(t)}</span>}
+                </span>
+                <span className="font-medium tabular-nums sm:text-right">
+                  <Money cents={t.amountCents} currency={t.currency} />
+                </span>
+                {anyHow && <span className="text-xs text-muted">{[t.method, t.reference].filter(Boolean).join(" · ") || "—"}</span>}
+              </>
+            );
+            const columns = anyHow ? TRANSFER_COLUMNS_HOW : TRANSFER_COLUMNS;
+            if (!editable) {
+              return (
+                <div key={t.id} className={`${columns} items-start border-b border-border px-2.5 py-2`}>
+                  {cells}
+                  <span />
+                </div>
+              );
+            }
+            return (
+              <details key={t.id} className="group/row border-b border-border">
+                <summary className={`${columns} items-start px-2.5 py-2 hover:bg-surface-2`}>
+                  {cells}
+                  <span className="text-right text-xs text-link">
+                    <span className="group-open/row:hidden">edit</span>
+                    <span className="hidden group-open/row:inline">close</span>
+                  </span>
+                </summary>
+                <div className="mb-3 space-y-4 border border-border bg-surface-2 p-4">
+                  <TransferForm transfer={t} sources={sources} />
+                  <form action={deleteLabelTransfer} className="border-t border-border pt-4">
+                    <input type="hidden" name="id" value={t.id} />
+                    <SubmitButton variant="danger" size="sm" confirm={`Delete the ${centsToDecimal(t.amountCents)} ${t.currency} sent to ${t.recipient}?`}>
+                      Delete
+                    </SubmitButton>
+                  </form>
+                </div>
+              </details>
+            );
+          })}
         </div>
       )}
       {editable && (

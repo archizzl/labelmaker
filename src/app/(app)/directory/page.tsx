@@ -14,13 +14,14 @@ import { db, schema } from "@/db";
 import { payHandlesSummary } from "@/lib/paypal-export";
 import { bandScope, can } from "@/lib/permissions";
 import { someNames } from "@/lib/plural";
-import { addMember, addMemberForm, deletePerson, mergePeopleAction, removeMember, savePersonForm, updateMembership } from "@/server/actions";
+import { addMember, addMemberForm, deletePerson, mergePeopleAction, removeMember, updateMembership } from "@/server/actions";
 import { type Context, requireAccess } from "@/server/context";
 import { labelHost } from "@/server/data";
 import { type BandAccountSummary, bandAccountSummaries, ensureBandAccounts } from "@/server/band-accounts";
 import { MemberTypesCard } from "@/components/member-types";
 import { loginEmails, personPhotos, possibleDuplicates } from "@/server/people";
 import { Avatar } from "@/components/avatar";
+import { PersonFields } from "@/components/person-fields";
 
 export const metadata = { title: "directory" };
 
@@ -692,49 +693,6 @@ function AddByHand({ bandId, payDetails }: { bandId: number; payDetails: boolean
       )}
       <div className="sm:col-span-2">
         <SubmitButton>Add</SubmitButton>
-      </div>
-    </ActionForm>
-  );
-}
-
-/**
- * A person's details. `labelOnly`: the label's own notes about them, and where they're paid, which
- * a band's own account doesn't change (src/server/actions.ts, payDetails).
- */
-function PersonFields({ person, labelOnly = true }: { person?: Person; labelOnly?: boolean }) {
-  return (
-    <ActionForm action={savePersonForm} className="grid gap-4 sm:grid-cols-2">
-      {person && <input type="hidden" name="id" value={person.id} />}
-      <Field label="Name">
-        <input name="name" required defaultValue={person?.name} />
-      </Field>
-      {labelOnly && (
-        <>
-          <Field label="PayPal email">
-            <input name="email" type="email" defaultValue={person?.email ?? ""} />
-          </Field>
-          <Field label="PayPal.me handle">
-            <input name="paypalMe" defaultValue={person?.paypalMe ?? ""} />
-          </Field>
-          <Field label="Venmo username" hint="US only.">
-            <input name="venmo" defaultValue={person?.venmo ?? ""} placeholder="@yourname" />
-          </Field>
-          <Field label="Cash App $cashtag">
-            <input name="cashtag" defaultValue={person?.cashtag ?? ""} placeholder="$yourname" />
-          </Field>
-          <Field label="Notes">
-            <input name="notes" defaultValue={person?.notes ?? ""} />
-          </Field>
-        </>
-      )}
-      <div className="sm:col-span-2">
-        {person ? (
-          <SaveWhenChanged>
-            <SubmitButton>Save</SubmitButton>
-          </SaveWhenChanged>
-        ) : (
-          <SubmitButton>Add person</SubmitButton>
-        )}
       </div>
     </ActionForm>
   );
