@@ -8,11 +8,13 @@ import { FilterList } from "@/components/filter-list";
 import { Badge, Callout, Card, Empty, Field, PageHeader } from "@/components/ui";
 import { db, schema } from "@/db";
 import { FEATURE_FLAGS, FLAG_AUDIENCES } from "@/lib/feature-flags";
+import { plural } from "@/lib/plural";
 import { createSignupInvite, revokeSignupInvite, saveFeatureFlag } from "@/server/admin-actions";
 import { approveAccountApplication, rejectAccountApplication } from "@/server/application-actions";
 import { listApplications } from "@/server/applications";
 import { inviteStatus, listInvites } from "@/server/signup-invites";
 import { requireSiteAdmin } from "@/server/site-admin";
+import { startSiteViewAs } from "@/server/view-as-actions";
 import { testsAvailable } from "@/server/test-runner";
 import { AdminTests } from "@/components/admin-tests";
 import { AdminAbel } from "@/components/admin-abel";
@@ -53,7 +55,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
     flagAudiences,
     flagPrefs,
     applications,
-    madeByLabels,
+    links,
     personalLogins,
   ] = await Promise.all([
     listInvites(),
@@ -64,6 +66,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
         role: schema.member.role,
         org: schema.organization.name,
         orgId: schema.organization.id,
+        kind: schema.organization.kind,
       })
       .from(schema.member)
       .innerJoin(schema.organization, eq(schema.organization.id, schema.member.organizationId)),
@@ -94,10 +97,11 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
     db.select().from(schema.featureFlagAudiences),
     db.select().from(schema.featureFlagPrefs).where(eq(schema.featureFlagPrefs.userId, session.user.id)),
     listApplications(),
+    // Bands' groups and the labels they're with: made by the label (managed), or joined it.
     db
-      .select({ orgId: schema.accountLinks.bandOrgId })
+      .select({ orgId: schema.accountLinks.bandOrgId, labelOrgId: schema.accountLinks.labelOrgId, managed: schema.accountLinks.managed })
       .from(schema.accountLinks)
-      .where(and(eq(schema.accountLinks.managed, true), eq(schema.accountLinks.status, "active"))),
+      .where(eq(schema.accountLinks.status, "active")),
     db
       .select({
         orgId: schema.bandLoginPeople.orgId,
@@ -105,6 +109,14 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
       })
       .from(schema.bandLoginPeople),
   ]);
+  const madeByLabels = links.filter((l) => l.managed);
+  const orgName = new Map(accounts.map((a) => [a.id, a.name]));
+  /** What kind of group: a label, a band's own, or a band's from (or with) a label. */
+  const kindOf = (orgId: string, kind: string) => {
+    if (kind === "label") return "label";
+    const l = links.find((x) => x.orgId === orgId);
+    return l ? `band ${l.managed ? "from" : "with"} ${orgName.get(l.labelOrgId) ?? "a label"}` : "band";
+  };
   // A band's shared account (in a group a label made, signing in as the band, not as one member):
   // it's the group's, not a person's, so it's listed with the group.
   const groupLogin = (m: { userId: string; orgId: string; role: string }) =>
@@ -127,6 +139,43 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   const created = Number(sp.created) ? invites.find((i) => i.id === Number(sp.created)) : null;
   const day = (d: Date | string | null | undefined) => (d ? new Date(d).toISOString().slice(0, 10) : "–");
   const groupsOf = (userId: string) => memberships.filter((m) => m.userId === userId);
+  // Groups: each label with the bands' groups it made or that joined it, then bands on their own.
+  const labels = accounts.filter((a) => a.kind === "label");
+  const bandsOf = (labelOrgId: string) => accounts.filter((a) => a.kind === "band" && links.some((l) => l.orgId === a.id && l.labelOrgId === labelOrgId));
+  const onTheirOwn = accounts.filter((a) => a.kind === "band" && !links.some((l) => l.orgId === a.id));
+  type Group = (typeof accounts)[number];
+  const groupText = (a: Group) => `${a.name} ${kindOf(a.id, a.kind)} ${groupAccountsOf(a.id).map((u) => u.email).join(" ")} ${a.bandcamp ?? a.bandcampUrl ?? ""}`;
+  const groupRow = (a: Group) => {
+    const shared = groupAccountsOf(a.id);
+    return (
+      <tr key={a.id}>
+        <td>
+          {a.name} <span className="text-xs text-muted">{kindOf(a.id, a.kind)}</span>
+        </td>
+        <td className="whitespace-nowrap text-muted">{day(a.createdAt)}</td>
+        <td className="num">{a.members - shared.length}</td>
+        <td className="text-sm">
+          {shared.map((u) => (
+            <div key={u.id} className="flex flex-wrap items-center gap-2">
+              <span className="break-all">{u.email}</span>
+              <span className="text-xs text-muted">last signed in {day(seen.get(u.id))}</span>
+              <ResetLinkButton userId={u.id} />
+              <form action={startSiteViewAs}>
+                <input type="hidden" name="userId" value={u.id} />
+                <input type="hidden" name="orgId" value={a.id} />
+                <SubmitButton variant="ghost" size="sm">
+                  view as
+                </SubmitButton>
+              </form>
+            </div>
+          ))}
+        </td>
+        <td className="num">{a.sales ? a.sales.toLocaleString("en-US") : <span className="text-muted">0</span>}</td>
+        <td className="text-sm">{a.bandcamp ?? a.bandcampUrl ?? <span className="text-muted">–</span>}</td>
+        <td className="whitespace-nowrap text-muted">{a.lastSync ? a.lastSync.slice(0, 10) : "–"}</td>
+      </tr>
+    );
+  };
   const openInvites = invites.filter((i) => inviteStatus(i) === "open").length;
 
   const tabLink = (key: Tab, label: string, count?: number | string) => (
@@ -443,14 +492,29 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                 </thead>
                 <tbody>
                   {people.map((u) => {
-                    const groups = groupsOf(u.id).map((m) => `${m.org} (${m.role})`);
+                    const groups = groupsOf(u.id);
                     return (
-                      <tr key={u.id} data-filter={`${u.name} ${u.email} ${groups.join(" ")}`}>
+                      <tr key={u.id} data-filter={`${u.name} ${u.email} ${groups.map((m) => `${m.org} ${kindOf(m.orgId, m.kind)}`).join(" ")}`}>
                         <td>
                           {u.name}
                           <div className="text-xs break-all text-muted">{u.email}</div>
                         </td>
-                        <td className="text-sm">{groups.join(", ") || <span className="text-muted">none yet</span>}</td>
+                        <td className="text-sm">
+                          {groups.length === 0 && <span className="text-muted">none yet</span>}
+                          {groups.map((m) => (
+                            <form key={m.orgId} action={startSiteViewAs} className="flex flex-wrap items-center gap-x-2">
+                              <input type="hidden" name="userId" value={u.id} />
+                              <input type="hidden" name="orgId" value={m.orgId} />
+                              <span>{m.org}</span>
+                              <span className="text-xs text-muted">
+                                {kindOf(m.orgId, m.kind)} · {m.role}
+                              </span>
+                              <SubmitButton variant="ghost" size="sm">
+                                view as
+                              </SubmitButton>
+                            </form>
+                          ))}
+                        </td>
                         <td className="whitespace-nowrap text-muted">{day(u.createdAt)}</td>
                         <td className="whitespace-nowrap text-muted">{day(seen.get(u.id))}</td>
                         <td className="text-right">
@@ -469,46 +533,39 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
       {tab === "groups" && (
         <Card title={`Groups (${accounts.length})`}>
           <FilterList placeholder="Find a group">
-            <div className="overflow-x-auto">
-              <table className="data dense">
-                <thead>
-                  <tr>
-                    <th>Group</th>
-                    <th>Since</th>
-                    <th className="num">Accounts</th>
-                    <th>Group account</th>
-                    <th className="num">Sales</th>
-                    <th>Bandcamp</th>
-                    <th>Last synced</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {accounts.map((a) => {
-                    const shared = groupAccountsOf(a.id);
-                    return (
-                      <tr key={a.id} data-filter={`${a.name} ${a.kind} ${shared.map((u) => u.email).join(" ")} ${a.bandcamp ?? a.bandcampUrl ?? ""}`}>
-                        <td>
-                          {a.name} <span className="text-xs text-muted">{a.kind}</span>
-                        </td>
-                        <td className="whitespace-nowrap text-muted">{day(a.createdAt)}</td>
-                        <td className="num">{a.members - shared.length}</td>
-                        <td className="text-sm">
-                          {shared.map((u) => (
-                            <div key={u.id} className="flex flex-wrap items-center gap-2">
-                              <span className="break-all">{u.email}</span>
-                              <span className="text-xs text-muted">last signed in {day(seen.get(u.id))}</span>
-                              <ResetLinkButton userId={u.id} />
-                            </div>
-                          ))}
-                        </td>
-                        <td className="num">{a.sales ? a.sales.toLocaleString("en-US") : <span className="text-muted">0</span>}</td>
-                        <td className="text-sm">{a.bandcamp ?? a.bandcampUrl ?? <span className="text-muted">–</span>}</td>
-                        <td className="whitespace-nowrap text-muted">{a.lastSync ? a.lastSync.slice(0, 10) : "–"}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="divide-y divide-border border-y border-border">
+              {[
+                ...labels.map((l) => ({ key: l.id, head: l, bands: bandsOf(l.id) })),
+                ...(onTheirOwn.length ? [{ key: "own", head: null, bands: onTheirOwn }] : []),
+              ].map(({ key, head, bands }) => (
+                <details key={key} data-filter={[head, ...bands].map((a) => (a ? groupText(a) : "")).join(" ")} className="group/g">
+                  <summary className="flex cursor-pointer flex-wrap items-baseline gap-x-4 gap-y-1 py-2.5 hover:bg-surface-2">
+                    <span className="w-4 shrink-0 text-center text-xs text-muted transition group-open/g:rotate-90">▸</span>
+                    <span className="font-bold">{head ? head.name : "Bands on their own"}</span>
+                    {head && <span className="text-xs text-muted">label · since {day(head.createdAt)}</span>}
+                    <span className="ml-auto text-xs text-muted">
+                      {head && <>{plural(head.sales, "sale")} · </>}
+                      {plural(bands.length, "band")}
+                    </span>
+                  </summary>
+                  <div className="mb-3 ml-8 overflow-x-auto">
+                    <table className="data dense">
+                      <thead>
+                        <tr>
+                          <th>Group</th>
+                          <th>Since</th>
+                          <th className="num">Accounts</th>
+                          <th>Group account</th>
+                          <th className="num">Sales</th>
+                          <th>Bandcamp</th>
+                          <th>Last synced</th>
+                        </tr>
+                      </thead>
+                      <tbody>{(head ? [head, ...bands] : bands).map((a) => groupRow(a))}</tbody>
+                    </table>
+                  </div>
+                </details>
+              ))}
             </div>
           </FilterList>
         </Card>

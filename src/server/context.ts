@@ -9,6 +9,7 @@ import { auth } from "./auth";
 import { cookieValues, SESSION_TOKEN } from "@/lib/auth-cookies";
 import { managingLabel } from "./band-accounts";
 import { setOwnBooks } from "./own-books";
+import { isSiteAdminEmail } from "./site-admin";
 
 /*
  * Who's asking, and for which account. Every page and action gets its data through this: it checks
@@ -316,18 +317,62 @@ export const realContext = cache(async (): Promise<Context> => {
   };
 });
 
-/** The cookie that says who a label admin is viewing as: "<label account id>|band|<band id>" or "…|person|<person id>". */
+/**
+ * The cookie that says who a label admin is viewing as: "<label account id>|band|<band id>" or
+ * "…|person|<person id>". A site admin viewing as any login, in one of its groups: "site|<user id>|<group id>".
+ */
 export const VIEW_AS_COOKIE = "lm_view_as";
 
 export function viewAsValue(labelOrgId: string, kind: "band" | "person", id: number) {
   return `${labelOrgId}|${kind}|${id}`;
 }
 
+export function siteViewAsValue(userId: string, orgId: string) {
+  return `site|${userId}|${orgId}`;
+}
+
 function parseViewAs(raw: string) {
-  const [labelOrgId, kind, id] = raw.split("|");
+  const [first, kind, id] = raw.split("|");
+  if (first === "site") return kind && id ? ({ site: true, userId: kind, orgId: id } as const) : null;
   const n = Number(id);
-  if (!labelOrgId || (kind !== "band" && kind !== "person") || !Number.isInteger(n) || n <= 0) return null;
-  return { labelOrgId, kind, id: n } as const;
+  if (!first || (kind !== "band" && kind !== "person") || !Number.isInteger(n) || n <= 0) return null;
+  return { site: false, labelOrgId: first, kind, id: n } as const;
+}
+
+/**
+ * A site admin viewing the app as any login, in one of its groups, exactly as they'd see it (a band
+ * account the label made goes on through bandLens like theirs). Checked afresh on every request.
+ */
+async function siteViewAs(real: Context, userId: string, orgId: string): Promise<Context | null> {
+  if (!isSiteAdminEmail(real.user.email)) return null;
+  const org = (await accountsFor(userId)).find((a) => a.id === orgId);
+  if (!org) return null;
+  const isAdmin = org.role !== "member";
+  const [[u], [person], type, managedBy] = await Promise.all([
+    db.select({ name: schema.user.name, email: schema.user.email, image: schema.user.image }).from(schema.user).where(eq(schema.user.id, userId)),
+    db
+      .select()
+      .from(schema.people)
+      .where(and(eq(schema.people.orgId, org.id), eq(schema.people.userId, userId))),
+    isAdmin ? null : memberTypeFor(org.id, userId),
+    org.kind === "band" ? managingLabel(org.id) : null,
+  ]);
+  if (!u) return null;
+  const { access, memberType } = await accessFrom(org.id, isAdmin, type, person?.id ?? null);
+  return {
+    user: { id: userId, name: u.name, email: u.email, image: u.image ?? null },
+    org,
+    orgId: org.id,
+    role: org.role,
+    isAdmin,
+    access,
+    memberType,
+    person: person ?? null,
+    accounts: [org],
+    managedBy,
+    viewingAs: { kind: "person", name: u.name, label: org, realUser: real.user, back: "/admin?tab=accounts" },
+    lens: false,
+  };
 }
 
 /**
@@ -338,6 +383,7 @@ async function viewAsContext(real: Context): Promise<Context | null> {
   const raw = (await cookies()).get(VIEW_AS_COOKIE)?.value;
   const target = raw ? parseViewAs(raw) : null;
   if (!target) return null;
+  if (target.site) return siteViewAs(real, target.userId, target.orgId);
   const label = real.accounts.find((a) => a.id === target.labelOrgId && a.kind === "label" && a.role !== "member");
   if (!label) return null;
   const viewing = (kind: "band" | "person", name: string, back: string): ViewingAs => ({ kind, name, label, realUser: real.user, back });
