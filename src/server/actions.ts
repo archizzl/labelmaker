@@ -1149,9 +1149,19 @@ export async function releaseUnpaidSales(fd: FormData) {
   done();
 }
 
-/** Undo a finalized payout: its records (paid marks included) are removed and it's a preview again. */
+/**
+ * Undo a finalized payout: its records are removed and it's a preview again. Not once anyone's been
+ * marked paid (by the label, or a band paying its members): those are marked unpaid first. Lines
+ * kept in the label's bank account are marked so by finalizing, so they don't count.
+ */
 export async function undoFinalize(fd: FormData) {
   const { orgId } = await requireAccess("payouts", "edit");
+  const [paid] = await db
+    .select({ id: payouts.id })
+    .from(payouts)
+    .where(and(eq(payouts.orgId, orgId), eq(payouts.periodId, int(fd, "id")), eq(payouts.status, "paid")))
+    .limit(1);
+  if (paid) throw new Error("Mark the paid lines unpaid first, then undo finalizing.");
   const [p] = await db
     .delete(periods)
     .where(and(eq(periods.orgId, orgId), eq(periods.id, int(fd, "id"))))

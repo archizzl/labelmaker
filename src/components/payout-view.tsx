@@ -124,13 +124,15 @@ export async function PayoutView({
               <LinkButton href={`/periods/${id}/statement`} size="sm">
                 Printable statements
               </LinkButton>
-              {canEdit && (
+              {canEdit && lines.some((l) => l.status === "paid") ? (
+                <span className="text-xs text-muted">To undo finalizing, mark the paid lines unpaid first.</span>
+              ) : canEdit && (
                 <form action={undoFinalize}>
                   <input type="hidden" name="id" value={id} />
                   <SubmitButton
                     variant="ghost"
                     size="sm"
-                    confirm="Undo finalizing? This payout's records, including who's been marked paid, are removed, and it goes back to being a preview."
+                    confirm="Undo finalizing? This payout's records are removed, and it goes back to being a preview."
                   >
                     Undo finalize
                   </SubmitButton>

@@ -136,3 +136,23 @@ describe("mark all as paid", () => {
     expect(rows.map((r) => after.find((a) => a.id === r.id)!.status)).toEqual(["paid", "pending", "pending", "pending"]);
   });
 });
+
+describe("undo finalize", () => {
+  it("isn't allowed once someone's been marked paid, but kept lines don't count", async () => {
+    orgId = await newAccount();
+    const { people, periods, payouts } = schema;
+    const [p] = await db.insert(people).values({ orgId, name: "Someone" }).returning();
+    const [period] = await db.insert(periods).values({ orgId, name: "Jan", startDate: "2026-01-01", endDate: "2026-01-31" }).returning();
+    const line = (status: "paid" | "kept") => ({ orgId, periodId: period.id, personId: p.id, currency: "USD", amountCents: 500, byBand: {}, status });
+    const [paid] = await db.insert(payouts).values([line("paid"), line("kept")]).returning();
+    const fd = new FormData();
+    fd.set("id", String(period.id));
+    await expect(actions.undoFinalize(fd)).rejects.toThrow(/unpaid first/);
+    expect(await db.select().from(periods).where(eq(periods.id, period.id))).toHaveLength(1);
+
+    await db.update(payouts).set({ status: "pending" }).where(eq(payouts.id, paid.id));
+    // (Back to the preview.)
+    await expect(actions.undoFinalize(fd)).rejects.toThrow("redirect");
+    expect(await db.select().from(periods).where(eq(periods.id, period.id))).toEqual([]);
+  });
+});
