@@ -1,4 +1,5 @@
 import { asc, eq } from "drizzle-orm";
+import { LocalTime } from "@/components/local-time";
 import { BandFilter } from "@/components/band-filter";
 import Link from "next/link";
 import { DisclosureRow } from "@/components/disclosure-row";
@@ -12,7 +13,7 @@ import { bandScope, can, inBandScope } from "@/lib/permissions";
 import { requireAccess } from "@/server/context";
 import { loadOpenOrders, type OrderSale, salesForOrders } from "@/server/merch-orders";
 import { markHandedOff, markOrderPickup, markOrderShipped, refreshOrders, savePickupNote } from "@/server/order-actions";
-import { formatDate, formatDateTime } from "@/lib/dates";
+import { formatDate } from "@/lib/dates";
 
 export const metadata = { title: "orders" };
 
@@ -187,7 +188,7 @@ export default async function OrdersPage({ searchParams }: PageProps<"/orders">)
         </>
       )}
       <p className="mt-6 text-xs text-muted">
-        Straight from Bandcamp as of {formatDateTime(new Date(open.fetchedAt))}.
+        Straight from Bandcamp as of <LocalTime value={new Date(open.fetchedAt)} />.
       </p>
     </>
   );

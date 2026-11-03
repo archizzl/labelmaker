@@ -1,4 +1,5 @@
 import { and, asc, eq } from "drizzle-orm";
+import { LocalTime } from "@/components/local-time";
 import { labelBandOf, shareBandAddress } from "@/server/band-accounts";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -19,7 +20,6 @@ import { unlink } from "@/server/link-actions";
 import { labelsForBandAccount } from "@/server/links";
 import { labelReach } from "@/server/own-books";
 import { bandcampAddressProblem } from "@/lib/routing";
-import { formatDateTime } from "@/lib/dates";
 
 export const metadata = { title: "settings" };
 
@@ -268,7 +268,7 @@ function BandcampConnection({ settings }: { settings: Settings | undefined }) {
             {settings.bandcampConnectedAs ? (
               <>
                 Connected to <b className="text-text">{settings.bandcampConnectedAs}</b>, last checked{" "}
-                {formatDateTime(settings.bandcampCheckedAt)}.
+                <LocalTime value={settings.bandcampCheckedAt} />.
               </>
             ) : (
               "Not connected yet."
