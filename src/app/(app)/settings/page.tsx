@@ -19,6 +19,7 @@ import { unlink } from "@/server/link-actions";
 import { labelsForBandAccount } from "@/server/links";
 import { labelReach } from "@/server/own-books";
 import { bandcampAddressProblem } from "@/lib/routing";
+import { formatDateTime } from "@/lib/dates";
 
 export const metadata = { title: "settings" };
 
@@ -267,7 +268,7 @@ function BandcampConnection({ settings }: { settings: Settings | undefined }) {
             {settings.bandcampConnectedAs ? (
               <>
                 Connected to <b className="text-text">{settings.bandcampConnectedAs}</b>, last checked{" "}
-                {settings.bandcampCheckedAt?.slice(0, 16).replace("T", " ")} UTC.
+                {formatDateTime(settings.bandcampCheckedAt)}.
               </>
             ) : (
               "Not connected yet."

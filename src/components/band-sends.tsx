@@ -5,6 +5,7 @@ import { db, schema } from "@/db";
 import { deletePaymentToLabel, markBandPayout, recordPaymentToLabel } from "@/server/band-payout-actions";
 import { labelFunds } from "@/server/data";
 import type { SalesLabel } from "@/server/sales-browse";
+import { formatDate } from "@/lib/dates";
 
 /**
  * A band that Bandcamp pays itself (bands.paidTo), on a label: what it sends, the label's share of its
@@ -71,7 +72,7 @@ export async function BandSends({ label, editable }: { label: SalesLabel; editab
         <ul className="mt-3 space-y-1 text-sm">
           {paid.map((l) => (
             <li key={l.id} className="flex flex-wrap items-center gap-x-3">
-              <span className="text-muted">Paid {l.paidAt!.slice(0, 10)}</span>
+              <span className="text-muted">Paid {formatDate(l.paidAt)}</span>
               <span>{l.name}</span>
               <Money cents={l.cents} currency={l.currency} />
               <span className="text-xs text-muted">{l.period}</span>
@@ -90,7 +91,7 @@ export async function BandSends({ label, editable }: { label: SalesLabel; editab
         <ul className="mt-4 space-y-1 text-sm">
           {sent.map((r) => (
             <li key={r.id} className="flex flex-wrap gap-x-3">
-              <span className="text-muted">{r.date}</span>
+              <span className="text-muted">{formatDate(r.date)}</span>
               <span>Sent to {label.name}</span>
               <Money cents={r.amountCents} currency={r.currency} />
               {r.note && <span className="text-xs text-muted">{r.note}</span>}

@@ -3,7 +3,7 @@ import { BandFilter } from "@/components/band-filter";
 import { connection } from "next/server";
 import { ActionForm, SaveWhenChanged, SubmitButton } from "@/components/client";
 import { DisclosureRow } from "@/components/disclosure-row";
-import { Badge, Callout, Card, Disclosure, Empty, Field, PageHeader } from "@/components/ui";
+import { Badge, Callout, Card, Disclosure, Empty, Field, PageHeader, Stat } from "@/components/ui";
 import { db, schema } from "@/db";
 import { isLow, MOVE_REASONS } from "@/lib/inventory";
 import { InventoryCounter } from "@/components/inventory-counter";
@@ -13,6 +13,7 @@ import { requireAccess } from "@/server/context";
 import { addFromCatalog, archiveInventoryItem, restoreInventoryItem, saveInventoryItem } from "@/server/inventory-actions";
 import { merchPhotoUrl, ownPhotoId } from "@/server/merch-photos";
 import { InventoryPhoto } from "@/components/inventory-photo";
+import { formatDate } from "@/lib/dates";
 
 /** A photo from Bandcamp (not one uploaded here): it can't be changed here. */
 const fromBandcamp = (url: string | null | undefined) => !!url && ownPhotoId(url) === null;
@@ -91,10 +92,10 @@ export default async function InventoryPage({ searchParams }: PageProps<"/invent
       {bandsWithItems.length > 1 && <BandFilter path="/inventory" bands={bandsWithItems} current={band} all="everything" />}
 
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Tile label="Items" value={String(items.length)} />
-        <Tile label="Units on hand" value={String(units)} />
-        <Tile label="Running low" value={String(low.length)} warn={low.length > 0} />
-        <Tile label="Value at cost" value={value.size ? [...value].map(([cur, c]) => formatCents(c, cur)).join(" · ") : "–"} />
+        <Stat label="Items" value={items.length} />
+        <Stat label="Units on hand" value={units} />
+        <Stat label="Running low" value={low.length} tone={low.length > 0 ? "warn" : undefined} />
+        <Stat label="Value at cost" value={value.size ? [...value].map(([cur, c]) => formatCents(c, cur)).join(" · ") : "—"} />
       </div>
 
       {low.length > 0 && (
@@ -165,15 +166,6 @@ export default async function InventoryPage({ searchParams }: PageProps<"/invent
 
 const itemLabel = (i: Item) => `${i.name}${i.option ? ` (${i.option})` : ""}`;
 
-function Tile({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
-  return (
-    <div className={`border bg-surface px-4 py-3 ${warn ? "border-warn" : "border-border"}`}>
-      <div className={`text-2xl font-bold tabular-nums ${warn ? "text-warn" : ""}`}>{value}</div>
-      <div className="text-xs text-muted">{label}</div>
-    </div>
-  );
-}
-
 function ItemTable({
   items,
   bandName,
@@ -211,7 +203,7 @@ function ItemTable({
               <div className="text-xs text-muted">
                 {[i.bandId && bandName.get(i.bandId), i.sku && `SKU ${i.sku}`, i.location && `kept at ${i.location}`, i.priceCents !== null && `${formatCents(i.priceCents, i.currency)} each`, i.unitCostCents !== null && `costs ${formatCents(i.unitCostCents, i.currency)}`]
                   .filter(Boolean)
-                  .join(" · ") || "–"}
+                  .join(" · ") || "—"}
               </div>
               {i.notes && <p className="text-xs text-muted">{i.notes}</p>}
               <DisclosureRow
@@ -277,7 +269,7 @@ function History({ moves }: { moves: Move[] }) {
         <tbody>
           {moves.map((m) => (
             <tr key={m.id}>
-              <td className="text-xs text-muted">{m.createdAt.slice(0, 10)}</td>
+              <td className="text-xs text-muted">{formatDate(m.createdAt)}</td>
               <td>
                 {moveLabel(m)}
                 {m.note && <span className="text-muted"> · {m.note}</span>}

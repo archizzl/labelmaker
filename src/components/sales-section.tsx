@@ -12,7 +12,7 @@ import { loadHiddenColumns } from "@/server/list-columns";
 import { ChartBoard } from "./chart-board";
 import type { Segment } from "./charts";
 import { Tabs } from "./tabs";
-import { Card, Money } from "./ui";
+import { Card, Money, Stat } from "./ui";
 
 /**
  * Sales for a band (every release and merch item) or for one release/item: headline numbers,
@@ -139,15 +139,15 @@ export async function SalesSection({
         <div className="space-y-8">
           {/* Headline numbers */}
           <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-5">
-            <Figure label="Net received" value={<Money cents={report.net} currency={cur} />} strong />
-            {/* <Figure label="Fans paid" value={<Money cents={report.gross} currency={cur} />} /> */}
-            <Figure label="Sales" value={report.saleCount} hint={`${report.units.toLocaleString()} item${report.units === 1 ? "" : "s"}`} />
-            {/* <Figure
+            <Stat label="Net received" value={<Money cents={report.net} currency={cur} />} tone="accent" />
+            {/* <Stat label="Fans paid" value={<Money cents={report.gross} currency={cur} />} /> */}
+            <Stat label="Sales" value={report.saleCount} note={`${report.units.toLocaleString()} item${report.units === 1 ? "" : "s"}`} />
+            {/* <Stat
               label="Fees"
               value={<Money cents={fees} currency={cur} />}
               
             /> */}
-            {/* <Figure label="Paid above price" value={<Money cents={report.fanExtra} currency={cur} />} /> */}
+            {/* <Stat label="Paid above price" value={<Money cents={report.fanExtra} currency={cur} />} /> */}
           </div>
           {report.otherCurrencies.length > 0 && (
             <p className="-mt-4 text-xs text-muted">
@@ -245,15 +245,5 @@ export async function SalesSection({
         </div>
       )}
     </Card>
-  );
-}
-
-function Figure({ label, value, hint, strong }: { label: string; value: React.ReactNode; hint?: string; strong?: boolean }) {
-  return (
-    <div>
-      <div className="text-xs text-muted">{label}</div>
-      <div className={`mt-0.5 font-bold ${strong ? "text-2xl" : "text-xl"}`}>{value}</div>
-      {hint && <div className="text-xs text-muted">{hint}</div>}
-    </div>
   );
 }

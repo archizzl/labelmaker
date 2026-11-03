@@ -4,7 +4,7 @@ import Link from "next/link";
 import { DisclosureRow } from "@/components/disclosure-row";
 import { connection } from "next/server";
 import { ActionForm, Fading, SaveWhenChanged, SubmitButton } from "@/components/client";
-import { Badge, buttonClass, Callout, Card, Empty, Field, PageHeader } from "@/components/ui";
+import { Badge, buttonClass, Callout, Card, Empty, Field, PageHeader, Stat } from "@/components/ui";
 import { db, schema } from "@/db";
 import { type MerchOrder, PICKUP_MESSAGE, pickList, readyToShip } from "@/lib/merch-orders";
 import { formatCents } from "@/lib/money";
@@ -12,6 +12,7 @@ import { bandScope, can, inBandScope } from "@/lib/permissions";
 import { requireAccess } from "@/server/context";
 import { loadOpenOrders, type OrderSale, salesForOrders } from "@/server/merch-orders";
 import { markHandedOff, markOrderPickup, markOrderShipped, refreshOrders, savePickupNote } from "@/server/order-actions";
+import { formatDate, formatDateTime } from "@/lib/dates";
 
 export const metadata = { title: "orders" };
 
@@ -126,10 +127,10 @@ export default async function OrdersPage({ searchParams }: PageProps<"/orders">)
       {bandsWithOrders.length > 1 && <BandFilter path="/orders" bands={bandsWithOrders} current={band} all="everyone" />}
 
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Tile label="Orders to ship" value={String(ready.length)} />
-        <Tile label="Items to pack" value={String(pack.reduce((a, p) => a + p.quantity, 0))} />
-        <Tile label="Oldest waiting" value={ready.length ? `${ready[0].daysWaiting} day${ready[0].daysWaiting === 1 ? "" : "s"}` : "–"} />
-        <Tile label="Pre-orders not out yet" value={String(preorders.length)} />
+        <Stat label="Orders to ship" value={ready.length} />
+        <Stat label="Items to pack" value={pack.reduce((a, p) => a + p.quantity, 0)} />
+        <Stat label="Oldest waiting" value={ready.length ? `${ready[0].daysWaiting} day${ready[0].daysWaiting === 1 ? "" : "s"}` : "—"} />
+        <Stat label="Pre-orders not out yet" value={preorders.length} />
       </div>
 
       <PickupList pickups={pickups} bandName={bandName} canEdit={canEdit} />
@@ -156,8 +157,8 @@ export default async function OrdersPage({ searchParams }: PageProps<"/orders">)
                     {pack.map((p) => (
                       <tr key={`${p.name}|${p.option}`}>
                         <td>{p.name}</td>
-                        <td>{p.option ?? <span className="text-muted">–</span>}</td>
-                        {pack.some((x) => x.sku) && <td className="text-xs text-muted">{p.sku ?? "–"}</td>}
+                        <td>{p.option ?? <span className="text-muted">—</span>}</td>
+                        {pack.some((x) => x.sku) && <td className="text-xs text-muted">{p.sku ?? "—"}</td>}
                         <td className="num text-muted">{p.orders}</td>
                         <td className="num font-bold">{p.quantity}</td>
                       </tr>
@@ -186,7 +187,7 @@ export default async function OrdersPage({ searchParams }: PageProps<"/orders">)
         </>
       )}
       <p className="mt-6 text-xs text-muted">
-        Straight from Bandcamp as of {new Date(open.fetchedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}.
+        Straight from Bandcamp as of {formatDateTime(new Date(open.fetchedAt))}.
       </p>
     </>
   );
@@ -215,7 +216,7 @@ function OrderList({
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="font-bold">{o.buyer.name || "Buyer"}</span>
-              <span className="text-sm text-muted">{o.date}</span>
+              <span className="text-sm text-muted">{formatDate(o.date)}</span>
               {o.preorderUntil ? (
                 <Badge>pre-order, ships from {o.preorderUntil}</Badge>
               ) : o.failed ? (
@@ -357,19 +358,10 @@ function OrderList({
   );
 }
 
-function Tile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border border-border bg-surface px-4 py-3">
-      <div className="text-2xl font-bold tabular-nums">{value}</div>
-      <div className="text-xs text-muted">{label}</div>
-    </div>
-  );
-}
-
 /** Money as Bandcamp reported it ("10", "4.5"), or a dash. */
 function amount(v: string | undefined, currency: string) {
   const n = Number(v);
-  return v === undefined || v === "" || !Number.isFinite(n) ? "–" : formatCents(Math.round(n * 100), currency);
+  return v === undefined || v === "" || !Number.isFinite(n) ? "—" : formatCents(Math.round(n * 100), currency);
 }
 
 /** Everything about one order: Bandcamp's payment, the buyer, where it's going, and (once synced) the money. */
@@ -391,7 +383,7 @@ function OrderDetails({ order: o, sales, bandName }: { order: MerchOrder; sales:
         <dt className="text-muted">Bandcamp payment</dt>
         <dd className="tabular-nums">{o.paymentId}</dd>
         <dt className="text-muted">Ordered</dt>
-        <dd>{o.date}</dd>
+        <dd>{formatDate(o.date)}</dd>
         <dt className="text-muted">Payment</dt>
         <dd>{o.failed ? <span className="text-bad">failed: don’t ship</span> : (o.paymentState ?? "paid")}</dd>
         {o.preorderUntil && (
@@ -408,7 +400,7 @@ function OrderDetails({ order: o, sales, bandName }: { order: MerchOrder; sales:
         )}
         <dt className="text-muted">Buyer</dt>
         <dd>
-          {o.buyer.name || "–"}
+          {o.buyer.name || "—"}
           {o.buyer.email && (
             <>
               {" · "}
@@ -418,7 +410,7 @@ function OrderDetails({ order: o, sales, bandName }: { order: MerchOrder; sales:
           {o.buyer.phone && ` · ${o.buyer.phone}`}
         </dd>
         <dt className="text-muted">Ship to</dt>
-        <dd>{o.address.length ? o.address.join(", ") : "–"}</dd>
+        <dd>{o.address.length ? o.address.join(", ") : "—"}</dd>
       </dl>
 
       <div className="overflow-x-auto">
@@ -436,9 +428,9 @@ function OrderDetails({ order: o, sales, bandName }: { order: MerchOrder; sales:
             {o.lines.map((l) => (
               <tr key={l.saleItemId}>
                 <td>{l.name}</td>
-                <td>{l.option ?? "–"}</td>
-                <td className="text-xs text-muted">{l.sku ?? "–"}</td>
-                <td>{l.bandId ? bandName.get(l.bandId) : l.artist || "–"}</td>
+                <td>{l.option ?? "—"}</td>
+                <td className="text-xs text-muted">{l.sku ?? "—"}</td>
+                <td>{l.bandId ? bandName.get(l.bandId) : l.artist || "—"}</td>
                 <td className="num">{l.quantity}</td>
               </tr>
             ))}
@@ -503,7 +495,7 @@ function PickupList({ pickups, bandName, canEdit }: { pickups: PickupRow[]; band
             <div className="min-w-0 space-y-1">
               <div className="flex flex-wrap items-baseline gap-x-3">
                 <span className="font-bold">{p.buyerName}</span>
-                <span className="text-sm text-muted">ordered {p.orderDate}</span>
+                <span className="text-sm text-muted">ordered {formatDate(p.orderDate)}</span>
                 {/* <Badge>marked shipped {p.createdAt.slice(0, 10)}</Badge> */}
               </div>
               <ul className="text-sm">

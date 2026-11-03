@@ -4,6 +4,7 @@ import { SubmitButton } from "./client";
 import { type PersonOption, SplitEditor } from "./split-editor";
 import { DisclosureRow } from "./disclosure-row";
 import { Badge, Disclosure } from "./ui";
+import { formatDate } from "@/lib/dates";
 
 type Scope = {
   scope: "label_default" | "band_default" | "band_item_type" | "release" | "track";
@@ -66,7 +67,7 @@ export function SplitRules({
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   {r.id === current?.id ? <Badge tone="good">In effect</Badge> : r.effectiveFrom > new Date().toISOString().slice(0, 10) ? <Badge tone="accent">Scheduled</Badge> : <Badge>Replaced</Badge>}
                   <span className="text-xs text-muted">
-                    {r.effectiveFrom === "2000-01-01" ? "Always" : `From ${r.effectiveFrom}`}
+                    {r.effectiveFrom === "2000-01-01" ? "Always" : `From ${formatDate(r.effectiveFrom)}`}
                     {r.overridesCatalog && " · overrides release/track splits"}
                   </span>
                 </div>

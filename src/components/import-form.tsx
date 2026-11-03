@@ -5,7 +5,8 @@ import { useState, useTransition } from "react";
 import { formatCents } from "@/lib/money";
 import { commitImport, type ImportPreview, previewImport } from "@/server/actions";
 import { plural } from "@/lib/plural";
-import { buttonClass } from "./ui";
+import { buttonClass, Stat } from "./ui";
+import { formatRange } from "@/lib/dates";
 
 export function ImportForm() {
   const [file, setFile] = useState<File | null>(null);
@@ -88,7 +89,7 @@ export function ImportForm() {
               </div>
               {preview.dateRange && (
                 <p className="mb-3 text-sm text-muted">
-                  Dates {preview.dateRange[0]} → {preview.dateRange[1]}
+                  Dates {formatRange(preview.dateRange[0], preview.dateRange[1])}
                 </p>
               )}
               {preview.byBand.length > 0 && (
@@ -147,15 +148,6 @@ export function ImportForm() {
           {error && <p className="mt-3 text-sm text-bad">{error}</p>}
         </div>
       )}
-    </div>
-  );
-}
-
-function Stat({ label, value, tone }: { label: string; value: number; tone?: "warn" }) {
-  return (
-    <div>
-      <div className="text-xs text-muted">{label}</div>
-      <div className={`text-xl font-semibold tabular-nums ${tone === "warn" ? "text-warn" : ""}`}>{value}</div>
     </div>
   );
 }

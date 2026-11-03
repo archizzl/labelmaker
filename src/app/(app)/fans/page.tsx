@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { ChartBoard } from "@/components/chart-board";
 import { SubmitButton } from "@/components/client";
 import { FanImportForm } from "@/components/fan-import-form";
-import { buttonClass, Card, Empty, PageHeader } from "@/components/ui";
+import { buttonClass, Card, Empty, PageHeader, Stat } from "@/components/ui";
 import { db, schema } from "@/db";
 import { type BoardChart, breakdownChart, buildTrend, seriesChart } from "@/lib/chart-data";
 import { formatCents } from "@/lib/money";
@@ -12,6 +12,7 @@ import { loadLayout } from "@/server/chart-layouts";
 import { requireAccess } from "@/server/context";
 import { deleteFans } from "@/server/fan-actions";
 import { type FanFilter, fanStats, listFans, type Purchase } from "@/server/fans";
+import { formatDate } from "@/lib/dates";
 
 export const metadata = { title: "fans" };
 
@@ -95,12 +96,13 @@ export default async function FansPage({ searchParams }: PageProps<"/fans">) {
       ) : (
         <>
           <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Tile label="On the list" value={stats.total.toLocaleString("en-US")} />
-            <Tile label="Signed up in the last 30 days" value={stats.last30.toLocaleString("en-US")} />
-            <Tile label="Countries" value={String(stats.byCountry.filter((c) => c.country).length)} />
-            <Tile
-              label={stats.buyers.known ? `of ${stats.buyers.known.toLocaleString("en-US")} buyers are on the list` : "Buyers on the list"}
-              value={stats.buyers.known ? stats.buyers.onList.toLocaleString("en-US") : "–"}
+            <Stat label="On the list" value={stats.total.toLocaleString("en-US")} />
+            <Stat label="Signed up in the last 30 days" value={stats.last30.toLocaleString("en-US")} />
+            <Stat label="Countries" value={stats.byCountry.filter((c) => c.country).length} />
+            <Stat
+              label="Buyers on the list"
+              value={stats.buyers.known ? stats.buyers.onList.toLocaleString("en-US") : "—"}
+              note={stats.buyers.known ? `of ${stats.buyers.known.toLocaleString("en-US")}` : undefined}
             />
           </div>
           {stats.buyers.known === 0 && (
@@ -186,9 +188,9 @@ export default async function FansPage({ searchParams }: PageProps<"/fans">) {
                       {list.rows.map((f) => (
                         <tr key={f.id}>
                           <td className="break-all">{f.email}</td>
-                          <td>{f.name ?? <span className="text-muted">–</span>}</td>
+                          <td>{f.name ?? <span className="text-muted">—</span>}</td>
                           <td>
-                            {f.country ?? <span className="text-muted">–</span>}
+                            {f.country ?? <span className="text-muted">—</span>}
                             {f.postalCode && <span className="text-xs text-muted"> {f.postalCode}</span>}
                           </td>
                           <td className="whitespace-nowrap text-muted">{f.addedOn}</td>
@@ -232,7 +234,7 @@ export default async function FansPage({ searchParams }: PageProps<"/fans">) {
                   <li key={i.id} className="flex flex-wrap gap-x-2">
                     <span>{i.filename}</span>
                     <span className="text-muted">
-                      · {i.createdAt.slice(0, 10)} · {i.rowCount} in file, {i.addedCount} new
+                      · {formatDate(i.createdAt)} · {i.rowCount} in file, {i.addedCount} new
                       {i.bandId ? ` · ${bandName.get(i.bandId) ?? ""}` : ""}
                     </span>
                   </li>
@@ -248,7 +250,7 @@ export default async function FansPage({ searchParams }: PageProps<"/fans">) {
 
 /** "3 · $24.00", opening to the items they bought. */
 function Bought({ purchases, bandName }: { purchases: Purchase[]; bandName: Map<number, string> }) {
-  if (!purchases.length) return <span className="text-muted">–</span>;
+  if (!purchases.length) return <span className="text-muted">—</span>;
   const totals = new Map<string, number>();
   for (const p of purchases) totals.set(p.currency, (totals.get(p.currency) ?? 0) + p.netCents);
   return (
@@ -259,21 +261,12 @@ function Bought({ purchases, bandName }: { purchases: Purchase[]; bandName: Map<
       <ul className="mt-1 space-y-0.5 text-xs text-muted">
         {purchases.slice(0, 20).map((p, i) => (
           <li key={i}>
-            {p.date} · {p.itemName}
+            {formatDate(p.date)} · {p.itemName}
             {p.bandId ? ` (${bandName.get(p.bandId) ?? p.artist})` : p.artist ? ` (${p.artist})` : ""} · {formatCents(p.netCents, p.currency)}
           </li>
         ))}
         {purchases.length > 20 && <li>…and {purchases.length - 20} more</li>}
       </ul>
     </details>
-  );
-}
-
-function Tile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border border-border bg-surface px-4 py-3">
-      <div className="text-2xl font-bold tabular-nums">{value}</div>
-      <div className="text-xs text-muted">{label}</div>
-    </div>
   );
 }

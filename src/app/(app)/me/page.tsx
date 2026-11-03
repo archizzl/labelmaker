@@ -14,6 +14,7 @@ import { computePayoutPeriod, nameMaps, ownBand } from "@/server/data";
 import { addTotals, earningsIn } from "@/server/earnings";
 import { expenseFileList } from "@/server/expenses";
 import { accountProjects } from "@/server/projects";
+import { formatDate, formatRange } from "@/lib/dates";
 
 export const metadata = { title: "my earnings" };
 
@@ -147,7 +148,7 @@ export default async function MyEarningsPage({ searchParams }: PageProps<"/me">)
                     <td>
                       <div className="font-medium">{period.name}</div>
                       <div className="text-xs text-muted">
-                        {period.startDate} → {period.endDate}
+                        {formatRange(period.startDate, period.endDate)}
                       </div>
                     </td>
                     <td className="text-xs">
@@ -162,7 +163,7 @@ export default async function MyEarningsPage({ searchParams }: PageProps<"/me">)
                     </td>
                     <td>
                       <Badge tone={STATUS[payout.status].tone}>{STATUS[payout.status].label}</Badge>
-                      {payout.paidAt && payout.status === "paid" && <div className="mt-1 text-xs text-muted">{payout.paidAt.slice(0, 10)}</div>}
+                      {payout.paidAt && payout.status === "paid" && <div className="mt-1 text-xs text-muted">{formatDate(payout.paidAt)}</div>}
                     </td>
                   </tr>
                 ))}
@@ -290,7 +291,7 @@ async function BandAccountEarnings({ ctx, range }: { ctx: Context; range?: strin
                     <td>
                       <div className="font-medium">{period.name}</div>
                       <div className="text-xs text-muted">
-                        {period.startDate} → {period.endDate}
+                        {formatRange(period.startDate, period.endDate)}
                       </div>
                     </td>
                     <td className="text-xs">{through ? `through ${through}` : ctx.org.name}</td>
@@ -299,7 +300,7 @@ async function BandAccountEarnings({ ctx, range }: { ctx: Context; range?: strin
                     </td>
                     <td>
                       <Badge tone={STATUS[payout.status].tone}>{STATUS[payout.status].label}</Badge>
-                      {payout.paidAt && payout.status === "paid" && <div className="mt-1 text-xs text-muted">{payout.paidAt.slice(0, 10)}</div>}
+                      {payout.paidAt && payout.status === "paid" && <div className="mt-1 text-xs text-muted">{formatDate(payout.paidAt)}</div>}
                     </td>
                   </tr>
                 ))}

@@ -3,6 +3,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { Deduction } from "@/lib/splits";
 import type { ReceiptUpload } from "./receipt-store";
+import { formatDate } from "@/lib/dates";
 
 export type Expense = typeof schema.expenses.$inferSelect;
 
@@ -165,14 +166,14 @@ export function coverageLines(e: Expense, personName: (id: number) => string | u
   const lines = [`Paid by ${payer}`];
   if (e.status === "pending") lines.push("Waiting for an admin");
   else if (e.status === "rejected") return lines;
-  else if (e.recoup) lines.push(`Paid back from sales${e.recoupFrom && e.recoupFrom !== e.date ? ` from ${e.recoupFrom}` : ""}`);
+  else if (e.recoup) lines.push(`Paid back from sales${e.recoupFrom && e.recoupFrom !== e.date ? ` from ${formatDate(e.recoupFrom)}` : ""}`);
   else if (e.paidBy === "person")
     lines.push(
       e.reimbursedAt
-        ? `Reimbursed by ${group} on ${e.reimbursedAt.slice(0, 10)}${e.reimbursedMethod ? ` via ${e.reimbursedMethod}` : ""}`
+        ? `Reimbursed by ${group} on ${formatDate(e.reimbursedAt)}${e.reimbursedMethod ? ` via ${e.reimbursedMethod}` : ""}`
         : `To be reimbursed by ${group}`,
     );
-  if (e.filesRemovedAt) lines.push(`Files downloaded and cleared ${e.filesRemovedAt.slice(0, 10)}`);
+  if (e.filesRemovedAt) lines.push(`Files downloaded and cleared ${formatDate(e.filesRemovedAt)}`);
   return lines;
 }
 

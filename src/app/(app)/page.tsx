@@ -9,7 +9,7 @@ import { owedChart } from "@/components/owed";
 import { type BoardChart, breakdownChart, seriesChart } from "@/lib/chart-data";
 import { loadLayout } from "@/server/chart-layouts";
 import { parseSalesFilter, salesBooksFor, summarizeSales } from "@/server/sales-browse";
-import { Badge, Callout, Card, LinkButton, Money, PageHeader } from "@/components/ui";
+import { Badge, Callout, Card, LinkButton, Money, PageHeader, Stat } from "@/components/ui";
 import { db, schema } from "@/db";
 import { plural, someNames } from "@/lib/plural";
 import { STATUS_LABEL, STATUS_TONE } from "@/lib/status";
@@ -271,17 +271,17 @@ export default async function Dashboard() {
       {[...figures].sort((a, b) => b[1].net - a[1].net).map(([cur, f]) => (
         <Card key={cur} title={`All-time${figures.size > 1 ? ` (${cur})` : ""}`}>
           <div className={`mb-6 grid grid-cols-2 gap-4 ${isBand && labels.length ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
-            <Figure label="Net sales" cents={f.net} currency={cur} />
+            <Stat label="Net sales" value={<Money cents={f.net} currency={cur} />} />
             {isBand ? (
               <>
-                <Figure label="Kept by the band" cents={f.label} currency={cur} />
-                {labels.length > 0 && <Figure label={keptBy} cents={f.labelThrough} currency={cur} />}
+                <Stat label="Kept by the band" value={<Money cents={f.label} currency={cur} />} />
+                {labels.length > 0 && <Stat label={keptBy} value={<Money cents={f.labelThrough} currency={cur} />} />}
               </>
             ) : (
-              <Figure label="Label income" cents={f.label} currency={cur} />
+              <Stat label="Label income" value={<Money cents={f.label} currency={cur} />} />
             )}
-            <Figure label="Held in band funds" cents={f.funds} currency={cur} />
-            <Figure label="Earned by people" cents={f.people} currency={cur} />
+            <Stat label="Held in band funds" value={<Money cents={f.funds} currency={cur} />} />
+            <Stat label="Earned by people" value={<Money cents={f.people} currency={cur} />} />
           </div>
         </Card>
       ))}
@@ -341,16 +341,5 @@ export default async function Dashboard() {
       )}
       <SyncFooter orgId={orgId} />
     </>
-  );
-}
-
-function Figure({ label, cents, currency }: { label: string; cents: number; currency: string }) {
-  return (
-    <div>
-      <div className="text-xs text-muted">{label}</div>
-      <div className="mt-1 text-xl font-semibold">
-        <Money cents={cents} currency={currency} />
-      </div>
-    </div>
   );
 }

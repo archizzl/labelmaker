@@ -18,6 +18,7 @@ import { startSiteViewAs } from "@/server/view-as-actions";
 import { testsAvailable } from "@/server/test-runner";
 import { AdminTests } from "@/components/admin-tests";
 import { AdminAbel } from "@/components/admin-abel";
+import { formatDate } from "@/lib/dates";
 
 export const metadata = { title: "admin" };
 
@@ -137,7 +138,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   const seen = new Map(lastSeen.map((s) => [s.userId, s.at]));
   const userName = new Map(users.map((u) => [u.id, `${u.name} (${u.email})`]));
   const created = Number(sp.created) ? invites.find((i) => i.id === Number(sp.created)) : null;
-  const day = (d: Date | string | null | undefined) => (d ? new Date(d).toISOString().slice(0, 10) : "–");
+  const day = (d: Date | string | null | undefined) => formatDate(d ? new Date(d) : null);
   const groupsOf = (userId: string) => memberships.filter((m) => m.userId === userId);
   // Groups: each label with the bands' groups it made or that joined it, then bands on their own.
   const labels = accounts.filter((a) => a.kind === "label");
@@ -171,8 +172,8 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
           ))}
         </td>
         <td className="num">{a.sales ? a.sales.toLocaleString("en-US") : <span className="text-muted">0</span>}</td>
-        <td className="text-sm">{a.bandcamp ?? a.bandcampUrl ?? <span className="text-muted">–</span>}</td>
-        <td className="whitespace-nowrap text-muted">{a.lastSync ? a.lastSync.slice(0, 10) : "–"}</td>
+        <td className="text-sm">{a.bandcamp ?? a.bandcampUrl ?? <span className="text-muted">—</span>}</td>
+        <td className="whitespace-nowrap text-muted">{formatDate(a.lastSync)}</td>
       </tr>
     );
   };
@@ -224,7 +225,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                     <span className="text-base font-bold">{app.name}</span>
                     <Badge tone="accent">{app.kind}</Badge>
                     <span className="text-muted">
-                      from {user.name} ({user.email}) · {app.createdAt.slice(0, 10)}
+                      from {user.name} ({user.email}) · {formatDate(app.createdAt)}
                     </span>
                   </div>
                   <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
@@ -235,7 +236,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                           {app.bandcampUrl}
                         </a>
                       ) : (
-                        "–"
+                        "—"
                       )}
                     </dd>
                     <dt className="text-muted">Website</dt>
@@ -245,7 +246,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                           {app.website}
                         </a>
                       ) : (
-                        "–"
+                        "—"
                       )}
                     </dd>
                     {app.kind === "band" ? (
@@ -256,15 +257,15 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                             ? app.members
                                 .map((m) => [m.name, m.role && `(${m.role})`, m.email && `<${m.email}>`].filter(Boolean).join(" "))
                                 .join(", ")
-                            : "–"}
+                            : "—"}
                         </dd>
                       </>
                     ) : (
                       <>
                         <dt className="text-muted">Artists</dt>
-                        <dd>{app.artists.length ? app.artists.map((a) => a.name).join(", ") : "–"}</dd>
+                        <dd>{app.artists.length ? app.artists.map((a) => a.name).join(", ") : "—"}</dd>
                         <dt className="text-muted">Team</dt>
-                        <dd>{app.team.length ? app.team.map((t) => `${t.name} <${t.email}>`).join(", ") : "–"}</dd>
+                        <dd>{app.team.length ? app.team.map((t) => `${t.name} <${t.email}>`).join(", ") : "—"}</dd>
                       </>
                     )}
                     {app.about && (
@@ -300,7 +301,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                 {decided.map(({ app, user }) => (
                   <li key={app.id}>
                     <Badge tone={app.status === "approved" ? "good" : "neutral"}>{app.status}</Badge> {app.name} ({app.kind}) · {user.email} ·{" "}
-                    {app.reviewedAt?.slice(0, 10)}
+                    {app.reviewedAt && formatDate(app.reviewedAt)}
                     {app.reviewNote && <span className="text-muted"> · “{app.reviewNote}”</span>}
                   </li>
                 ))}
@@ -434,7 +435,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                       const status = inviteStatus(i);
                       return (
                         <tr key={i.id}>
-                          <td className="whitespace-nowrap text-muted">{i.createdAt.slice(0, 10)}</td>
+                          <td className="whitespace-nowrap text-muted">{formatDate(i.createdAt)}</td>
                           <td>
                             {i.email ?? <span className="text-muted">anyone with the link</span>}
                             {i.note && <div className="text-xs text-muted">{i.note}</div>}
@@ -445,7 +446,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                               <div className="text-xs text-muted">{userName.get(i.usedByUserId) ?? "a deleted account"}</div>
                             )}
                           </td>
-                          <td className="whitespace-nowrap text-muted">{i.expiresAt.slice(0, 10)}</td>
+                          <td className="whitespace-nowrap text-muted">{formatDate(i.expiresAt)}</td>
                           <td className="text-right">
                             {status === "open" && (
                               <div className="flex justify-end gap-2">

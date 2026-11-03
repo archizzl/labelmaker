@@ -1,4 +1,4 @@
-import { Money, MoneyList } from "@/components/ui";
+import { Money, MoneyList, Stat } from "@/components/ui";
 import { addTotals } from "@/server/earnings";
 
 type Totals = Map<string, number>;
@@ -11,20 +11,13 @@ export function EarningsStats({ owed, received, upcoming }: { owed: Totals; rece
   const since = addTotals(owed, upcoming);
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <Stat label="Earned since last payout" totals={since} emphasis />
-      <Stat label="Paid so far" totals={received} />
-      <Stat label="Earned total" totals={addTotals(since, received)} />
+      <Stat label="Earned since last payout" value={<Amount totals={since} />} tone="accent" />
+      <Stat label="Paid so far" value={<Amount totals={received} />} />
+      <Stat label="Earned total" value={<Amount totals={addTotals(since, received)} />} />
     </div>
   );
 }
 
-function Stat({ label, totals, emphasis }: { label: string; totals: Totals; emphasis?: boolean }) {
-  return (
-    <div className={`border-l-2 pl-3 ${emphasis ? "border-accent" : "border-border"}`}>
-      <div className="text-xs text-muted lowercase">{label}</div>
-      <div className={`mt-0.5 text-xl font-bold ${emphasis ? "text-accent" : ""}`}>
-        {totals.size ? <MoneyList totals={totals} /> : <Money cents={0} />}
-      </div>
-    </div>
-  );
+function Amount({ totals }: { totals: Totals }) {
+  return totals.size ? <MoneyList totals={totals} /> : <Money cents={0} />;
 }

@@ -8,7 +8,7 @@ import { owedChart } from "@/components/owed";
 import { loadLayout } from "@/server/chart-layouts";
 import { Badge, Callout, Card, Disclosure, Empty, Field, Money, MoneyList, PageHeader } from "@/components/ui";
 import { db, schema } from "@/db";
-import { periodName } from "@/lib/dates";
+import { formatRange, periodName } from "@/lib/dates";
 import { STATUS_LABEL, STATUS_TONE } from "@/lib/status";
 import { previewPayout } from "@/server/actions";
 import { can } from "@/lib/permissions";
@@ -184,7 +184,7 @@ export default async function PeriodsPage({ searchParams }: PageProps<"/periods"
                     </td>
                     {showFor && <td className="text-sm">{p.bandId ? bandName.get(p.bandId) : <span className="text-muted">whole label</span>}</td>}
                     <td className="hidden whitespace-nowrap text-muted sm:table-cell">
-                      {p.startDate} → {p.endDate}
+                      {formatRange(p.startDate, p.endDate)}
                     </td>
                     <td>
                       <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABEL[p.status]}</Badge>

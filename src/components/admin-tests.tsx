@@ -3,20 +3,21 @@ import { plural } from "@/lib/plural";
 import { runTestsAction } from "@/server/admin-actions";
 import { listTests, savedResults, type TestResult, testId, testsRunning } from "@/server/test-runner";
 import { RunTestsButton } from "./run-tests-button";
+import { formatDateTime } from "@/lib/dates";
 
 /** "src/server/__tests__/label-join.test.ts" → "server/label-join". */
 const short = (file: string) => file.replace(/^src\//, "").replace("/__tests__/", "/").replace(/\.test\.tsx?$/, "");
 
 const seconds = (ms: number) => (ms < 10_000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms / 1000)}s`);
 
-const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const when = (iso: string) => formatDateTime(iso);
 
 /** A test's latest result, as a mark. */
 function Mark({ r }: { r: TestResult | undefined }) {
   if (!r) return <span className="w-4 shrink-0 text-center text-muted">·</span>;
   if (r.status === "passed") return <span className="w-4 shrink-0 text-center text-good">✓</span>;
   if (r.status === "failed") return <span className="w-4 shrink-0 text-center text-bad">✗</span>;
-  return <span className="w-4 shrink-0 text-center text-muted">–</span>;
+  return <span className="w-4 shrink-0 text-center text-muted">—</span>;
 }
 
 /**

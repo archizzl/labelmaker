@@ -3,7 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { ChartBoard } from "@/components/chart-board";
 import { SalesTabs } from "@/components/sales-tabs";
-import { Badge, buttonClass, Card, Empty, Money, PageHeader } from "@/components/ui";
+import { Badge, buttonClass, Card, Empty, Money, PageHeader, Stat } from "@/components/ui";
 import { db, schema } from "@/db";
 import { type BoardChart, breakdownChart, seriesChart } from "@/lib/chart-data";
 import { formatCents } from "@/lib/money";
@@ -33,6 +33,7 @@ import {
   salesFilterOptions,
   summarizeSales,
 } from "@/server/sales-browse";
+import { formatDate, formatRange } from "@/lib/dates";
 
 export const metadata = { title: "sales" };
 
@@ -124,7 +125,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
   // One sale's row (inOrder: how many items its order has, when it's shown under the order's row).
   const saleRow = (s: SaleRow, inOrder = 0) => (
         <tr key={s.id} className={`align-top ${inOrder ? "bg-surface-2/40" : ""}`}>
-          <td data-col="date" className="whitespace-nowrap text-muted">{s.date}</td>
+          <td data-col="date" className="whitespace-nowrap text-muted">{formatDate(s.date)}</td>
           <td className={`min-w-48 ${inOrder ? "pl-7" : ""}`}>
             <details>
               <summary className="cursor-pointer">
@@ -189,7 +190,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
                 {s.country}
               </Link>
             ) : (
-              <span className="text-muted">–</span>
+              <span className="text-muted">—</span>
             )}
           </td>
           <td data-col="source" className="max-w-40 truncate text-sm" title={s.source}>
@@ -198,7 +199,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
                 {s.source}
               </Link>
             ) : (
-              <span className="text-muted">–</span>
+              <span className="text-muted">—</span>
             )}
           </td>
           <td data-col="qty" className="num">{s.quantity}</td>
@@ -282,16 +283,16 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
       {main && (
         <>
           <h2 className="mt-10 mb-3 text-sm font-bold">
-            Totals and breakdowns <span className="font-normal text-muted">({main.first} to {main.last})</span>
+            Totals and breakdowns <span className="font-normal text-muted">({formatRange(main.first, main.last)})</span>
           </h2>
           <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Tile label="Net received" value={formatCents(main.net, main.currency)} />
-            <Tile label={`Sale${main.sales === 1 ? "" : "s"}`} value={main.sales.toLocaleString("en-US")} hint={`${main.units.toLocaleString("en-US")} item${main.units === 1 ? "" : "s"}`} />
-            <Tile label="Average per sale" value={formatCents(Math.round(main.net / Math.max(1, main.sales)), main.currency)} />
-            <Tile
+            <Stat label="Net received" value={formatCents(main.net, main.currency)} />
+            <Stat label={`Sale${main.sales === 1 ? "" : "s"}`} value={main.sales.toLocaleString("en-US")} note={`${main.units.toLocaleString("en-US")} item${main.units === 1 ? "" : "s"}`} />
+            <Stat label="Average per sale" value={formatCents(Math.round(main.net / Math.max(1, main.sales)), main.currency)} />
+            <Stat
               label="Refunds"
               value={main.refunds.toLocaleString("en-US")}
-              hint={main.refunds ? formatCents(main.refundCents, main.currency) : undefined}
+              note={main.refunds ? formatCents(main.refundCents, main.currency) : undefined}
             />
           </div>
           {summary.totals.length > 1 && (
@@ -326,7 +327,7 @@ function PayoutBadge({ state }: { state: keyof typeof PAYOUT_LABEL }) {
  */
 function PayoutCell({ state, periodId, outside }: { state: "paid" | "pending" | "none"; periodId: number | null; outside?: boolean }) {
   if (outside) return <span className="text-muted">Not in payouts</span>;
-  if (state === "none" || !periodId) return <span className="text-muted">–</span>;
+  if (state === "none" || !periodId) return <span className="text-muted">—</span>;
   return (
     <Link href={`/periods/${periodId}`} className="hover:no-underline">
       <PayoutBadge state={state} />
@@ -491,18 +492,6 @@ function SortHeader({ f, k, label, num = false }: { f: SalesFilter; k: SortKey; 
   );
 }
 
-function Tile({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="border border-border bg-surface px-4 py-3">
-      <div className="text-2xl font-bold tabular-nums">{value}</div>
-      <div className="text-xs text-muted">
-        {label}
-        {hint && <> · {hint}</>}
-      </div>
-    </div>
-  );
-}
-
 /**
  * The rows on the page, with an order's items together: consecutive sales with the same transaction
  * (a Bandcamp order with several items, or merch added by hand at once). Sorted by anything but the
@@ -531,16 +520,16 @@ function OrderCells({ order, paidTo }: { order: SaleRow[]; paidTo?: (s: SaleRow)
   const net = order.reduce((a, s) => a + s.netCents, 0);
   return (
     <>
-      <td data-col="date" className="whitespace-nowrap text-muted">{first.date}</td>
+      <td data-col="date" className="whitespace-nowrap text-muted">{formatDate(first.date)}</td>
       <td className="min-w-48">
         <span className="mr-1 inline-block text-xs text-muted transition group-aria-expanded:rotate-90">▸</span>
         {order.map(itemLabel).join(", ")}
       </td>
       <td data-col="band" className="text-sm">{bandNames.join(", ") || <span className="text-bad">not matched</span>}</td>
       <td data-col="type" className="text-sm">{types.join(", ")}</td>
-      <td data-col="country" className="text-sm">{first.country ?? <span className="text-muted">–</span>}</td>
+      <td data-col="country" className="text-sm">{first.country ?? <span className="text-muted">—</span>}</td>
       <td data-col="source" className="max-w-40 truncate text-sm" title={first.source}>
-        {first.source || <span className="text-muted">–</span>}
+        {first.source || <span className="text-muted">—</span>}
       </td>
       <td data-col="qty" className="num">{order.reduce((a, s) => a + s.quantity, 0)}</td>
       <td data-col="net" className={`num ${net < 0 ? "text-bad" : ""}`}>

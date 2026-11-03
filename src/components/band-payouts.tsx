@@ -4,6 +4,7 @@ import { Badge, Card, Empty, Money, MoneyList } from "@/components/ui";
 import { db, schema } from "@/db";
 import { STATUS_LABEL, STATUS_TONE } from "@/lib/status";
 import { nameMaps } from "@/server/data";
+import { formatRange } from "@/lib/dates";
 
 const PAYOUT_STATUS = { pending: "to be paid", paid: "paid", kept: "kept in the label’s bank account" } as const;
 
@@ -64,7 +65,7 @@ export async function BandPayouts({
                   <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <span className="font-medium">{p.name}</span>
                     <span className="text-sm text-muted">
-                      {p.startDate} → {p.endDate}
+                      {formatRange(p.startDate, p.endDate)}
                     </span>
                     <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABEL[p.status]}</Badge>
                     <span className="ml-auto text-sm">

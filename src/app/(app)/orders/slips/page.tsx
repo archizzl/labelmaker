@@ -5,6 +5,7 @@ import { buttonClass } from "@/components/ui";
 import { bandScope, inBandScope } from "@/lib/permissions";
 import { requireAccess } from "@/server/context";
 import { loadOpenOrders } from "@/server/merch-orders";
+import { formatDate } from "@/lib/dates";
 
 export const metadata = { title: "packing slips" };
 
@@ -40,7 +41,7 @@ export default async function SlipsPage({ searchParams }: PageProps<"/orders/sli
           <div className="mb-8 flex flex-wrap justify-between gap-6">
             <div>
               <div className="text-xl font-bold">{org.name}</div>
-              <div className="text-sm text-muted">Packing slip · ordered {o.date}</div>
+              <div className="text-sm text-muted">Packing slip · ordered {formatDate(o.date)}</div>
             </div>
             <address className="text-base not-italic">
               <div className="mb-1 text-xs text-muted uppercase">Ship to</div>
@@ -70,7 +71,7 @@ export default async function SlipsPage({ searchParams }: PageProps<"/orders/sli
                     {l.name}
                     {l.artist && <div className="text-xs text-muted">{l.artist}</div>}
                   </td>
-                  <td>{l.option ?? "–"}</td>
+                  <td>{l.option ?? "—"}</td>
                   <td className="num font-bold">{l.quantity}</td>
                 </tr>
               ))}

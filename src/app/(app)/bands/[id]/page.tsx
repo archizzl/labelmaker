@@ -33,6 +33,7 @@ import { accountProjects, projectNumbers } from "@/server/projects";
 import { loginEmails, personPhotos } from "@/server/people";
 import { Avatar } from "@/components/avatar";
 import { bandAssociatedPeople, bandMembers, computeAllTime, labelHost, nameMaps, ruleFilter, rulesWhere } from "@/server/data";
+import { formatRange } from "@/lib/dates";
 
 /** The tab's title: the band's name. */
 export async function generateMetadata({ params }: PageProps<"/bands/[id]">) {
@@ -336,7 +337,7 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
                         </td>
                         <td className="text-sm text-muted">{p.bandId ? "this band" : "whole label"}</td>
                         <td className="text-muted">
-                          {p.startDate} → {p.endDate}
+                          {formatRange(p.startDate, p.endDate)}
                         </td>
                         <td>
                           <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABEL[p.status]}</Badge>

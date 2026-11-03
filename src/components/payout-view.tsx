@@ -4,7 +4,7 @@ import { loadHiddenColumns } from "@/server/list-columns";
 import Link from "next/link";
 import { ActionForm, CopyButton, Fading, SubmitButton } from "@/components/client";
 import { outsideArtistRows } from "@/components/outside-artists";
-import { Badge, Callout, Card, Disclosure, Empty, Field, LinkButton, Money, PageHeader, buttonClass } from "@/components/ui";
+import { Badge, Callout, Card, Disclosure, Empty, Field, LinkButton, Money, PageHeader, Stat, buttonClass } from "@/components/ui";
 import { db, schema } from "@/db";
 import { centsToDecimal } from "@/lib/money";
 import { formatCents } from "@/lib/money";
@@ -16,6 +16,7 @@ import { bandcampCredentials } from "@/server/bandcamp-api";
 import { getContext } from "@/server/context";
 import { type PayoutScope, payoutNote, type periodView, type previewView } from "@/server/period-view";
 import { PayQueue, type QueueItem } from "./pay-queue";
+import { formatDate, formatRange } from "@/lib/dates";
 
 type View = NonNullable<Awaited<ReturnType<typeof periodView>>> | Awaited<ReturnType<typeof previewView>>;
 
@@ -115,7 +116,7 @@ export async function PayoutView({
             ) : (
               "whole label"
             )}{" "}
-            · {scope.startDate} → {scope.endDate} · {plural(live.results.length, "sale")}
+            · {formatRange(scope.startDate, scope.endDate)} · {plural(live.results.length, "sale")}
           </>
         }
         actions={
@@ -299,12 +300,12 @@ export async function PayoutView({
         const toPeople = [...s.byPerson.values()].reduce((a, p) => a + p.total, 0);
         return (
           <div key={cur} className="mb-8 grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-5">
-            <Stat label={`Net sales${currencies.length > 1 ? ` (${cur})` : ""}`} cents={s.grossCents} currency={cur} />
-            <Stat label="Label" cents={dest("label")} currency={cur} />
-            <Stat label="Band funds" cents={dest("band_fund")} currency={cur} />
-            <Stat label="Expenses recouped" cents={dest("expense")} currency={cur} />
-            <Stat label="To people" cents={toPeople} currency={cur} emphasis />
-            {s.unallocated !== 0 && <Stat label="Unallocated" cents={s.unallocated} currency={cur} tone="bad" />}
+            <Stat label={`Net sales${currencies.length > 1 ? ` (${cur})` : ""}`} value={<Money cents={s.grossCents} currency={cur} />} />
+            <Stat label="Label" value={<Money cents={dest("label")} currency={cur} />} />
+            <Stat label="Band funds" value={<Money cents={dest("band_fund")} currency={cur} />} />
+            <Stat label="Expenses recouped" value={<Money cents={dest("expense")} currency={cur} />} />
+            <Stat label="To people" value={<Money cents={toPeople} currency={cur} />} tone="accent" />
+            {s.unallocated !== 0 && <Stat label="Unallocated" value={<Money cents={s.unallocated} currency={cur} />} tone="bad" />}
           </div>
         );
       })}
@@ -441,7 +442,7 @@ export async function PayoutView({
                     {finalized && !canEdit && (
                       <td>
                         {l.status === "paid" ? (
-                          <Badge tone="good">Paid {l.paidAt?.slice(0, 10)}</Badge>
+                          <Badge tone="good">Paid {formatDate(l.paidAt)}</Badge>
                         ) : l.status === "kept" ? (
                           <Badge tone="good">Kept in the label’s bank account</Badge>
                         ) : (
@@ -455,7 +456,7 @@ export async function PayoutView({
                           <input type="hidden" name="id" value={l.payoutId!} />
                           {l.status === "paid" ? (
                             <>
-                              <Badge tone="good">Paid {l.paidAt?.slice(0, 10)}</Badge>
+                              <Badge tone="good">Paid {formatDate(l.paidAt)}</Badge>
                               {l.reference && <span className="text-xs text-muted">{l.reference}</span>}
                               <input type="hidden" name="status" value="pending" />
                               <SubmitButton variant="ghost" size="sm" confirm="Mark this payment as not paid yet? Its paid date and reference are cleared.">
@@ -590,7 +591,7 @@ export async function PayoutView({
                     const sale = live.saleById.get(r.saleId)!;
                     return (
                       <tr key={r.saleId}>
-                        <td data-col="date" className="whitespace-nowrap text-muted">{sale.date}</td>
+                        <td data-col="date" className="whitespace-nowrap text-muted">{formatDate(sale.date)}</td>
                         <td>
                           <div>{sale.itemName}</div>
                           <div className="text-xs text-muted">
@@ -632,16 +633,5 @@ export async function PayoutView({
         </Card>
       )}
     </>
-  );
-}
-
-function Stat({ label, cents, currency, emphasis, tone }: { label: string; cents: number; currency: string; emphasis?: boolean; tone?: "bad" }) {
-  return (
-    <div className={`border-l-2 pl-3 ${tone === "bad" ? "border-bad" : emphasis ? "border-accent" : "border-border"}`}>
-      <div className={`text-xs lowercase ${tone === "bad" ? "text-bad" : "text-muted"}`}>{label}</div>
-      <div className={`mt-0.5 text-xl font-bold ${tone === "bad" ? "text-bad" : emphasis ? "text-accent" : ""}`}>
-        <Money cents={cents} currency={currency} />
-      </div>
-    </div>
   );
 }

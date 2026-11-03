@@ -16,6 +16,7 @@ import { setReleasePhoto } from "@/server/merch-photo-actions";
 import { PhotoButtons } from "@/components/photo-buttons";
 import { ownPhotoId } from "@/server/merch-photos";
 import { bandAssociatedPeople, costDeductionsFor, nameMaps, personOptionsFor, ruleFilter, rulesWhere } from "@/server/data";
+import { formatDate } from "@/lib/dates";
 
 /** The tab's title: the release's (or merch item's) name. */
 export async function generateMetadata({ params }: PageProps<"/catalog/[id]">) {
@@ -99,9 +100,7 @@ export default async function ReleasePage({ params, searchParams }: PageProps<"/
   const totalSec = tracks.reduce((a, t) => a + (t.durationSec ?? 0), 0);
   const isMerch = release.kind === "merch";
   const item = isMerch ? release.packages[0] : undefined;
-  const released = release.releaseDate
-    ? new Date(`${release.releaseDate}T00:00:00Z`).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" })
-    : null;
+  const released = release.releaseDate ? formatDate(release.releaseDate) : null;
 
   return (
     <>
@@ -198,7 +197,7 @@ export default async function ReleasePage({ params, searchParams }: PageProps<"/
               </ActionForm>
             )} */}
           </div>
-          {release.syncedAt && <p className="mt-2 text-xs text-muted">Last read from Bandcamp {release.syncedAt.slice(0, 10)}.</p>}
+          {release.syncedAt && <p className="mt-2 text-xs text-muted">Last read from Bandcamp {formatDate(release.syncedAt)}.</p>}
         </div>
         {isMerch && canEdit && (!release.artUrl || ownPhotoId(release.artUrl)) ? (
           // Merch with no photo from Bandcamp: one can be uploaded.
