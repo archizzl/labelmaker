@@ -97,7 +97,7 @@ export async function BandSends({ label, editable }: { label: SalesLabel; editab
               {editable && (
                 <form action={deletePaymentToLabel} className="ml-auto">
                   <input type="hidden" name="id" value={r.id} />
-                  <SubmitButton variant="ghost" size="sm" confirm={`Delete this record of money sent to ${label.name}?`}>
+                  <SubmitButton variant="danger-ghost" size="sm" confirm={`Delete this record of money sent to ${label.name}?`}>
                     Delete
                   </SubmitButton>
                 </form>

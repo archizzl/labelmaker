@@ -55,7 +55,8 @@ const deleteBandTool = actionTool({
   params: z.object({ bandId: id }),
   needs: { area: "roster", level: "edit" },
   action: (fd) => deleteBand(fd),
-  fields: (_ctx, a) => ({ id: a.bandId }),
+  // The form asks for the band's name typed out; here the person confirms the card instead.
+  fields: async (ctx, a) => ({ id: a.bandId, name: (await current(schema.bands, ctx.orgId, a.bandId, "band")).name }),
   done: "Band deleted.",
 });
 

@@ -130,7 +130,7 @@ export async function PayoutView({
                 <form action={undoFinalize}>
                   <input type="hidden" name="id" value={id} />
                   <SubmitButton
-                    variant="ghost"
+                    variant="danger"
                     size="sm"
                     confirm="Undo finalizing? This payout's records are removed, and it goes back to being a preview."
                   >

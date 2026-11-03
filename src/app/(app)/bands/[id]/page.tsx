@@ -688,8 +688,11 @@ export default async function BandPage({ params, searchParams }: PageProps<"/ban
           <Card title="Band settings">
             <BandFields band={band} />
             {ctx.org.kind === "label" && (
-              <ActionForm action={deleteBandForm} className="mt-8 border-t border-border pt-4">
+              <ActionForm action={deleteBandForm} className="mt-8 flex flex-wrap items-end gap-3 border-t border-border pt-4">
                 <input type="hidden" name="id" value={id} />
+                <Field label={`Type ${band.name} to confirm`} className="min-w-64">
+                  <input name="name" required autoComplete="off" />
+                </Field>
                 <SubmitButton variant="danger" size="sm" confirm={`Delete ${band.name}? Its releases, splits and deductions are deleted too, and its sales become unmatched.`}>
                   Delete band
                 </SubmitButton>

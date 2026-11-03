@@ -209,7 +209,7 @@ export default async function ReleasePage({ params, searchParams }: PageProps<"/
             ) : (
               <div className="flex aspect-square w-full items-center justify-center bg-surface-2 text-xs text-muted">no photo</div>
             )}
-            <PhotoButtons action={setReleasePhoto} fields={{ id }} hasPhoto={!!release.artUrl} />
+            <PhotoButtons action={setReleasePhoto} fields={{ id }} hasPhoto={!!release.artUrl} removeConfirm={`Remove the photo of ${release.title}?`} />
           </div>
         ) : (
           release.artUrl && (

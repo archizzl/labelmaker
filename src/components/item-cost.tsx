@@ -41,7 +41,7 @@ export function ItemCosts({
           {!readOnly && d.releaseId === releaseId && (d.packageId ?? null) === (packageId ?? null) && (
             <form action={deleteDeduction}>
               <input type="hidden" name="id" value={d.id} />
-              <SubmitButton variant="ghost" size="sm" confirm="Remove this cost?">
+              <SubmitButton variant="danger-ghost" size="sm" confirm={`Remove the ${formatCents(d.amountCents ?? 0, d.currency ?? "USD")} cost?`}>
                 Remove
               </SubmitButton>
             </form>

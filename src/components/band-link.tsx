@@ -18,7 +18,7 @@ export function LinkedBandAccount({ band, row }: { band: { name: string }; row: 
           <span>Linked to their own group (“{row.bandAccount?.name}”), which can see this band’s books.</span>
           <form action={unlink} className="ml-auto">
             <input type="hidden" name="id" value={row.link.id} />
-            <SubmitButton variant="ghost" size="sm" confirm={`Unlink ${row.bandAccount?.name}? They'll no longer see ${band.name}'s books.`}>
+            <SubmitButton variant="danger-ghost" size="sm" confirm={`Unlink ${row.bandAccount?.name}? They'll no longer see ${band.name}'s books.`}>
               Unlink
             </SubmitButton>
           </form>

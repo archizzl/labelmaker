@@ -158,7 +158,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
                   {s.releaseTitle ?? "Release"} in the catalog →
                 </Link>
               )}
-              {s.routedVia === MANUAL_VIA && s.payoutState === "none" && canDelete(s) && <DeleteManualSale id={s.id} orderItems={inOrder} />}
+              {s.routedVia === MANUAL_VIA && s.payoutState === "none" && canDelete(s) && <DeleteManualSale id={s.id} name={itemLabel(s)} orderItems={inOrder} />}
             </details>
           </td>
           <td data-col="band" className="text-sm">

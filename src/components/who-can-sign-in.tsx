@@ -126,7 +126,7 @@ export async function WhoCanSignIn({ ctx }: { ctx: Context }) {
                           {member.role !== "owner" && !self && (
                             <form action={removeAccountMember}>
                               <input type="hidden" name="memberId" value={member.id} />
-                              <SubmitButton variant="ghost" size="sm" confirm={`Remove ${user.name}'s access? Their payout history stays.`}>
+                              <SubmitButton variant="danger-ghost" size="sm" confirm={`Remove ${user.name}'s access? Their payout history stays.`}>
                                 Remove
                               </SubmitButton>
                             </form>

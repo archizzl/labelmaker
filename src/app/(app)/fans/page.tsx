@@ -203,7 +203,7 @@ export default async function FansPage({ searchParams }: PageProps<"/fans">) {
                           <td className="text-right">
                             <form action={deleteFans}>
                               <input type="hidden" name="id" value={f.id} />
-                              <SubmitButton variant="ghost" size="sm" confirm={`Remove ${f.email} from the list? This deletes everything stored about them.`}>
+                              <SubmitButton variant="danger-ghost" size="sm" confirm={`Remove ${f.email} from the list? This deletes everything stored about them.`}>
                                 Remove
                               </SubmitButton>
                             </form>
