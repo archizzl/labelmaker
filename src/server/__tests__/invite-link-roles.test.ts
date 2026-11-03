@@ -3,10 +3,13 @@ import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { newAccount, testDb } from "../../../test/helpers/db";
 
-// Who's signed in.
+// Who's signed in, and the group they're an admin of.
 let session = { user: { id: "", name: "", email: "" } };
+let orgId = "";
+let managedBy: { labelOrgId: string; bandId: number } | null = null;
 vi.mock("../context", () => ({
   getSession: async () => session,
+  requireAdmin: async () => ({ orgId, org: { kind: "label" }, managedBy, user: { id: session.user.id } }),
 }));
 vi.mock("../auth", () => ({ auth: { api: { setActiveOrganization: async () => {}, updateUser: async () => {} } } }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
@@ -74,4 +77,56 @@ describe("a group's invite links for admins and members", () => {
       expect(await roleAndType(org, ben)).toEqual({ role: "member", types: 0 });
     });
   }
+});
+
+describe("resetting an invite link", () => {
+  it("ends just that link, of this group's", async () => {
+    orgId = await newAccount();
+    await signIn("Admin");
+    const [t] = await db.insert(schema.memberTypes).values({ orgId, name: "Manager", permissions: {} }).returning();
+    const adminLink = await links.standingInviteLink(orgId, null, { admin: true });
+    const memberLink = await links.standingInviteLink(orgId, null);
+    const typeLink = await links.standingInviteLink(orgId, null, { memberTypeId: t.id });
+
+    const fd = new FormData();
+    fd.set("gives", "admin");
+    await actions.resetInviteLink(fd);
+    expect(await links.usableInviteLink(adminLink)).toBeNull();
+    expect(await links.standingInviteLink(orgId, null, { admin: true })).not.toBe(adminLink);
+    expect(await links.usableInviteLink(memberLink)).not.toBeNull();
+    expect(await links.usableInviteLink(typeLink)).not.toBeNull();
+
+    fd.set("gives", `type:${t.id}`);
+    await actions.resetInviteLink(fd);
+    expect(await links.usableInviteLink(typeLink)).toBeNull();
+    expect(await links.usableInviteLink(memberLink)).not.toBeNull();
+
+    fd.set("gives", "member");
+    await actions.resetInviteLink(fd);
+    expect(await links.usableInviteLink(memberLink)).toBeNull();
+
+    // Another group's member type: not this group's link to reset.
+    const other = await newAccount();
+    const [theirs] = await db.insert(schema.memberTypes).values({ orgId: other, name: "Theirs", permissions: {} }).returning();
+    fd.set("gives", `type:${theirs.id}`);
+    await expect(actions.resetInviteLink(fd)).rejects.toThrow();
+  });
+
+  it("in a band's group from the label: resets its one link, with no link for admins", async () => {
+    orgId = await newAccount("Band", "band");
+    managedBy = { labelOrgId: await newAccount(), bandId: 1 };
+    try {
+      await signIn("Band");
+      const link = await links.standingInviteLink(orgId, null);
+      const fd = new FormData();
+      fd.set("gives", "admin");
+      await expect(actions.resetInviteLink(fd)).rejects.toThrow();
+      expect(await links.usableInviteLink(link)).not.toBeNull();
+      fd.set("gives", "member");
+      await actions.resetInviteLink(fd);
+      expect(await links.usableInviteLink(link)).toBeNull();
+    } finally {
+      managedBy = null;
+    }
+  });
 });

@@ -223,12 +223,14 @@ const cancelBandInvite = actionTool({
 });
 
 const resetLink = actionTool({
-  name: "reset_band_invite_link",
-  label: "Reset a band's invite link",
-  description: "Make a new standing invite link for a band's group (the old one stops working). In a band's own group, leave out bandId.",
-  params: z.object({ bandId: id.optional() }),
+  name: "reset_invite_link",
+  label: "Reset an invite link",
+  description:
+    "Make a new standing invite link (the old one stops working; anyone who joined stays). For the group the label made for one of its bands, give bandId (that group has one link). Otherwise it's one of this group's links: gives says which.",
+  params: z.object({ bandId: id.optional(), gives: roleChoice.optional() }),
   needs: "admin",
   action: (fd) => resetInviteLink(fd),
+  fields: (_ctx, a) => ({ bandId: a.bandId, gives: a.gives ?? "member" }),
 });
 
 const resetBandsLinkTool = actionTool({

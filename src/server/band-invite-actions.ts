@@ -21,7 +21,7 @@ import {
   usableInviteLink,
 } from "./band-invite-links";
 import { joinLabel } from "./label-join";
-import { assignMemberType } from "./member-types";
+import { assignMemberType, parseRoleChoice } from "./member-types";
 import { applyMyDetails } from "./people";
 import { syncJoinedPeople, syncOwnPeople } from "./own-books";
 import { ownBand } from "./data";
@@ -49,11 +49,26 @@ function refresh(bandId: number) {
   revalidatePath(`/bands/${bandId}`);
 }
 
-/** Reset the band's standing invite link: the old one stops working. */
+/**
+ * Reset one standing invite link: the old one stops working, the group's other links stay. Which
+ * group's: a band account the label made (its own, or the label's for one of its bands, `bandId`),
+ * else the admin's own group. Which link: `gives` ("admin", "member" or "type:<id>", as a role
+ * choice); a band account the label made has just its one plain link.
+ */
 export async function resetInviteLink(fd: FormData) {
-  const a = await bandAccountFor(fd);
-  await resetStandingLink(a.bandOrgId, a.userId);
-  refresh(a.bandId);
+  const ctx = await requireAdmin();
+  const gives = String(fd.get("gives") ?? "member");
+  if (ctx.managedBy || fd.get("bandId")) {
+    const a = await bandAccountFor(fd);
+    if (gives !== "member") throw new Error("A band’s group from the label has just one invite link.");
+    await resetStandingLink(a.bandOrgId, a.userId);
+    refresh(a.bandId);
+    return;
+  }
+  const choice = await parseRoleChoice(ctx.orgId, gives);
+  await resetStandingLink(ctx.orgId, ctx.user.id, { memberTypeId: choice.memberTypeId, admin: choice.role === "admin" });
+  revalidatePath("/settings");
+  revalidatePath("/directory");
 }
 
 /**

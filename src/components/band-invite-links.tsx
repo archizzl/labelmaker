@@ -26,15 +26,17 @@ export async function StandingInviteLink({
   admin?: boolean;
 }) {
   const id = await standingInviteLink(bandOrgId, createdBy, { memberTypeId, admin });
+  // Which link to reset, as a role choice (src/server/member-types.ts).
+  const gives = admin ? "admin" : memberTypeId !== null ? `type:${memberTypeId}` : "member";
   return (
     <span className="flex flex-wrap items-center gap-2">
       <CopyButton text={`${base()}/join/${id}`} label="Copy invite link" />
-      {/* Hidden while Reset link is switched off, so it leaves no gap: take "hidden" off with it. */}
-      <form action={resetInviteLink} className="hidden">
+      <form action={resetInviteLink}>
         {bandId !== undefined && <input type="hidden" name="bandId" value={bandId} />}
-        {/* <SubmitButton variant="ghost" size="sm" confirm="Reset the invite link? The old one stops working; anyone who already joined stays.">
+        <input type="hidden" name="gives" value={gives} />
+        <SubmitButton variant="ghost" size="sm" confirm="Reset the invite link? The old one stops working; anyone who already joined stays.">
           Reset link
-        </SubmitButton> */}
+        </SubmitButton>
       </form>
     </span>
   );
