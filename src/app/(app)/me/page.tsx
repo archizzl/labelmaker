@@ -1,13 +1,13 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { EarningsStats } from "@/components/earnings-stats";
 import { connection } from "next/server";
-import { SubmitButton } from "@/components/client";
+import { ActionForm, SubmitButton } from "@/components/client";
 import { SalesSection } from "@/components/sales-section";
 import { ExpenseTable, SubmitReceiptForm } from "@/components/receipts";
 import Link from "next/link";
 import { Badge, buttonClass, Callout, Card, Disclosure, Empty, Money, PageHeader } from "@/components/ui";
 import { db, schema } from "@/db";
-import { linkMyself } from "@/server/account-actions";
+import { linkMyselfForm } from "@/server/account-actions";
 import { type Context, getContext, ownBooksOf } from "@/server/context";
 import { projectsEnabled } from "@/server/features";
 import { computePayoutPeriod, nameMaps, ownBand } from "@/server/data";
@@ -52,7 +52,7 @@ export default async function MyEarningsPage({ searchParams }: PageProps<"/me">)
             {!ctx.isAdmin && " Ask an admin of this group to invite you as the right person."}
           </p>
           {ctx.isAdmin && unlinked.length > 0 && (
-            <form action={linkMyself} className="mt-4 flex flex-wrap items-center gap-2">
+            <ActionForm action={linkMyselfForm} className="mt-4 flex flex-wrap items-center gap-2">
               <select name="personId" required defaultValue="" className="!w-64" aria-label="Which person are you">
                 <option value="" disabled>
                   I’m…
@@ -64,7 +64,7 @@ export default async function MyEarningsPage({ searchParams }: PageProps<"/me">)
                 ))}
               </select>
               <SubmitButton variant="secondary">That’s me</SubmitButton>
-            </form>
+            </ActionForm>
           )}
         </Card>
       </>

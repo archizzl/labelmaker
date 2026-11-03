@@ -8,6 +8,7 @@ import { db, schema } from "@/db";
 import { safePath } from "@/lib/safe-path";
 import { slugify } from "@/lib/slug";
 import { auth } from "./auth";
+import { asFormResult } from "./form-result";
 import { accountContext, accountsFor, type Context, getSession, mayDeleteGroup, requireAdmin, VIEW_AS_COOKIE } from "./context";
 import { joinedLabel, labelReachNote, renameJoinedBand, syncJoinedPeople } from "./own-books";
 import { AREAS, type Area, HIDDEN_AREAS, normalizeBandAreas, normalizePermissions } from "@/lib/permissions";
@@ -395,6 +396,11 @@ export async function deleteMemberType(fd: FormData) {
   revalidatePath("/", "layout");
 }
 
+/** deleteMemberType for its form: errors shown beside it. */
+export async function deleteMemberTypeForm(_: FormState, fd: FormData): Promise<FormState> {
+  return asFormResult(() => deleteMemberType(fd));
+}
+
 export async function removeAccountMember(fd: FormData) {
   const { orgId } = await requireAdmin();
   const memberId = str(fd, "memberId");
@@ -414,6 +420,11 @@ export async function removeAccountMember(fd: FormData) {
   revalidatePath("/settings");
 }
 
+/** removeAccountMember for its forms: errors shown beside them. */
+export async function removeAccountMemberForm(_: FormState, fd: FormData): Promise<FormState> {
+  return asFormResult(() => removeAccountMember(fd));
+}
+
 /** Link your login to a payee record in this account (admins, for themselves). */
 export async function linkMyself(fd: FormData) {
   const ctx = await requireAdmin();
@@ -429,6 +440,11 @@ export async function linkMyself(fd: FormData) {
       .where(and(eq(schema.people.orgId, ctx.orgId), eq(schema.people.id, personId), isNull(schema.people.userId)));
   }
   revalidatePath("/", "layout");
+}
+
+/** linkMyself for its form: errors shown beside it. */
+export async function linkMyselfForm(_: FormState, fd: FormData): Promise<FormState> {
+  return asFormResult(() => linkMyself(fd));
 }
 
 /**

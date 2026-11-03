@@ -1,9 +1,10 @@
+import { ActionForm } from "./client";
 import Link from "next/link";
 import { readyToShip } from "@/lib/merch-orders";
 import type { Context } from "@/server/context";
 import { loadOpenOrders } from "@/server/merch-orders";
 import { hiddenWithin } from "@/server/nav-badges";
-import { hideOrdersNotice } from "@/server/order-actions";
+import { hideOrdersNoticeForm } from "@/server/order-actions";
 import { Callout } from "./ui";
 
 /** Hidden for this long; after that it comes back if orders are still waiting. */
@@ -28,7 +29,7 @@ export async function OrdersNotice({ ctx }: { ctx: Context }) {
           {oldest > 0 && `, the oldest for ${oldest} day${oldest === 1 ? "" : "s"}`}. <Link href="/orders">See orders</Link>
         </span>
         {!ctx.viewingAs && (
-          <form action={hideOrdersNotice}>
+          <ActionForm action={hideOrdersNoticeForm}>
             <button
               type="submit"
               aria-label="Hide this for a week"
@@ -36,7 +37,7 @@ export async function OrdersNotice({ ctx }: { ctx: Context }) {
             >
               ×
             </button>
-          </form>
+          </ActionForm>
         )}
       </div>
     </Callout>

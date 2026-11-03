@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db, schema } from "@/db";
 import { parseFanCsv } from "@/lib/fan-csv";
 import { requireAccess } from "./context";
+import { asFormResult } from "./form-result";
 import { type FanImportPlan, importFans, planFanImport } from "./fans";
 
 /*
@@ -64,4 +65,9 @@ export async function deleteFans(fd: FormData) {
     .filter((n) => Number.isInteger(n) && n > 0);
   if (ids.length) await db.delete(schema.fans).where(and(eq(schema.fans.orgId, orgId), inArray(schema.fans.id, ids)));
   revalidatePath("/fans");
+}
+
+/** deleteFans for its form: errors shown beside it. */
+export async function deleteFansForm(_: FanImportState, fd: FormData): Promise<FanImportState> {
+  return asFormResult(() => deleteFans(fd));
 }

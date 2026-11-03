@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { SubmitButton } from "@/components/client";
+import { ActionForm, SubmitButton } from "@/components/client";
 import { Badge } from "@/components/ui";
-import { removeAccountMember } from "@/server/account-actions";
+import { removeAccountMemberForm } from "@/server/account-actions";
 import { RolePicker } from "./role-picker";
 
 export type AccountLogin = {
@@ -33,12 +33,12 @@ export function LoginControls({
   return (
     <span className="flex flex-wrap items-center gap-2">
       <RolePicker memberId={member.id} name={user.name} saved={saved} options={options} />
-      <form action={removeAccountMember}>
+      <ActionForm action={removeAccountMemberForm}>
         <input type="hidden" name="memberId" value={member.id} />
         <SubmitButton variant="danger-ghost" size="sm" confirm={`Remove ${user.name}'s access? Their payout history stays.`}>
           Remove access
         </SubmitButton>
-      </form>
+      </ActionForm>
     </span>
   );
 }

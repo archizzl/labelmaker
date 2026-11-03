@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { ChartBoard } from "@/components/chart-board";
-import { SubmitButton } from "@/components/client";
+import { ActionForm, SubmitButton } from "@/components/client";
 import { ProjectForm } from "@/components/project-form";
 import { ExpenseForm, ExpenseTable } from "@/components/receipts";
 import { Badge, Callout, Card, Disclosure, Empty, Money, PageHeader, Stat } from "@/components/ui";
@@ -15,7 +15,7 @@ import { requireAdmin } from "@/server/context";
 import { requireProjects } from "@/server/features";
 import { nameMaps } from "@/server/data";
 import { expenseFileList } from "@/server/expenses";
-import { deleteProject } from "@/server/project-actions";
+import { deleteProjectForm } from "@/server/project-actions";
 import { accountProjects, projectNumbers } from "@/server/projects";
 import { formatDate } from "@/lib/dates";
 
@@ -86,12 +86,12 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
           </>
         }
         actions={
-          <form action={deleteProject}>
+          <ActionForm action={deleteProjectForm}>
             <input type="hidden" name="id" value={id} />
             <SubmitButton variant="danger" size="sm" confirm={`Delete “${project.name}”? Its expenses stay, just without a project.`}>
               Delete project
             </SubmitButton>
-          </form>
+          </ActionForm>
         }
       />
 

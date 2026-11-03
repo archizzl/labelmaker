@@ -3,7 +3,7 @@ import { Card, Disclosure, Empty, Field, Money, Stat } from "@/components/ui";
 import { can } from "@/lib/permissions";
 import { db, schema } from "@/db";
 import { centsToDecimal } from "@/lib/money";
-import { deleteLabelTransfer, saveLabelTransfer } from "@/server/actions";
+import { deleteLabelTransferForm, saveLabelTransfer } from "@/server/actions";
 import { eq } from "drizzle-orm";
 import { getContext } from "@/server/context";
 import { labelFunds, nameMaps } from "@/server/data";
@@ -224,12 +224,12 @@ export async function LabelFunds({ bandId, showTotals = true }: { bandId?: numbe
                 </summary>
                 <div className="mb-3 space-y-4 border border-border bg-surface-2 p-4">
                   <TransferForm transfer={t} sources={sources} />
-                  <form action={deleteLabelTransfer} className="border-t border-border pt-4">
+                  <ActionForm action={deleteLabelTransferForm} className="border-t border-border pt-4">
                     <input type="hidden" name="id" value={t.id} />
                     <SubmitButton variant="danger" size="sm" confirm={`Delete the ${centsToDecimal(t.amountCents)} ${t.currency} sent to ${t.recipient}?`}>
                       Delete
                     </SubmitButton>
-                  </form>
+                  </ActionForm>
                 </div>
               </details>
             );

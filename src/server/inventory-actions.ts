@@ -7,6 +7,7 @@ import { applyMove, catalogCandidates } from "@/lib/inventory";
 import { parseCents } from "@/lib/money";
 import { bandScope } from "@/lib/permissions";
 import { type Context, requireAccess } from "./context";
+import { asFormResult } from "./form-result";
 import { deleteMerchPhoto, merchPhotoUrl, ownPhotoId, photoFrom, saveMerchPhoto } from "./merch-photos";
 
 /*
@@ -223,12 +224,22 @@ export async function archiveInventoryItem(fd: FormData) {
   done();
 }
 
+/** archiveInventoryItem for its form: errors shown beside it. */
+export async function archiveInventoryItemForm(_: InventoryState, fd: FormData): Promise<InventoryState> {
+  return asFormResult(() => archiveInventoryItem(fd));
+}
+
 /** Put a removed item back on the list. */
 export async function restoreInventoryItem(fd: FormData) {
   const ctx = await requireAccess("inventory", "edit");
   const item = await ownItem(ctx, optInt(fd, "id") ?? -1);
   await db.update(inventoryItems).set({ archived: false }).where(eq(inventoryItems.id, item.id));
   done();
+}
+
+/** restoreInventoryItem for its form: errors shown beside it. */
+export async function restoreInventoryItemForm(_: InventoryState, fd: FormData): Promise<InventoryState> {
+  return asFormResult(() => restoreInventoryItem(fd));
 }
 
 /** Add every format and merch item from the catalog that isn't tracked yet (counts start at 0). */

@@ -8,6 +8,7 @@ import { PICKUP_MESSAGE } from "@/lib/merch-orders";
 import { bandScope, can, inBandScope } from "@/lib/permissions";
 import { bandcampCredentials, markMerchShipped } from "./bandcamp-api";
 import { getContext, requireAccess } from "./context";
+import { asFormResult } from "./form-result";
 import { markSeen } from "./nav-badges";
 import { forgetOpenOrders, loadOpenOrders } from "./merch-orders";
 import { readShipmentCosts, recordShipmentCosts } from "./shipment-costs";
@@ -163,4 +164,9 @@ export async function savePickupNote(fd: FormData) {
 export async function hideOrdersNotice() {
   await markSeen(await getContext(), "orders_notice");
   revalidatePath("/");
+}
+
+/** hideOrdersNotice for its form: errors shown beside it. */
+export async function hideOrdersNoticeForm(_: ShipState, _fd: FormData): Promise<ShipState> {
+  return asFormResult(() => hideOrdersNotice());
 }

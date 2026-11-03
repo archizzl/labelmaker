@@ -9,7 +9,7 @@ import { InventoryCounter } from "@/components/inventory-counter";
 import { formatCents } from "@/lib/money";
 import { bandScope, can } from "@/lib/permissions";
 import { requireAccess } from "@/server/context";
-import { addFromCatalog, archiveInventoryItem, restoreInventoryItem, saveInventoryItem } from "@/server/inventory-actions";
+import { addFromCatalog, archiveInventoryItemForm, restoreInventoryItemForm, saveInventoryItem } from "@/server/inventory-actions";
 import { merchPhotoUrl, ownPhotoId } from "@/server/merch-photos";
 import { InventoryPhoto } from "@/components/inventory-photo";
 import { formatDate } from "@/lib/dates";
@@ -148,12 +148,12 @@ export default async function InventoryPage({ searchParams }: PageProps<"/invent
                   {itemLabel(i)}
                   {i.bandId && <span className="text-muted"> · {bandName.get(i.bandId)}</span>}
                 </span>
-                <form action={restoreInventoryItem}>
+                <ActionForm action={restoreInventoryItemForm}>
                   <input type="hidden" name="id" value={i.id} />
                   <SubmitButton variant="ghost" size="sm">
                     Put back
                   </SubmitButton>
-                </form>
+                </ActionForm>
               </li>
             ))}
           </ul>
@@ -218,12 +218,12 @@ function ItemTable({
                 {canEdit && (
                   <>
                     <ItemForm item={i} bands={bands} catalog={catalog} ownBandsOnly={ownBandsOnly} photo={photoOf?.(i) ?? null} />
-                    <form action={archiveInventoryItem}>
+                    <ActionForm action={archiveInventoryItemForm}>
                       <input type="hidden" name="id" value={i.id} />
                       <SubmitButton variant="ghost" size="sm" confirm={`Remove ${itemLabel(i)} from the inventory? Its history is kept.`}>
                         Remove from inventory
                       </SubmitButton>
-                    </form>
+                    </ActionForm>
                   </>
                 )}
                 <div className={canEdit ? "border-t border-border pt-4" : ""}>

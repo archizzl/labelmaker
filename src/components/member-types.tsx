@@ -4,7 +4,7 @@ import { ActionForm, SaveWhenChanged, SubmitButton } from "@/components/client";
 import { Card, Disclosure, Empty, Field } from "@/components/ui";
 import { db, schema } from "@/db";
 import { type Area, normalizeBandAreas, normalizePermissions, SHOWN_AREAS } from "@/lib/permissions";
-import { deleteMemberType, saveMemberType } from "@/server/account-actions";
+import { deleteMemberTypeForm, saveMemberType } from "@/server/account-actions";
 import { listMemberTypes, memberTypeOf } from "@/server/member-types";
 
 /**
@@ -55,7 +55,7 @@ export async function MemberTypesCard({ orgId }: { orgId: string }) {
                     </summary>
                     <div className="mb-3 space-y-4 border border-border bg-surface-2 p-4">
                       <MemberTypeForm id={t.id} name={t.name} permissions={permissions} bandAreas={bandAreas} />
-                      <form action={deleteMemberType} className="border-t border-border pt-4">
+                      <ActionForm action={deleteMemberTypeForm} className="border-t border-border pt-4">
                         <input type="hidden" name="id" value={t.id} />
                         <SubmitButton
                           variant="danger"
@@ -64,7 +64,7 @@ export async function MemberTypesCard({ orgId }: { orgId: string }) {
                         >
                           Delete
                         </SubmitButton>
-                      </form>
+                      </ActionForm>
                     </div>
                   </details>
                 </li>

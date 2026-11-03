@@ -2,7 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { connection } from "next/server";
 import { ChartBoard } from "@/components/chart-board";
-import { SubmitButton } from "@/components/client";
+import { ActionForm, SubmitButton } from "@/components/client";
 import { FanImportForm } from "@/components/fan-import-form";
 import { buttonClass, Card, Empty, PageHeader, Stat } from "@/components/ui";
 import { db, schema } from "@/db";
@@ -10,7 +10,7 @@ import { type BoardChart, breakdownChart, buildTrend, seriesChart } from "@/lib/
 import { formatCents } from "@/lib/money";
 import { loadLayout } from "@/server/chart-layouts";
 import { requireAccess } from "@/server/context";
-import { deleteFans } from "@/server/fan-actions";
+import { deleteFansForm } from "@/server/fan-actions";
 import { type FanFilter, fanStats, listFans, type Purchase } from "@/server/fans";
 import { formatDate } from "@/lib/dates";
 
@@ -203,12 +203,12 @@ export default async function FansPage({ searchParams }: PageProps<"/fans">) {
                             <Bought purchases={f.purchases} bandName={bandName} />
                           </td>
                           <td className="text-right">
-                            <form action={deleteFans}>
+                            <ActionForm action={deleteFansForm}>
                               <input type="hidden" name="id" value={f.id} />
                               <SubmitButton variant="danger-ghost" size="sm" confirm={`Remove ${f.email} from the list? This deletes everything stored about them.`}>
                                 Remove
                               </SubmitButton>
-                            </form>
+                            </ActionForm>
                           </td>
                         </tr>
                       ))}

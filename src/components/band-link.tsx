@@ -1,7 +1,7 @@
-import { SubmitButton } from "@/components/client";
+import { ActionForm, SubmitButton } from "@/components/client";
 import { Card } from "@/components/ui";
 import { subAccountFor } from "@/server/band-accounts";
-import { unlink } from "@/server/link-actions";
+import { unlinkForm } from "@/server/link-actions";
 import type { bandLinksFor } from "@/server/links";
 import { ViewAsButton } from "./viewing-as";
 import { StandingInviteLink } from "./band-invite-links";
@@ -16,12 +16,12 @@ export function LinkedBandAccount({ band, row }: { band: { name: string }; row: 
       <Card title="Their group">
         <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
           <span>Linked to their own group (“{row.bandAccount?.name}”), which can see this band’s books.</span>
-          <form action={unlink} className="ml-auto">
+          <ActionForm action={unlinkForm} className="ml-auto">
             <input type="hidden" name="id" value={row.link.id} />
             <SubmitButton variant="danger-ghost" size="sm" confirm={`Unlink ${row.bandAccount?.name}? They'll no longer see ${band.name}'s books.`}>
               Unlink
             </SubmitButton>
-          </form>
+          </ActionForm>
         </div>
       </Card>
     </div>
