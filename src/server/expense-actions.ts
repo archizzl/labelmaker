@@ -305,6 +305,11 @@ export async function setReimbursed(fd: FormData) {
   done();
 }
 
+/** setReimbursed for its form: errors shown beside it. */
+export async function setReimbursedForm(_: ExpenseState, fd: FormData): Promise<ExpenseState> {
+  return asFormResult(() => setReimbursed(fd));
+}
+
 /** Admins (and members who can change receipts) can delete any expense; members can withdraw their own while it's still pending. */
 export async function deleteExpense(fd: FormData) {
   // A band account the label made: one in its own books, or one it sent the label.
@@ -331,6 +336,11 @@ export async function deleteExpense(fd: FormData) {
   done();
 }
 
+/** deleteExpense for its form: errors shown beside it. */
+export async function deleteExpenseForm(_: ExpenseState, fd: FormData): Promise<ExpenseState> {
+  return asFormResult(() => deleteExpense(fd));
+}
+
 export async function deleteExpenseFile(fd: FormData) {
   const ctx = await requireAccess("receipts", "edit");
   const { orgId } = ctx;
@@ -347,6 +357,11 @@ export async function deleteExpenseFile(fd: FormData) {
     .returning({ storageKey: expenseFiles.storageKey });
   await discardStoredFiles(removed);
   done();
+}
+
+/** deleteExpenseFile for its form: errors shown beside it. */
+export async function deleteExpenseFileForm(_: ExpenseState, fd: FormData): Promise<ExpenseState> {
+  return asFormResult(() => deleteExpenseFile(fd));
 }
 
 /**

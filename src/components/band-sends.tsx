@@ -2,7 +2,7 @@ import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { ActionForm, SubmitButton } from "@/components/client";
 import { Card, Disclosure, Field, Money, MoneyList } from "@/components/ui";
 import { db, schema } from "@/db";
-import { deletePaymentToLabel, markBandPayout, recordPaymentToLabel } from "@/server/band-payout-actions";
+import { deletePaymentToLabelForm, markBandPayoutForm, recordPaymentToLabel } from "@/server/band-payout-actions";
 import { labelFunds } from "@/server/data";
 import type { SalesLabel } from "@/server/sales-browse";
 import { formatDate } from "@/lib/dates";
@@ -55,14 +55,14 @@ export async function BandSends({ label, editable }: { label: SalesLabel; editab
               <Money cents={l.cents} currency={l.currency} />
               <span className="text-xs text-muted">{l.period}</span>
               {editable && (
-                <form action={markBandPayout} className="ml-auto flex items-center gap-2">
+                <ActionForm action={markBandPayoutForm} className="ml-auto flex items-center gap-2">
                   <input type="hidden" name="id" value={l.id} />
                   <input type="hidden" name="status" value="paid" />
                   <input name="reference" placeholder="Reference (optional)" className="!w-40 !py-1 !text-xs" />
                   <SubmitButton variant="secondary" size="sm">
                     Mark paid
                   </SubmitButton>
-                </form>
+                </ActionForm>
               )}
             </li>
           ))}
@@ -76,13 +76,13 @@ export async function BandSends({ label, editable }: { label: SalesLabel; editab
               <span>{l.name}</span>
               <Money cents={l.cents} currency={l.currency} />
               <span className="text-xs text-muted">{l.period}</span>
-              <form action={markBandPayout} className="ml-auto">
+              <ActionForm action={markBandPayoutForm} className="ml-auto">
                 <input type="hidden" name="id" value={l.id} />
                 <input type="hidden" name="status" value="pending" />
                 <SubmitButton variant="ghost" size="sm" confirm={`Mark ${l.name}’s payment as not paid yet?`}>
                   Undo
                 </SubmitButton>
-              </form>
+              </ActionForm>
             </li>
           ))}
         </ul>
@@ -96,12 +96,12 @@ export async function BandSends({ label, editable }: { label: SalesLabel; editab
               <Money cents={r.amountCents} currency={r.currency} />
               {r.note && <span className="text-xs text-muted">{r.note}</span>}
               {editable && (
-                <form action={deletePaymentToLabel} className="ml-auto">
+                <ActionForm action={deletePaymentToLabelForm} className="ml-auto">
                   <input type="hidden" name="id" value={r.id} />
                   <SubmitButton variant="danger-ghost" size="sm" confirm={`Delete this record of money sent to ${label.name}?`}>
                     Delete
                   </SubmitButton>
-                </form>
+                </ActionForm>
               )}
             </li>
           ))}

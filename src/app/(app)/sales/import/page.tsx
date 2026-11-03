@@ -1,11 +1,11 @@
 import { asc, desc, eq } from "drizzle-orm";
 import { LocalTime } from "@/components/local-time";
 import { connection } from "next/server";
-import { Fading, SubmitButton } from "@/components/client";
+import { ActionForm, Fading, SubmitButton } from "@/components/client";
 import { ImportForm } from "@/components/import-form";
 import { Badge, Callout, Card, Empty, MoneyList, PageHeader } from "@/components/ui";
 import { db, schema } from "@/db";
-import { addBandFromArtist, assignArtistToBand, assignRouting, createReleaseFromSales, deleteImport, deleteRoutingOverride, rerouteAction } from "@/server/actions";
+import { addBandFromArtistForm, assignArtistToBandForm, assignRoutingForm, createReleaseFromSalesForm, deleteImportForm, deleteRoutingOverrideForm, rerouteForm } from "@/server/actions";
 import { bandcampSubdomain } from "@/lib/applications";
 import { bandScope, can } from "@/lib/permissions";
 import { MANUAL_IMPORT } from "@/lib/manual-sales";
@@ -72,13 +72,13 @@ function Group({ g, mode, catalog }: { g: Awaited<ReturnType<typeof unroutedGrou
       </div>
       {g.itemUrl && <div className="mt-1 font-mono text-xs break-all text-muted">{g.itemUrl}</div>}
       <div className="mt-3 flex flex-wrap gap-3">
-        <form action={assignRouting} className="flex flex-wrap gap-2">
+        <ActionForm action={assignRoutingForm} className="flex flex-wrap gap-2">
           <input type="hidden" name="key" value={g.key} />
           <TargetSelect bandId={mode === "no_release" ? g.bandId : null} catalog={catalog} />
           <SubmitButton size="sm">Assign &amp; remember</SubmitButton>
-        </form>
+        </ActionForm>
         {bands.length > 0 && (g.category === "album" || g.category === "track" || mode === "no_release") && (
-          <form action={createReleaseFromSales} className="flex flex-wrap gap-2">
+          <ActionForm action={createReleaseFromSalesForm} className="flex flex-wrap gap-2">
             <input type="hidden" name="key" value={g.key} />
             {/* (Its band already, or the only one there is: nothing to choose.) */}
             {(mode === "no_release" && g.bandId) || bands.length === 1 ? (
@@ -98,7 +98,7 @@ function Group({ g, mode, catalog }: { g: Awaited<ReturnType<typeof unroutedGrou
             <SubmitButton size="sm" variant="secondary">
               Create {g.category === "track" ? "track" : "release"} from this
             </SubmitButton>
-          </form>
+          </ActionForm>
         )}
       </div>
     </li>
@@ -209,14 +209,14 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
                 {a.compilation && <p className="mt-1 text-sm text-muted">Looks like a split or compilation: pick a band for each item below.</p>}
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   {!a.compilation && a.artist && canAddBands && (
-                    <form action={addBandFromArtist}>
+                    <ActionForm action={addBandFromArtistForm}>
                       <input type="hidden" name="artist" value={a.artist} />
                       <input type="hidden" name="subdomain" value={a.subdomain ?? ""} />
                       <SubmitButton size="sm">Add as a band</SubmitButton>
-                    </form>
+                    </ActionForm>
                   )}
                   {!a.compilation && bands.length > 0 && (
-                    <form action={assignArtistToBand} className="flex flex-wrap items-center gap-2">
+                    <ActionForm action={assignArtistToBandForm} className="flex flex-wrap items-center gap-2">
                       <input type="hidden" name="artist" value={a.artist} />
                       {a.groups.map((g) => (
                         <input key={g.key} type="hidden" name="key" value={g.key} />
@@ -238,7 +238,7 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
                       <SubmitButton size="sm" variant="secondary">
                         {bands.length === 1 ? `They’re ${bands[0].name}` : "Assign all"}
                       </SubmitButton>
-                    </form>
+                    </ActionForm>
                   )}
                 </div>
                 <details className="mt-3" open={a.compilation}>
@@ -275,11 +275,11 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
         <Card
           title={<>Remembered matches <Badge>{remembered.length}</Badge></>}
           actions={
-            <form action={rerouteAction}>
+            <ActionForm action={rerouteForm}>
               <SubmitButton variant="secondary" size="sm">
                 Re-match all sales
               </SubmitButton>
-            </form>
+            </ActionForm>
           }
         >
           <details>
@@ -305,12 +305,12 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
                           {o.trackId && ` › ${names.track.get(o.trackId)}`}
                         </td>
                         <td className="text-right">
-                          <form action={deleteRoutingOverride}>
+                          <ActionForm action={deleteRoutingOverrideForm}>
                             <input type="hidden" name="id" value={o.id} />
                             <SubmitButton variant="danger-ghost" size="sm" confirm={`Forget this match? Sales matching ${match} are matched again by their artist and address.`}>
                               Forget
                             </SubmitButton>
-                          </form>
+                          </ActionForm>
                         </td>
                       </tr>
                     );
@@ -346,12 +346,12 @@ export default async function ImportPage({ searchParams }: PageProps<"/sales/imp
                       <td className="num">{h.addedCount}</td>
                       <td className="num">{h.duplicateCount}</td>
                       <td className="text-right">
-                        <form action={deleteImport}>
+                        <ActionForm action={deleteImportForm}>
                           <input type="hidden" name="id" value={h.id} />
                           <SubmitButton variant="danger-ghost" size="sm" confirm={`Remove ${h.addedCount === 1 ? "the 1 sale" : `the ${h.addedCount} sales`} from this import? Finalized payouts are not affected.`}>
                             Undo import
                           </SubmitButton>
-                        </form>
+                        </ActionForm>
                       </td>
                     </tr>
                   ))}
