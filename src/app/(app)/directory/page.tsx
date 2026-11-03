@@ -506,7 +506,7 @@ function PersonRow({
         </span>
       </summary>
       <div className="mb-3 space-y-4 border border-border bg-surface-2 p-4">
-        <PersonFields person={p} labelNotes={!ctx.lens} />
+        <PersonFields person={p} labelOnly={!ctx.lens} />
         {signIn && login && (
           <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4 text-sm">
             <span className="text-muted">Signs in with {login}</span>
@@ -653,30 +653,35 @@ function BandRoles({ person: p, membership: m, canRemove }: { person: Person; me
   );
 }
 
-function PersonFields({ person, labelNotes = true }: { person?: Person; labelNotes?: boolean }) {
+/**
+ * A person's details. `labelOnly`: the label's own notes about them, and where they're paid, which
+ * a band's own account doesn't change (src/server/actions.ts, payDetails).
+ */
+function PersonFields({ person, labelOnly = true }: { person?: Person; labelOnly?: boolean }) {
   return (
     <ActionForm action={savePersonForm} className="grid gap-4 sm:grid-cols-2">
       {person && <input type="hidden" name="id" value={person.id} />}
       <Field label="Name">
         <input name="name" required defaultValue={person?.name} />
       </Field>
-      <Field label="PayPal email">
-        <input name="email" type="email" defaultValue={person?.email ?? ""} />
-      </Field>
-      <Field label="PayPal.me handle">
-        <input name="paypalMe" defaultValue={person?.paypalMe ?? ""} />
-      </Field>
-      <Field label="Venmo username" hint="US only.">
-        <input name="venmo" defaultValue={person?.venmo ?? ""} placeholder="@yourname" />
-      </Field>
-      <Field label="Cash App $cashtag">
-        <input name="cashtag" defaultValue={person?.cashtag ?? ""} placeholder="$yourname" />
-      </Field>
-      {/* The label's own notes about someone: not for a band's own account. */}
-      {labelNotes && (
-        <Field label="Notes">
-          <input name="notes" defaultValue={person?.notes ?? ""} />
-        </Field>
+      {labelOnly && (
+        <>
+          <Field label="PayPal email">
+            <input name="email" type="email" defaultValue={person?.email ?? ""} />
+          </Field>
+          <Field label="PayPal.me handle">
+            <input name="paypalMe" defaultValue={person?.paypalMe ?? ""} />
+          </Field>
+          <Field label="Venmo username" hint="US only.">
+            <input name="venmo" defaultValue={person?.venmo ?? ""} placeholder="@yourname" />
+          </Field>
+          <Field label="Cash App $cashtag">
+            <input name="cashtag" defaultValue={person?.cashtag ?? ""} placeholder="$yourname" />
+          </Field>
+          <Field label="Notes">
+            <input name="notes" defaultValue={person?.notes ?? ""} />
+          </Field>
+        </>
       )}
       <div className="sm:col-span-2">
         {person ? (

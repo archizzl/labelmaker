@@ -211,7 +211,7 @@ async function SubAccountSettings({ ctx }: { ctx: Context }) {
     <>
       <PageHeader title="Settings" subtitle={ctx.org.name} />
       {/* The same form the label has for the band, without the label's own notes. Who signs in is in the Directory. */}
-      {band && <BandSettingsCard band={band} settings={settings} api={tucked ? "tucked" : "shown"} />}
+      {band && <BandSettingsCard band={band} settings={settings} api={tucked ? "tucked" : "shown"} labelMatches={m.labelName} />}
       {bandcampApiOff() && (
         <Callout tone="neutral">
           The Bandcamp API is switched off on this copy (<code>BANDCAMP_API=off</code>), so it never takes the live site’s Bandcamp sign-in.
@@ -292,11 +292,14 @@ function BandSettingsCard({
   band,
   settings,
   api,
+  labelMatches,
 }: {
   band: typeof schema.bands.$inferSelect;
   settings: Settings | undefined;
   /** Bandcamp API access: its fields, the fields behind a link (the label's access covers the band), or none. */
   api: "shown" | "tucked" | false;
+  /** A band account the label made: the label that keeps what its sales are matched by (spellings, address). */
+  labelMatches?: string;
 }) {
   const apiFields = (
     <>
@@ -314,12 +317,20 @@ function BandSettingsCard({
         <Field label="Band name" hint="Exactly as it appears in Bandcamp's “artist” column.">
           <input name="name" required defaultValue={band.name} />
         </Field>
-        <Field label="Other artist spellings" hint="Comma-separated.">
-          <input name="aliases" defaultValue={band.aliases.join(", ")} />
-        </Field>
-        <Field label="Bandcamp address" hint={savedAddressProblem(settings?.bandcampUrl)}>
-          <input name="bandcampUrl" defaultValue={settings?.bandcampUrl ?? ""} placeholder="yourband.bandcamp.com" />
-        </Field>
+        {labelMatches ? (
+          <Field label="Bandcamp address" hint={`${labelMatches} changes this.`}>
+            <input value={settings?.bandcampUrl ?? ""} readOnly disabled />
+          </Field>
+        ) : (
+          <>
+            <Field label="Other artist spellings" hint="Comma-separated.">
+              <input name="aliases" defaultValue={band.aliases.join(", ")} />
+            </Field>
+            <Field label="Bandcamp address" hint={savedAddressProblem(settings?.bandcampUrl)}>
+              <input name="bandcampUrl" defaultValue={settings?.bandcampUrl ?? ""} placeholder="yourband.bandcamp.com" />
+            </Field>
+          </>
+        )}
         <Field label="Spotify">
           <input name="spotifyUrl" type="url" defaultValue={settings?.spotifyUrl ?? ""} />
         </Field>

@@ -86,6 +86,29 @@ function payHandles(fd: FormData) {
   };
 }
 
+const PAY_FIELDS = ["email", "paypalMe", "venmo", "cashtag"] as const;
+
+/**
+ * Where someone's payouts go (PayPal email, PayPal.me, Venmo, Cash App), from a form. A band's own
+ * account changes nobody's: that's the person's (on Account) and the label's. For it, nothing, and
+ * an error if the form tries to change them (Abel's tools send the current values back).
+ */
+async function payDetails(
+  access: { lens: boolean },
+  fd: FormData,
+  personId?: number | null,
+): Promise<Partial<Record<(typeof PAY_FIELDS)[number], string | null>>> {
+  const given = { email: optStr(fd, "email"), paypalMe: optStr(fd, "paypalMe"), ...payHandles(fd) };
+  if (!access.lens) return given;
+  const [now] = personId
+    ? await db.select({ email: people.email, paypalMe: people.paypalMe, venmo: people.venmo, cashtag: people.cashtag }).from(people).where(eq(people.id, personId))
+    : [];
+  if (PAY_FIELDS.some((k) => fd.has(k) && (given[k] ?? null) !== (now?.[k] ?? null))) {
+    throw new Error("Only the person (on their Account page) or the label can change where they’re paid.");
+  }
+  return {};
+}
+
 type OwnedTable = PgTable & { id: AnyPgColumn; orgId: AnyPgColumn };
 
 /**
@@ -174,21 +197,19 @@ export async function saveBand(fd: FormData) {
   const id = optInt(fd, "id");
   if (id) access.band(id);
   else access.labelWide();
+  const [was] = id ? await db.select({ name: bands.name, aliases: bands.aliases, urlPatterns: bands.urlPatterns }).from(bands).where(and(eq(bands.orgId, orgId), eq(bands.id, id))) : [];
   const values = {
     name: str(fd, "name"),
-    aliases: list(fd, "aliases"),
-    urlPatterns: list(fd, "urlPatterns"),
+    // What the label's sales are matched by: the label's to change, not the band's own account's.
+    aliases: access.lens ? [...(was?.aliases ?? [])] : list(fd, "aliases"),
+    urlPatterns: access.lens ? (was?.urlPatterns ?? []) : list(fd, "urlPatterns"),
     // The label's notes about the band: not the band's own account's to see or change.
     ...(access.lens ? {} : { notes: optStr(fd, "notes") }),
   };
   if (!values.name) throw new Error("Band name is required");
-  if (id && access.lens) {
-    // A band renaming itself keeps its old name as another spelling, so sales still find it.
-    const [before] = await db.select({ name: bands.name }).from(bands).where(and(eq(bands.orgId, orgId), eq(bands.id, id)));
-    if (before && before.name !== values.name && !values.aliases.includes(before.name)) values.aliases.push(before.name);
-  }
+  // A band renaming itself keeps its old name as another spelling, so sales still find it.
+  if (was && access.lens && was.name !== values.name && !values.aliases.includes(was.name)) values.aliases.push(was.name);
   let bandId = id;
-  const [was] = id ? await db.select({ urlPatterns: bands.urlPatterns }).from(bands).where(and(eq(bands.orgId, orgId), eq(bands.id, id))) : [];
   if (id) await db.update(bands).set(values).where(and(eq(bands.orgId, orgId), eq(bands.id, id)));
   else [{ id: bandId }] = await db.insert(bands).values({ ...values, orgId }).returning({ id: bands.id });
   // Its account from the label: made for a new band, renamed with it. A band that runs its own
@@ -243,11 +264,9 @@ export async function savePerson(fd: FormData) {
   const id = optInt(fd, "id");
   if (id) await access.person(id);
   else access.labelWide();
-  const values = {
+  const values: { name: string; notes?: string | null } & Awaited<ReturnType<typeof payDetails>> = {
     name: str(fd, "name"),
-    email: optStr(fd, "email"),
-    paypalMe: optStr(fd, "paypalMe"),
-    ...payHandles(fd),
+    ...(await payDetails(access, fd, id)),
     // A band's own account doesn't see (or change) the label's notes about people.
     ...(access.lens ? {} : { notes: optStr(fd, "notes") }),
   };
@@ -259,7 +278,7 @@ export async function savePerson(fd: FormData) {
   } else {
     // Adding someone who's already here (same email, or same name without a conflicting email)
     // fills in their details instead of creating a duplicate.
-    const existing = await findExistingPerson(orgId, values.name, values.email);
+    const existing = await findExistingPerson(orgId, values.name, values.email ?? null);
     let personId = existing?.id;
     if (existing) {
       await db
@@ -343,25 +362,24 @@ export async function addMember(fd: FormData) {
   if (!personId) {
     const name = str(fd, "name");
     if (!name) throw new Error("Pick a person or enter a name");
+    const pay = await payDetails(access, fd);
     // Already in another band? Reuse them, so they get one combined payment.
-    const existing = await findExistingPerson(orgId, name, optStr(fd, "email"));
+    const existing = await findExistingPerson(orgId, name, pay.email ?? null);
     if (existing) {
       personId = existing.id;
-      const h = payHandles(fd);
-      await db
-        .update(people)
-        .set({
-          email: existing.email || optStr(fd, "email"),
-          paypalMe: existing.paypalMe || optStr(fd, "paypalMe"),
-          venmo: existing.venmo || h.venmo,
-          cashtag: existing.cashtag || h.cashtag,
-        })
-        .where(eq(people.id, existing.id));
+      if (!access.lens) {
+        await db
+          .update(people)
+          .set({
+            email: existing.email || pay.email,
+            paypalMe: existing.paypalMe || pay.paypalMe,
+            venmo: existing.venmo || pay.venmo,
+            cashtag: existing.cashtag || pay.cashtag,
+          })
+          .where(eq(people.id, existing.id));
+      }
     } else {
-      [{ id: personId }] = await db
-        .insert(people)
-        .values({ orgId, name, email: optStr(fd, "email"), paypalMe: optStr(fd, "paypalMe"), ...payHandles(fd) })
-        .returning({ id: people.id });
+      [{ id: personId }] = await db.insert(people).values({ orgId, name, ...pay }).returning({ id: people.id });
     }
   }
   await db
@@ -384,13 +402,15 @@ export async function updateMembership(fd: FormData) {
     .returning();
   if (m && fd.has("name")) {
     const name = str(fd, "name");
-    const details = { ...(name ? { name } : {}), email: optStr(fd, "email"), paypalMe: optStr(fd, "paypalMe"), ...payHandles(fd) };
-    await db
-      .update(people)
-      .set(details)
-      .where(and(eq(people.orgId, orgId), eq(people.id, m.personId)));
-    await shareDetails(m.personId, details);
-    await autoMergeByEmail(orgId);
+    const details = { ...(name ? { name } : {}), ...(await payDetails(access, fd, m.personId)) };
+    if (Object.keys(details).length) {
+      await db
+        .update(people)
+        .set(details)
+        .where(and(eq(people.orgId, orgId), eq(people.id, m.personId)));
+      await shareDetails(m.personId, details);
+      await autoMergeByEmail(orgId);
+    }
   }
   if (m) await syncOwnPeopleForBand(orgId, m.bandId);
   done();

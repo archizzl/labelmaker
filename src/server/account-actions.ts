@@ -272,14 +272,17 @@ export async function saveBandSettings(_: FormState, fd: FormData): Promise<Form
   if (!band) return { error: "This group has no band." };
   const name = str(fd, "name").slice(0, 200);
   if (!name) return { error: "Enter the band’s name." };
-  const aliases = str(fd, "aliases").split(",").map((a) => a.trim()).filter(Boolean);
+  // A band account the label made: what the label's sales are matched by (other spellings, the
+  // Bandcamp address) is the label's to change.
+  if (m) fd.delete("bandcampUrl");
+  const aliases = m ? [...band.aliases] : str(fd, "aliases").split(",").map((a) => a.trim()).filter(Boolean);
   // Renamed: the old name stays another spelling, so sales still find it.
   if (band.name !== name && !aliases.includes(band.name)) aliases.push(band.name);
   // Its Bandcamp address is also how its sales are matched to it (in place of the old address's).
   const [before] = await db.select({ url: schema.accountSettings.bandcampUrl }).from(schema.accountSettings).where(eq(schema.accountSettings.orgId, ctx.orgId));
   const oldPattern = bandcampPattern(before?.url ?? null);
   const newPattern = bandcampPattern(str(fd, "bandcampUrl") || null);
-  const urlPatterns = [...band.urlPatterns.filter((p) => p !== oldPattern && p !== newPattern), ...(newPattern ? [newPattern] : [])];
+  const urlPatterns = m ? band.urlPatterns : [...band.urlPatterns.filter((p) => p !== oldPattern && p !== newPattern), ...(newPattern ? [newPattern] : [])];
   const error = await writeAccountSettings(ctx.orgId, m, fd);
   if (error) return { error };
   await db.update(schema.bands).set({ name, aliases, urlPatterns }).where(eq(schema.bands.id, band.id));
