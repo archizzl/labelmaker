@@ -1033,6 +1033,8 @@ export const bandInviteLinks = pgTable(
     personId: integer("person_id").references(() => people.id, { onDelete: "set null" }),
     /** A label's link for one member type: whoever joins with it gets that type (deleting the type ends the link). */
     memberTypeId: integer("member_type_id").references(() => memberTypes.id, { onDelete: "cascade" }),
+    /** "admin": a group's link for admins, whoever joins with it is one (null: a member, or a band account's link). */
+    role: text("role"),
     /** A label's link for bands: a band's group joins the label with it, instead of a person joining (src/server/label-join.ts). */
     forBands: boolean("for_bands").notNull().default(false),
     createdByUserId: text("created_by_user_id").references(() => user.id, { onDelete: "set null" }),

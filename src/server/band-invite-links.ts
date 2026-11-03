@@ -18,19 +18,28 @@ export const stamp = (d: Date) => d.toISOString().slice(0, 19).replace("T", " ")
 /** A standing link never runs out (until it's reset). */
 const NEVER = "9999-12-31 00:00:00";
 
+/** Which of a group's standing links: a plain one (a member, or a band account's link), one member type's, or admins'. */
+export type LinkKind = { memberTypeId?: number | null; admin?: boolean };
+
+const kindIs = ({ memberTypeId = null, admin = false }: LinkKind) =>
+  and(
+    memberTypeId === null ? isNull(schema.bandInviteLinks.memberTypeId) : eq(schema.bandInviteLinks.memberTypeId, memberTypeId),
+    admin ? eq(schema.bandInviteLinks.role, "admin") : isNull(schema.bandInviteLinks.role),
+  );
+
 /**
  * A band account's standing invite link, the same every time: whoever has it can join, until the
  * link is reset. Made the first time it's needed (the newest open link, if there are older ones).
- * `memberTypeId`: a label's link for one of its member types, which whoever joins with it gets.
+ * `kind`: a group's link for one of its member types, or for admins, which whoever joins with it gets.
  */
-export async function standingInviteLink(bandOrgId: string, createdByUserId: string | null, memberTypeId: number | null = null): Promise<string> {
+export async function standingInviteLink(bandOrgId: string, createdByUserId: string | null, kind: LinkKind = {}): Promise<string> {
   const [open] = await db
     .select({ id: schema.bandInviteLinks.id })
     .from(schema.bandInviteLinks)
     .where(
       and(
         eq(schema.bandInviteLinks.orgId, bandOrgId),
-        memberTypeId === null ? isNull(schema.bandInviteLinks.memberTypeId) : eq(schema.bandInviteLinks.memberTypeId, memberTypeId),
+        kindIs(kind),
         eq(schema.bandInviteLinks.forBands, false),
         isNull(schema.bandInviteLinks.usedAt),
         isNull(schema.bandInviteLinks.canceledAt),
@@ -41,24 +50,27 @@ export async function standingInviteLink(bandOrgId: string, createdByUserId: str
     .limit(1);
   if (open) return open.id;
   const id = randomUUID();
-  await db.insert(schema.bandInviteLinks).values({ id, orgId: bandOrgId, createdByUserId, memberTypeId, expiresAt: NEVER });
+  await db
+    .insert(schema.bandInviteLinks)
+    .values({ id, orgId: bandOrgId, createdByUserId, memberTypeId: kind.memberTypeId ?? null, role: kind.admin ? "admin" : null, expiresAt: NEVER });
   return id;
 }
 
-/** Reset: every open link to the band's account stops working, and a new standing one replaces them. */
-export async function resetStandingLink(bandOrgId: string, createdByUserId: string | null) {
+/** Reset one of the group's standing links: its open links stop working, and a new one replaces them. The other kinds stay. */
+export async function resetStandingLink(bandOrgId: string, createdByUserId: string | null, kind: LinkKind = {}) {
   await db
     .update(schema.bandInviteLinks)
     .set({ canceledAt: stamp(new Date()) })
     .where(
       and(
         eq(schema.bandInviteLinks.orgId, bandOrgId),
+        kindIs(kind),
         eq(schema.bandInviteLinks.forBands, false),
         isNull(schema.bandInviteLinks.usedAt),
         isNull(schema.bandInviteLinks.canceledAt),
       ),
     );
-  return standingInviteLink(bandOrgId, createdByUserId);
+  return standingInviteLink(bandOrgId, createdByUserId, kind);
 }
 
 /**

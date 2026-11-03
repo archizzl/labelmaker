@@ -132,7 +132,7 @@ export default async function SettingsPage() {
       {kind === "label" && (
         <div id="who-can-sign-in" className="scroll-mt-4">
           <WhoCanSignIn ctx={ctx} />
-          <MemberTypesCard orgId={orgId} inviteLinksBy={ctx.user.id} />
+          <MemberTypesCard orgId={orgId} />
         </div>
       )}
 

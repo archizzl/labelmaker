@@ -101,9 +101,10 @@ export async function joinWithInviteLink(_: InviteLinkState, fd: FormData): Prom
     .from(schema.member)
     .where(and(eq(schema.member.organizationId, org.id), eq(schema.member.userId, userId)));
   if (!already) {
-    // The band's own login manages the account; everyone else's just uses it (a label's admins
-    // choose roles under Who can sign in).
-    await db.insert(schema.member).values({ id: randomUUID(), organizationId: org.id, userId, role: choice === "band" ? "admin" : "member", createdAt: new Date() });
+    // The band's own login manages the account, and so does whoever joins a group with its link
+    // for admins; everyone else's just uses it (admins choose roles under Who can sign in).
+    const role = choice === "band" || (found.forLabel && link.role === "admin") ? "admin" : "member";
+    await db.insert(schema.member).values({ id: randomUUID(), organizationId: org.id, userId, role, createdAt: new Date() });
     // A label's link for one of its member types: they start with it.
     if (link.memberTypeId && found.forLabel) await assignMemberType(org.id, userId, link.memberTypeId);
   }

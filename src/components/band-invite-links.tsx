@@ -6,23 +6,26 @@ import { bandsInviteLink, standingInviteLink } from "@/server/band-invite-links"
 const base = () => process.env.BETTER_AUTH_URL ?? "";
 
 /**
- * A band account's standing invite link (or a label's, for one of its member types), the same every
- * time: copy it to send. Reset makes the old one stop working. `bandId` when the label manages it for
- * one of its bands.
+ * A band account's standing invite link (or a group's, for admins or one of its member types), the
+ * same every time: copy it to send. Reset makes just this one stop working. `bandId` when the label
+ * manages it for one of its bands.
  */
 export async function StandingInviteLink({
   bandOrgId,
   createdBy = null,
   bandId,
   memberTypeId = null,
+  admin = false,
 }: {
   bandOrgId: string;
   createdBy?: string | null;
   bandId?: number;
-  /** A label's link for one of its member types. */
+  /** A group's link for one of its member types. */
   memberTypeId?: number | null;
+  /** A group's link for admins. */
+  admin?: boolean;
 }) {
-  const id = await standingInviteLink(bandOrgId, createdBy, memberTypeId);
+  const id = await standingInviteLink(bandOrgId, createdBy, { memberTypeId, admin });
   return (
     <span className="flex flex-wrap items-center gap-2">
       <CopyButton text={`${base()}/join/${id}`} label="Copy invite link" />
@@ -34,6 +37,31 @@ export async function StandingInviteLink({
         </SubmitButton> */}
       </form>
     </span>
+  );
+}
+
+/**
+ * A group's invite links (its admins, under Who can sign in): one for admins, one for members who
+ * see their own earnings, and one for each member type.
+ */
+export async function InviteLinks({ orgId, createdBy, types }: { orgId: string; createdBy: string; types: { id: number; name: string }[] }) {
+  const rows = [
+    { key: "admin", label: "Admin", link: <StandingInviteLink bandOrgId={orgId} createdBy={createdBy} admin /> },
+    { key: "member", label: "Member: their own earnings", link: <StandingInviteLink bandOrgId={orgId} createdBy={createdBy} /> },
+    ...types.map((t) => ({ key: `type:${t.id}`, label: t.name, link: <StandingInviteLink bandOrgId={orgId} createdBy={createdBy} memberTypeId={t.id} /> })),
+  ];
+  return (
+    <div>
+      <h3 className="mb-2 text-sm font-medium">Invite links</h3>
+      <ul className="divide-y divide-border border-y border-border">
+        {rows.map((r) => (
+          <li key={r.key} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+            <span>{r.label}</span>
+            {r.link}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

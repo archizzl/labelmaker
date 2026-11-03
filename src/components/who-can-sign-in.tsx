@@ -7,7 +7,7 @@ import { cancelInvite, removeAccountMember } from "@/server/account-actions";
 import type { Context } from "@/server/context";
 import { inviteMemberTypes, listMemberTypes, memberTypeOf } from "@/server/member-types";
 import { RolePicker } from "./role-picker";
-import { LoginEditToggle, LoginIdentity } from "./band-invite-links";
+import { InviteLinks, LoginEditToggle, LoginIdentity } from "./band-invite-links";
 import { bandMembers } from "@/server/band-member";
 import { bandLoginNames, bandLoginPersons } from "@/server/band-invite-links";
 
@@ -177,7 +177,7 @@ export async function WhoCanSignIn({ ctx }: { ctx: Context }) {
             </table>
           </div>
 
-          {/* Invite links are per member type, under Member types below. */}
+          {!managed && <InviteLinks orgId={orgId} createdBy={ctx.user.id} types={types} />}
         </Card>
   );
 }

@@ -9,7 +9,7 @@ import { Badge, Card, Disclosure, Empty, Field, MoneyList, PageHeader, RolesList
 import { ViewAsButton } from "@/components/viewing-as";
 import { type AccountLogin, LoginControls } from "@/components/login-controls";
 import { listMemberTypes, memberTypeOf } from "@/server/member-types";
-import { BandsInviteLink, StandingInviteLink } from "@/components/band-invite-links";
+import { BandsInviteLink, InviteLinks, StandingInviteLink } from "@/components/band-invite-links";
 import { db, schema } from "@/db";
 import { payHandlesSummary } from "@/lib/paypal-export";
 import { bandScope, can } from "@/lib/permissions";
@@ -274,7 +274,7 @@ export default async function DirectoryPage() {
                 )}
                 {runsLogins && (
                   <div className="mt-3">
-                    <StandingInviteLink bandOrgId={orgId} createdBy={ctx.user.id} />
+                    <InviteLinks orgId={orgId} createdBy={ctx.user.id} types={types} />
                   </div>
                 )}
                 {/* A band's own login brings people in with its invite link. */}
