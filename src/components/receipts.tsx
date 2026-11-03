@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ActionForm, SaveWhenChanged, SubmitButton } from "@/components/client";
-import { DisclosureRow } from "@/components/disclosure-row";
 import { Badge, Empty, Field, Money } from "@/components/ui";
 import type { schema } from "@/db";
 import { centsToDecimal } from "@/lib/money";
@@ -365,27 +364,72 @@ export function ExpenseTable({
         const label = through?.(e);
         const mode = label ? "member" : tableMode;
         return (
-          <li key={e.id} className="grid gap-2 py-3 sm:grid-cols-[6rem_minmax(0,1fr)_auto]">
-            <span className="text-sm text-muted">{e.date}</span>
-            <div className="min-w-0 space-y-1">
-              <div className="flex flex-wrap items-baseline gap-x-2">
-                <span className="font-medium">{e.description}</span>
-                {e.vendor && <span className="text-sm text-muted">· {e.vendor}</span>}
-                {e.category && <span className="text-sm text-muted">· {e.category}</span>}
-                {e.projectId && projectName?.(e.projectId) && (
-                  <span className="text-sm text-muted">
-                    · {mode === "admin" ? <Link href={`/projects/${e.projectId}`}>{projectName(e.projectId)}</Link> : projectName(e.projectId)}
+          <li key={e.id} className="py-3">
+            {/* The row opens and closes its details (and, for admins, its form). */}
+            <details className="group/row">
+              <summary className="grid gap-2 py-1 hover:bg-surface-2 sm:grid-cols-[6rem_minmax(0,1fr)_auto]">
+                <span className="text-sm text-muted">{e.date}</span>
+                <span className="block min-w-0 space-y-1">
+                  <span className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="font-medium">{e.description}</span>
+                    {e.vendor && <span className="text-sm text-muted">· {e.vendor}</span>}
+                    {e.category && <span className="text-sm text-muted">· {e.category}</span>}
+                    {e.projectId && projectName?.(e.projectId) && (
+                      <span className="text-sm text-muted">
+                        · {mode === "admin" ? <Link href={`/projects/${e.projectId}`}>{projectName(e.projectId)}</Link> : projectName(e.projectId)}
+                      </span>
+                    )}
+                    {e.bandId && <span className="text-sm text-muted">· {bandName(e.bandId)}</span>}
+                    {label && <span className="text-sm text-muted">· through {label}</span>}
                   </span>
+                  <span className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                    <Badge tone={STATUS[e.status].tone}>{STATUS[e.status].label}</Badge>
+                    {owedReimbursement(e) && <Badge tone="warn">not reimbursed yet</Badge>}
+                    {e.reimbursedAt && <Badge tone="good">reimbursed</Badge>}
+                    {e.reviewNote && <span>“{e.reviewNote}”</span>}
+                  </span>
+                </span>
+                <span className="flex items-baseline justify-end gap-3">
+                  <span className="font-medium tabular-nums">
+                    <Money cents={e.amountCents} currency={e.currency} />
+                  </span>
+                  <span className="w-12 shrink-0 text-right text-xs text-link">
+                    <span className="group-open/row:hidden">{mode === "admin" && edit ? "edit" : "details"}</span>
+                    <span className="hidden group-open/row:inline">close</span>
+                  </span>
+                </span>
+              </summary>
+              <div className="mt-2 space-y-4 border border-border bg-surface-2 p-4 sm:ml-[6.5rem]">
+                <div>
+                  {coverageLines(e, personName, label ?? groupName ?? `the ${group}`).map((line) => (
+                    <p key={line} className="text-sm">
+                      {line}
+                    </p>
+                  ))}
+                  {mode === "admin" && e.reimbursedAt && e.paidBy === "person" && !e.recoup && (
+                    <form action={setReimbursed} className="mt-2">
+                      <input type="hidden" name="id" value={e.id} />
+                      <input type="hidden" name="reimbursed" value="false" />
+                      <button type="submit" className="text-xs text-link hover:underline">
+                        Undo reimbursed
+                      </button>
+                    </form>
+                  )}
+                </div>
+                {mode === "admin" && edit && (
+                  <>
+                    <div className="border-t border-border pt-4">{edit(e)}</div>
+                    <form action={deleteExpense} className="border-t border-border pt-4">
+                      <input type="hidden" name="id" value={e.id} />
+                      <SubmitButton size="sm" variant="danger" confirm={`Delete “${e.description}” and its receipts?`}>
+                        Delete
+                      </SubmitButton>
+                    </form>
+                  </>
                 )}
-                {e.bandId && <span className="text-sm text-muted">· {bandName(e.bandId)}</span>}
-                {label && <span className="text-sm text-muted">· through {label}</span>}
               </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                <Badge tone={STATUS[e.status].tone}>{STATUS[e.status].label}</Badge>
-                {owedReimbursement(e) && <Badge tone="warn">not reimbursed yet</Badge>}
-                {e.reimbursedAt && <Badge tone="good">reimbursed</Badge>}
-                {e.reviewNote && <span>“{e.reviewNote}”</span>}
-              </div>
+            </details>
+            <div className="mt-1 min-w-0 space-y-1 sm:ml-[6.5rem]">
               <Files files={files.get(e.id) ?? []} admin={mode === "admin"} removedAt={e.filesRemovedAt} />
 
               {mode === "admin" && e.status === "pending" && (
@@ -433,64 +477,15 @@ export function ExpenseTable({
                   <input name="reference" placeholder="Transaction ID (optional)" className="!w-44 !py-1 !text-xs" />
                 </form>
               )}
-              <DisclosureRow
-                className="pt-1"
-                before={
-                  mode === "member" && e.status === "pending" && e.submittedByUserId === userId && (
-                    <form action={deleteExpense}>
-                      <input type="hidden" name="id" value={e.id} />
-                      <SubmitButton size="sm" variant="ghost" confirm="Withdraw this receipt?">
-                        Withdraw
-                      </SubmitButton>
-                    </form>
-                  )
-                }
-                panels={[
-                  ...(mode === "admin" && edit
-                    ? [
-                        {
-                          label: "Edit",
-                          content: (
-                            <>
-                              {edit(e)}
-                              <form action={deleteExpense} className="mt-3 border-t border-border pt-3">
-                                <input type="hidden" name="id" value={e.id} />
-                                <SubmitButton size="sm" variant="danger" confirm={`Delete “${e.description}” and its receipts?`}>
-                                  Delete
-                                </SubmitButton>
-                              </form>
-                            </>
-                          ),
-                        },
-                      ]
-                    : []),
-                  {
-                    label: "Details",
-                    content: (
-                      <>
-                        {coverageLines(e, personName, label ?? groupName ?? `the ${group}`).map((line) => (
-                          <p key={line} className="text-sm">
-                            {line}
-                          </p>
-                        ))}
-                        {mode === "admin" && e.reimbursedAt && e.paidBy === "person" && !e.recoup && (
-                          <form action={setReimbursed} className="mt-2">
-                            <input type="hidden" name="id" value={e.id} />
-                            <input type="hidden" name="reimbursed" value="false" />
-                            <button type="submit" className="text-xs text-link hover:underline">
-                              Undo reimbursed
-                            </button>
-                          </form>
-                        )}
-                      </>
-                    ),
-                  },
-                ]}
-              />
+              {mode === "member" && e.status === "pending" && e.submittedByUserId === userId && (
+                <form action={deleteExpense} className="pt-1">
+                  <input type="hidden" name="id" value={e.id} />
+                  <SubmitButton size="sm" variant="ghost" confirm="Withdraw this receipt?">
+                    Withdraw
+                  </SubmitButton>
+                </form>
+              )}
             </div>
-            <span className="text-right font-medium tabular-nums">
-              <Money cents={e.amountCents} currency={e.currency} />
-            </span>
           </li>
         );
       })}

@@ -1,7 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { ActionForm, SaveWhenChanged, SubmitButton } from "@/components/client";
-import { DisclosureRow } from "@/components/disclosure-row";
 import { Card, Disclosure, Empty, Field } from "@/components/ui";
 import { db, schema } from "@/db";
 import { type Area, normalizeBandAreas, normalizePermissions, SHOWN_AREAS } from "@/lib/permissions";
@@ -41,36 +40,33 @@ export async function MemberTypesCard({ orgId }: { orgId: string }) {
               const bandAreas = normalizeBandAreas(t.bandAreas);
               const holders = members.filter(({ member, user }) => member.role === "member" && typeOf.get(user.id) === t.id).map(({ user }) => user.name);
               return (
-                <li key={t.id} className="py-3">
-                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <span className="font-medium">{t.name}</span>
-                    <span className="text-xs text-muted">{holders.length ? holders.join(", ") : "nobody yet"}</span>
-                  </div>
-                  <DisclosureRow
-                    className="mt-2"
-                    panels={[
-                      {
-                        label: "Change",
-                        content: (
-                          <MemberTypeForm id={t.id} name={t.name} permissions={permissions} bandAreas={bandAreas} />
-                        ),
-                      },
-                    ]}
-                    after={
-                      <>
-                        <form action={deleteMemberType}>
-                          <input type="hidden" name="id" value={t.id} />
-                          <SubmitButton
-                            variant="ghost"
-                            size="sm"
-                            confirm={`Delete ${t.name}? Anyone with it goes back to seeing just their own earnings, and its invite link stops working.`}
-                          >
-                            Delete
-                          </SubmitButton>
-                        </form>
-                      </>
-                    }
-                  />
+                <li key={t.id}>
+                  {/* The row opens and closes its form. */}
+                  <details className="group/row">
+                    <summary className="flex items-baseline gap-3 px-2.5 py-3 hover:bg-surface-2">
+                      <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1">
+                        <span className="font-medium">{t.name}</span>
+                        <span className="text-xs text-muted">{holders.length ? holders.join(", ") : "nobody yet"}</span>
+                      </span>
+                      <span className="shrink-0 text-xs text-link">
+                        <span className="group-open/row:hidden">edit</span>
+                        <span className="hidden group-open/row:inline">close</span>
+                      </span>
+                    </summary>
+                    <div className="mb-3 space-y-4 border border-border bg-surface-2 p-4">
+                      <MemberTypeForm id={t.id} name={t.name} permissions={permissions} bandAreas={bandAreas} />
+                      <form action={deleteMemberType} className="border-t border-border pt-4">
+                        <input type="hidden" name="id" value={t.id} />
+                        <SubmitButton
+                          variant="danger"
+                          size="sm"
+                          confirm={`Delete ${t.name}? Anyone with it goes back to seeing just their own earnings, and its invite link stops working.`}
+                        >
+                          Delete
+                        </SubmitButton>
+                      </form>
+                    </div>
+                  </details>
                 </li>
               );
             })}

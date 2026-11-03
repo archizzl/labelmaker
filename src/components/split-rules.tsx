@@ -2,7 +2,6 @@ import { deleteSplitRule } from "@/server/actions";
 import type { RuleWithShares } from "@/server/data";
 import { SubmitButton } from "./client";
 import { type PersonOption, SplitEditor } from "./split-editor";
-import { DisclosureRow } from "./disclosure-row";
 import { Badge, Disclosure } from "./ui";
 
 type Scope = {
@@ -62,47 +61,41 @@ export function SplitRules({
             .slice()
             .reverse()
             .map((r) => (
-              <li key={r.id} className="rounded-md border border-border p-3">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  {r.id === current?.id ? <Badge tone="good">In effect</Badge> : r.effectiveFrom > new Date().toISOString().slice(0, 10) ? <Badge tone="accent">Scheduled</Badge> : <Badge>Replaced</Badge>}
-                  <span className="text-xs text-muted">
-                    {r.effectiveFrom === "2000-01-01" ? "Always" : `From ${r.effectiveFrom}`}
-                    {r.overridesCatalog && " · overrides release/track splits"}
-                  </span>
-                </div>
-                {scope.scope === "label_default" ? (
-                  <LabelDefaultSummary shares={r.shares} people={people} />
+              <li key={r.id} className="rounded-md border border-border">
+                {readOnly ? (
+                  <div className="p-3">
+                    <RuleHead rule={r} current={current} scope={scope} people={people} />
+                  </div>
                 ) : (
-                  <SharesSummary shares={r.shares} people={people} />
-                )}
-                {!readOnly && (
-                <DisclosureRow
-                  className="mt-3"
-                  panels={[
-                    {
-                      label: "Edit",
-                      content: (
-                        <SplitEditor
-                          {...scope}
-                          ruleId={r.id}
-                          people={people}
-                          initial={r.shares}
-                          effectiveFrom={r.effectiveFrom}
-                          overridesCatalog={r.overridesCatalog}
-                          showOverride={showOverride}
-                        />
-                      ),
-                    },
-                  ]}
-                  after={
-                    <form action={deleteSplitRule}>
-                      <input type="hidden" name="ruleId" value={r.id} />
-                      <SubmitButton variant="danger" size="sm" confirm="Delete this split?">
-                        Delete
-                      </SubmitButton>
-                    </form>
-                  }
-                />
+                  // The row opens and closes its form.
+                  <details className="group/row">
+                    <summary className="flex items-start gap-3 p-3 hover:bg-surface-2">
+                      <span className="min-w-0 flex-1">
+                        <RuleHead rule={r} current={current} scope={scope} people={people} />
+                      </span>
+                      <span className="shrink-0 text-xs text-link">
+                        <span className="group-open/row:hidden">edit</span>
+                        <span className="hidden group-open/row:inline">close</span>
+                      </span>
+                    </summary>
+                    <div className="space-y-4 border-t border-border bg-surface-2 p-4">
+                      <SplitEditor
+                        {...scope}
+                        ruleId={r.id}
+                        people={people}
+                        initial={r.shares}
+                        effectiveFrom={r.effectiveFrom}
+                        overridesCatalog={r.overridesCatalog}
+                        showOverride={showOverride}
+                      />
+                      <form action={deleteSplitRule} className="border-t border-border pt-4">
+                        <input type="hidden" name="ruleId" value={r.id} />
+                        <SubmitButton variant="danger" size="sm" confirm="Delete this split?">
+                          Delete
+                        </SubmitButton>
+                      </form>
+                    </div>
+                  </details>
                 )}
               </li>
             ))}
@@ -114,6 +107,22 @@ export function SplitRules({
         </Disclosure>
       )}
     </div>
+  );
+}
+
+/** A split in the list: in effect, scheduled or replaced, from when, and its shares. */
+function RuleHead({ rule: r, current, scope, people }: { rule: RuleWithShares; current: RuleWithShares | null; scope: Scope; people: PersonOption[] }) {
+  return (
+    <>
+      <span className="mb-2 flex flex-wrap items-center gap-2">
+        {r.id === current?.id ? <Badge tone="good">In effect</Badge> : r.effectiveFrom > new Date().toISOString().slice(0, 10) ? <Badge tone="accent">Scheduled</Badge> : <Badge>Replaced</Badge>}
+        <span className="text-xs text-muted">
+          {r.effectiveFrom === "2000-01-01" ? "Always" : `From ${r.effectiveFrom}`}
+          {r.overridesCatalog && " · overrides release/track splits"}
+        </span>
+      </span>
+      {scope.scope === "label_default" ? <LabelDefaultSummary shares={r.shares} people={people} /> : <SharesSummary shares={r.shares} people={people} />}
+    </>
   );
 }
 

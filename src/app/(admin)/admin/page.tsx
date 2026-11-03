@@ -290,6 +290,10 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                       <span className="text-base font-medium">{f.label}</span>
                       <span className="text-muted">{given.length ? given.join(" · ") : "nobody else"}</span>
                       {mine && !mine.enabled && <Badge>hidden for you</Badge>}
+                      <span className="ml-auto text-xs text-link">
+                        <span className="group-open/flag:hidden">edit</span>
+                        <span className="hidden group-open/flag:inline">close</span>
+                      </span>
                     </summary>
                     <ActionForm action={saveFeatureFlag} className="space-y-4 pb-5">
                       <input type="hidden" name="flag" value={f.key} />
