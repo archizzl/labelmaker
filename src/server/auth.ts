@@ -98,7 +98,7 @@ export const auth = betterAuth({
           additionalFields: { personId: { type: "number", required: false, input: true } },
         },
       },
-      // No email service yet: admins copy the invite link from the Members page and send it themselves.
+      // No email invites: people join with a group's invite links instead.
       sendInvitationEmail: async () => {},
       invitationExpiresIn: 60 * 60 * 24 * 14,
     }),

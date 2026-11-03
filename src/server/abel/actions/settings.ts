@@ -4,9 +4,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { AREAS } from "@/lib/permissions";
 import {
-  cancelInvite,
   deleteMemberType,
-  inviteMember,
   linkMyself,
   removeAccountMember,
   saveAccountSettings,
@@ -20,7 +18,7 @@ import {
 import { resetBandsLink, resetInviteLink } from "../../band-invite-actions";
 import { myDetails } from "../../people";
 import { projectsEnabled } from "../../features";
-import { cancelBandAccountInvite, inviteToBandAccount, unlink } from "../../link-actions";
+import { unlink } from "../../link-actions";
 import { deleteProject, saveProject } from "../../project-actions";
 import { actionTool } from "../tool";
 import { amount, current, currency, date, id, or, toAmount } from "./shared";
@@ -85,25 +83,6 @@ const testConnection = actionTool({
   params: z.object({}),
   needs: "admin",
   action: () => testBandcampConnection(),
-});
-
-const invite = actionTool({
-  name: "invite_to_group",
-  label: "Invite someone to sign in",
-  description: "Invite someone by email to sign in to this group, as an admin, a member, or a member type; personId links them to their payee record.",
-  params: z.object({ email: z.string().email(), role: roleChoice, personId: id.optional() }),
-  needs: "admin",
-  action: (fd) => inviteMember(null, fd),
-});
-
-const cancelInviteTool = actionTool({
-  name: "cancel_invite",
-  label: "Cancel an invite",
-  description: "Cancel an invite that hasn't been used (who_can_sign_in lists them).",
-  params: z.object({ inviteId: z.string().min(1) }),
-  needs: "admin",
-  action: (fd) => cancelInvite(fd),
-  fields: (_ctx, a) => ({ id: a.inviteId }),
 });
 
 const setRole = actionTool({
@@ -201,27 +180,6 @@ const saveMyDetailsTool = actionTool({
   },
 });
 
-const inviteBand = actionTool({
-  name: "invite_to_band_group",
-  label: "Invite a band to its group",
-  description: "Invite someone by email to run a band's own group from the label (the whole band shares one login).",
-  params: z.object({ bandId: id, email: z.string().email() }),
-  needs: "admin",
-  available: (ctx) => ctx.org.kind === "label",
-  action: (fd) => inviteToBandAccount(null, fd),
-});
-
-const cancelBandInvite = actionTool({
-  name: "cancel_band_group_invite",
-  label: "Cancel a band group's invite",
-  description: "Cancel an invite to a band's group from the label.",
-  params: z.object({ bandId: id, inviteId: z.string().min(1) }),
-  needs: "admin",
-  available: (ctx) => ctx.org.kind === "label",
-  action: (fd) => cancelBandAccountInvite(fd),
-  fields: (_ctx, a) => ({ bandId: a.bandId, id: a.inviteId }),
-});
-
 const resetLink = actionTool({
   name: "reset_band_invite_link",
   label: "Reset a band's invite link",
@@ -305,8 +263,6 @@ export const SETTINGS_TOOLS = [
   groupSettings,
   bandGroupSettings,
   testConnection,
-  invite,
-  cancelInviteTool,
   setRole,
   managedBands,
   memberType,
@@ -314,8 +270,6 @@ export const SETTINGS_TOOLS = [
   removeLogin,
   linkMe,
   saveMyDetailsTool,
-  inviteBand,
-  cancelBandInvite,
   resetLink,
   resetBandsLinkTool,
   unlinkTool,

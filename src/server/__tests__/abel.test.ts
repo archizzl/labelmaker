@@ -340,7 +340,7 @@ describe("Abel's changes", () => {
     const got = await names();
     expect(got).toContain("list_deductions");
     expect(got).not.toContain("save_deduction");
-    expect(got).not.toContain("invite_to_group");
+    expect(got).not.toContain("set_member_role");
     expect(await run("save_deduction", { label: "x", kind: "percent", percent: 5, appliesTo: { type: "everything" } })).toBe("not allowed");
   });
 });

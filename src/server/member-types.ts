@@ -7,7 +7,7 @@ import { db, schema } from "@/db";
  * Settings is "admin", "member" (just their own earnings) or "type:<id>" (a member with that type).
  */
 
-const { memberTypes, memberTypeAssignments, invitationMemberTypes } = schema;
+const { memberTypes, memberTypeAssignments } = schema;
 
 export type RoleChoice = { role: "admin" | "member"; memberTypeId: number | null };
 
@@ -53,25 +53,4 @@ export async function setManagedBands(orgId: string, userId: string, bandIds: nu
     .update(memberTypeAssignments)
     .set({ bandIds })
     .where(and(eq(memberTypeAssignments.orgId, orgId), eq(memberTypeAssignments.userId, userId)));
-}
-
-/** Invites: the member type each one gives, invitation id → member type id. */
-export async function inviteMemberTypes(invitationIds: string[]): Promise<Map<string, number>> {
-  if (!invitationIds.length) return new Map();
-  const rows = await db.select().from(invitationMemberTypes);
-  return new Map(rows.filter((r) => invitationIds.includes(r.invitationId)).map((r) => [r.invitationId, r.memberTypeId]));
-}
-
-export async function setInviteMemberType(invitationId: string, memberTypeId: number) {
-  await db.insert(invitationMemberTypes).values({ invitationId, memberTypeId }).onConflictDoUpdate({ target: invitationMemberTypes.invitationId, set: { memberTypeId } });
-}
-
-/** When an invite is accepted: the member type it gives, if any (and only for this account's types). */
-export async function memberTypeForInvite(orgId: string, invitationId: string): Promise<number | null> {
-  const [row] = await db
-    .select({ id: memberTypes.id })
-    .from(invitationMemberTypes)
-    .innerJoin(memberTypes, eq(memberTypes.id, invitationMemberTypes.memberTypeId))
-    .where(and(eq(invitationMemberTypes.invitationId, invitationId), eq(memberTypes.orgId, orgId)));
-  return row?.id ?? null;
 }

@@ -8,13 +8,11 @@ import { safePath } from "@/lib/safe-path";
 
 export const metadata = { title: "welcome" };
 
-/** After signing up: set up a label or band account, or open an invite into someone else's. */
+/** After signing up: set up a label or band account. */
 export default async function WelcomePage({ searchParams }: PageProps<"/welcome">) {
   const session = await getSession();
   if (!session) redirect("/login?next=/welcome");
   const { user } = session;
-  // (Invites aren't listed here by email: nobody's email is checked, so anyone could sign up with
-  // an invited person's. An invite is joined only through its link, which the admin sends them.)
   const accounts = await accountsFor(user.id);
   const q = await searchParams;
   const first = user.name.split(" ")[0];
