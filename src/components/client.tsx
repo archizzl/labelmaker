@@ -152,7 +152,7 @@ export function SubmitButton({
         if (confirm && !window.confirm(confirm)) e.preventDefault();
       }}
     >
-      {pending ? "Working…" : children}
+      {pending ? "Saving…" : children}
     </button>
   );
 }

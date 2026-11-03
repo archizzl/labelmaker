@@ -13,7 +13,7 @@ export function ResetLinkButton({ userId }: { userId: string }) {
       <input type="hidden" name="userId" value={userId} />
       {!state?.link && (
         <button type="submit" disabled={pending} className={buttonClass("ghost", "sm")}>
-          {pending ? "…" : "Reset link"}
+          {pending ? "Saving…" : "Reset link"}
         </button>
       )}
       {state?.error && <p className="text-xs text-bad">{state.error}</p>}
