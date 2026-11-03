@@ -6,7 +6,7 @@ import { ChartBoard } from "@/components/chart-board";
 import { SubmitButton } from "@/components/client";
 import { ProjectForm } from "@/components/project-form";
 import { ExpenseForm, ExpenseTable } from "@/components/receipts";
-import { Badge, Callout, Card, Disclosure, Empty, Money, PageHeader } from "@/components/ui";
+import { Badge, Callout, Card, Disclosure, Empty, Money, PageHeader, Stat } from "@/components/ui";
 import { db, schema } from "@/db";
 import { type BoardChart, breakdownChart } from "@/lib/chart-data";
 import { formatCents } from "@/lib/money";
@@ -95,19 +95,18 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
       />
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Stat label="Spent" value={formatCents(n.spent, cur)} hint={n.pending ? `+ ${formatCents(n.pending, cur)} waiting for approval` : undefined} />
-        <Stat label="Made back in sales" value={formatCents(n.madeBack, cur)} hint={`${n.units} item${n.units === 1 ? "" : "s"} sold`} />
+        <Stat label="Spent" value={formatCents(n.spent, cur)} note={n.pending ? `+ ${formatCents(n.pending, cur)} waiting for approval` : undefined} />
+        <Stat label="Made back in sales" value={formatCents(n.madeBack, cur)} note={`${n.units} item${n.units === 1 ? "" : "s"} sold`} />
         <Stat
           label={n.spent === 0 ? "Balance" : n.balance >= 0 ? "Ahead by" : "Still to make back"}
           value={formatCents(Math.abs(n.balance), cur)}
-          hint={pct === null ? "nothing spent yet" : `${pct}% of what was spent`}
-          tone={n.balance >= 0 && n.spent > 0 ? "good" : undefined}
-          emphasis
+          note={pct === null ? "nothing spent yet" : `${pct}% of what was spent`}
+          tone={n.balance >= 0 && n.spent > 0 ? "good" : "accent"}
         />
         <Stat
           label="Budget"
           value={project.budgetCents ? formatCents(project.budgetCents, cur) : "—"}
-          hint={budgetPct === null ? "none set" : `${budgetPct}% used${budgetPct > 100 ? ", over budget" : ""}`}
+          note={budgetPct === null ? "none set" : `${budgetPct}% used${budgetPct > 100 ? ", over budget" : ""}`}
           tone={budgetPct !== null && budgetPct > 100 ? "warn" : undefined}
         />
       </div>
@@ -205,29 +204,6 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
         </Disclosure>
       </Card>
     </>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  hint,
-  tone,
-  emphasis,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: "good" | "warn";
-  emphasis?: boolean;
-}) {
-  const color = tone === "good" ? "text-good" : tone === "warn" ? "text-warn" : emphasis ? "text-accent" : "";
-  return (
-    <div className={`border-l-2 pl-3 ${emphasis ? "border-accent" : "border-border"}`}>
-      <div className="text-xs text-muted lowercase">{label}</div>
-      <div className={`mt-0.5 text-xl font-bold tabular-nums ${color}`}>{value}</div>
-      {hint && <div className="text-xs text-muted">{hint}</div>}
-    </div>
   );
 }
 

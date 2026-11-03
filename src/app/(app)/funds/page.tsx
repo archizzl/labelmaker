@@ -5,7 +5,7 @@ import { ChartBoard } from "@/components/chart-board";
 import { LabelFunds } from "@/components/label-funds";
 import { PAGE_SIZES, Pager } from "@/components/pager";
 import Link from "next/link";
-import { buttonClass, Card, Disclosure, Empty, Field, Money, MoneyList, PageHeader } from "@/components/ui";
+import { buttonClass, Card, Disclosure, Empty, Field, Money, MoneyList, PageHeader, Stat } from "@/components/ui";
 import { ActionForm, SubmitButton } from "@/components/client";
 import { deleteBandRemittance, saveBandRemittance } from "@/server/actions";
 import { type BoardChart, breakdownChart, seriesChart } from "@/lib/chart-data";
@@ -139,10 +139,10 @@ export default async function FundsPage({ searchParams }: PageProps<"/funds">) {
       <FundsTabs active="funds" funds rules={can(ctx.access, "rules")} />
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Tile label="Left in the label’s bank account" cents={v(inc.balance)} currency={cur} emphasis />
-        <Tile label="Came in to the label" cents={v(inc.income)} currency={cur} />
-        <Tile label="Sent on to others" cents={-v(inc.sent) || 0} currency={cur} />
-        <Tile label="Spent on expenses" cents={-v(inc.spent) || 0} currency={cur} hint={<Link href="/receipts">receipts</Link>} />
+        <Stat label="Left in the label’s bank account" value={<Money cents={v(inc.balance)} currency={cur} />} tone="accent" />
+        <Stat label="Came in to the label" value={<Money cents={v(inc.income)} currency={cur} />} />
+        <Stat label="Sent on to others" value={<Money cents={-v(inc.sent) || 0} currency={cur} />} />
+        <Stat label="Spent on expenses" value={<Money cents={-v(inc.spent) || 0} currency={cur} />} note={<Link href="/receipts">receipts</Link>} />
       </div>
       {inc.currencies.length > 1 && (
         <p className="-mt-3 mb-6 text-xs text-muted">
@@ -427,9 +427,9 @@ async function BandFund({ ctx }: { ctx: Context }) {
         <>
           {currencies.map((cur) => (
             <div key={cur} className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
-              <Tile label={`Came in from sales${currencies.length > 1 ? ` (${cur})` : ""}`} cents={wentIn.get(cur) ?? 0} currency={cur} />
-              <Tile label="Paid for expenses" cents={paid.get(cur) ?? 0} currency={cur} />
-              <Tile label="Held" cents={(wentIn.get(cur) ?? 0) - (paid.get(cur) ?? 0)} currency={cur} emphasis />
+              <Stat label={`Came in from sales${currencies.length > 1 ? ` (${cur})` : ""}`} value={<Money cents={wentIn.get(cur) ?? 0} currency={cur} />} />
+              <Stat label="Paid for expenses" value={<Money cents={paid.get(cur) ?? 0} currency={cur} />} />
+              <Stat label="Held" value={<Money cents={(wentIn.get(cur) ?? 0) - (paid.get(cur) ?? 0)} currency={cur} />} tone="accent" />
             </div>
           ))}
           {spent.length > 0 && (
@@ -457,17 +457,5 @@ async function BandFund({ ctx }: { ctx: Context }) {
         </>
       )}
     </Card>
-  );
-}
-
-function Tile({ label, cents, currency, emphasis, hint }: { label: string; cents: number; currency: string; emphasis?: boolean; hint?: React.ReactNode }) {
-  return (
-    <div className={`border bg-surface px-4 py-3 ${emphasis ? "border-accent" : "border-border"}`}>
-      <div className={`text-2xl font-bold tabular-nums ${emphasis ? "text-accent" : ""}`}>{formatCents(cents, currency)}</div>
-      <div className="text-xs text-muted">
-        {label}
-        {hint && <> · {hint}</>}
-      </div>
-    </div>
   );
 }

@@ -3,7 +3,7 @@ import { BandFilter } from "@/components/band-filter";
 import { connection } from "next/server";
 import { ExpenseForm, ExpenseTable, expenseTotals, SubmitReceiptForm } from "@/components/receipts";
 import { bandMembers } from "@/server/band-member";
-import { Card, Disclosure, MoneyList, PageHeader } from "@/components/ui";
+import { Card, Disclosure, MoneyList, PageHeader, Stat } from "@/components/ui";
 import { formatMegabytes, RECEIPT_SPACE_BYTES } from "@/lib/receipt-space";
 import { receiptBytesUsed } from "@/server/receipt-store";
 import { db, schema } from "@/db";
@@ -98,9 +98,9 @@ export default async function ReceiptsPage({ searchParams }: PageProps<"/receipt
       )}
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Stat label="Approved expenses" totals={expenseTotals(rest)} />
-        <Stat label="Being paid back from sales" totals={expenseTotals(recouping)} />
-        <Stat label="Owed back to people" totals={expenseTotals(owed)} warn={owed.length > 0} />
+        <Stat label="Approved expenses" value={<MoneyList totals={expenseTotals(rest)} />} />
+        <Stat label="Being paid back from sales" value={<MoneyList totals={expenseTotals(recouping)} />} />
+        <Stat label="Owed back to people" value={<MoneyList totals={expenseTotals(owed)} />} tone={owed.length > 0 ? "warn" : undefined} />
       </div>
 
       {pending.length > 0 && (
@@ -165,14 +165,5 @@ export default async function ReceiptsPage({ searchParams }: PageProps<"/receipt
         </Card>
       )}
     </>
-  );
-}
-
-function Stat({ label, totals, warn }: { label: string; totals: Map<string, number>; warn?: boolean }) {
-  return (
-    <div className={`border-l-2 pl-3 ${warn ? "border-warn" : "border-border"}`}>
-      <div className="text-xs text-muted lowercase">{label}</div>
-      <div className={`mt-0.5 text-xl font-bold ${warn ? "text-warn" : ""}`}>{totals.size ? <MoneyList totals={totals} /> : "—"}</div>
-    </div>
   );
 }

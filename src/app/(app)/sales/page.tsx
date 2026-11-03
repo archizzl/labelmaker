@@ -3,7 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { ChartBoard } from "@/components/chart-board";
 import { SalesTabs } from "@/components/sales-tabs";
-import { Badge, buttonClass, Card, Empty, Money, PageHeader } from "@/components/ui";
+import { Badge, buttonClass, Card, Empty, Money, PageHeader, Stat } from "@/components/ui";
 import { db, schema } from "@/db";
 import { type BoardChart, breakdownChart, seriesChart } from "@/lib/chart-data";
 import { formatCents } from "@/lib/money";
@@ -285,13 +285,13 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
             Totals and breakdowns <span className="font-normal text-muted">({main.first} to {main.last})</span>
           </h2>
           <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Tile label="Net received" value={formatCents(main.net, main.currency)} />
-            <Tile label={`Sale${main.sales === 1 ? "" : "s"}`} value={main.sales.toLocaleString("en-US")} hint={`${main.units.toLocaleString("en-US")} item${main.units === 1 ? "" : "s"}`} />
-            <Tile label="Average per sale" value={formatCents(Math.round(main.net / Math.max(1, main.sales)), main.currency)} />
-            <Tile
+            <Stat label="Net received" value={formatCents(main.net, main.currency)} />
+            <Stat label={`Sale${main.sales === 1 ? "" : "s"}`} value={main.sales.toLocaleString("en-US")} note={`${main.units.toLocaleString("en-US")} item${main.units === 1 ? "" : "s"}`} />
+            <Stat label="Average per sale" value={formatCents(Math.round(main.net / Math.max(1, main.sales)), main.currency)} />
+            <Stat
               label="Refunds"
               value={main.refunds.toLocaleString("en-US")}
-              hint={main.refunds ? formatCents(main.refundCents, main.currency) : undefined}
+              note={main.refunds ? formatCents(main.refundCents, main.currency) : undefined}
             />
           </div>
           {summary.totals.length > 1 && (
@@ -488,18 +488,6 @@ function SortHeader({ f, k, label, num = false }: { f: SalesFilter; k: SortKey; 
         </span>
       </Link>
     </th>
-  );
-}
-
-function Tile({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="border border-border bg-surface px-4 py-3">
-      <div className="text-2xl font-bold tabular-nums">{value}</div>
-      <div className="text-xs text-muted">
-        {label}
-        {hint && <> · {hint}</>}
-      </div>
-    </div>
   );
 }
 

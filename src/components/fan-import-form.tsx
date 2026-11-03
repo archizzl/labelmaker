@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { plural } from "@/lib/plural";
 import { commitFans, type FanPreview, previewFans } from "@/server/fan-actions";
-import { buttonClass } from "./ui";
+import { buttonClass, Stat } from "./ui";
 
 /** Drop in Bandcamp's mailing-list export, see what's in it, then import. */
 export function FanImportForm({ bands, isBandAccount }: { bands: { id: number; name: string }[]; isBandAccount: boolean }) {
@@ -131,15 +131,6 @@ export function FanImportForm({ bands, isBandAccount }: { bands: { id: number; n
           {result?.error && <p className="mt-3 text-bad">{result.error}</p>}
         </div>
       )}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div>
-      <div className="text-xs text-muted">{label}</div>
-      <div className="text-xl font-semibold tabular-nums">{value}</div>
     </div>
   );
 }

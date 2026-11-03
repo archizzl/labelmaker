@@ -1,5 +1,5 @@
 import { ActionForm, SaveWhenChanged, SubmitButton } from "@/components/client";
-import { Card, Disclosure, Empty, Field, Money } from "@/components/ui";
+import { Card, Disclosure, Empty, Field, Money, Stat } from "@/components/ui";
 import { can } from "@/lib/permissions";
 import { db, schema } from "@/db";
 import { centsToDecimal } from "@/lib/money";
@@ -160,10 +160,10 @@ export async function LabelFunds({ bandId, showTotals = true }: { bandId?: numbe
         showTotals &&
         currencies.map((cur) => (
           <div key={cur} className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Stat label={`Kept by the label${currencies.length > 1 ? ` (${cur})` : ""}`} cents={funds.kept.get(cur) ?? 0} currency={cur} />
-            <Stat label="Sent on to others" cents={funds.sent.get(cur) ?? 0} currency={cur} />
-            <Stat label="Spent on expenses" cents={funds.spent.get(cur) ?? 0} currency={cur} />
-            <Stat label="Left in the label’s bank account" cents={funds.balance.get(cur) ?? 0} currency={cur} emphasis />
+            <Stat label={`Kept by the label${currencies.length > 1 ? ` (${cur})` : ""}`} value={<Money cents={funds.kept.get(cur) ?? 0} currency={cur} />} />
+            <Stat label="Sent on to others" value={<Money cents={funds.sent.get(cur) ?? 0} currency={cur} />} />
+            <Stat label="Spent on expenses" value={<Money cents={funds.spent.get(cur) ?? 0} currency={cur} />} />
+            <Stat label="Left in the label’s bank account" value={<Money cents={funds.balance.get(cur) ?? 0} currency={cur} />} tone="accent" />
           </div>
         ))}
 
@@ -228,16 +228,5 @@ export async function LabelFunds({ bandId, showTotals = true }: { bandId?: numbe
         </div>
       )}
     </Card>
-  );
-}
-
-function Stat({ label, cents, currency, emphasis }: { label: string; cents: number; currency: string; emphasis?: boolean }) {
-  return (
-    <div className={`border-l-2 pl-3 ${emphasis ? "border-accent" : "border-border"}`}>
-      <div className="text-xs text-muted lowercase">{label}</div>
-      <div className={`mt-0.5 text-xl font-bold ${emphasis ? "text-accent" : ""}`}>
-        <Money cents={cents} currency={currency} />
-      </div>
-    </div>
   );
 }

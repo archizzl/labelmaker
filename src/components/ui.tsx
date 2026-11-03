@@ -116,6 +116,36 @@ export function Callout({ tone = "warn", children }: { tone?: "warn" | "bad" | "
   return <div className={`mb-5 border border-l-4 px-4 py-2.5 text-sm ${t}`}>{children}</div>;
 }
 
+const statTones = {
+  neutral: { border: "border-border", text: "" },
+  accent: { border: "border-accent", text: "text-accent" },
+  good: { border: "border-good", text: "text-good" },
+  warn: { border: "border-warn", text: "text-warn" },
+  bad: { border: "border-bad", text: "text-bad" },
+};
+
+/** A stat tile: a small label over a big number, with an optional note under it. */
+export function Stat({
+  label,
+  value,
+  tone = "neutral",
+  note,
+}: {
+  label: ReactNode;
+  value: ReactNode;
+  tone?: keyof typeof statTones;
+  note?: ReactNode;
+}) {
+  const t = statTones[tone];
+  return (
+    <div className={`border-l-2 pl-3 ${t.border}`}>
+      <div className="text-xs text-muted lowercase">{label}</div>
+      <div className={`mt-0.5 text-xl font-bold tabular-nums ${t.text}`}>{value}</div>
+      {note && <div className="text-xs text-muted">{note}</div>}
+    </div>
+  );
+}
+
 /** What an empty section says. Quiet and left-aligned, like the rest of the page's text. */
 export function Empty({ children }: { children: ReactNode }) {
   return <p className="mb-3 text-sm text-muted">{children}</p>;

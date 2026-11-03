@@ -4,7 +4,7 @@ import Link from "next/link";
 import { DisclosureRow } from "@/components/disclosure-row";
 import { connection } from "next/server";
 import { ActionForm, Fading, SaveWhenChanged, SubmitButton } from "@/components/client";
-import { Badge, buttonClass, Callout, Card, Empty, Field, PageHeader } from "@/components/ui";
+import { Badge, buttonClass, Callout, Card, Empty, Field, PageHeader, Stat } from "@/components/ui";
 import { db, schema } from "@/db";
 import { type MerchOrder, PICKUP_MESSAGE, pickList, readyToShip } from "@/lib/merch-orders";
 import { formatCents } from "@/lib/money";
@@ -126,10 +126,10 @@ export default async function OrdersPage({ searchParams }: PageProps<"/orders">)
       {bandsWithOrders.length > 1 && <BandFilter path="/orders" bands={bandsWithOrders} current={band} all="everyone" />}
 
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Tile label="Orders to ship" value={String(ready.length)} />
-        <Tile label="Items to pack" value={String(pack.reduce((a, p) => a + p.quantity, 0))} />
-        <Tile label="Oldest waiting" value={ready.length ? `${ready[0].daysWaiting} day${ready[0].daysWaiting === 1 ? "" : "s"}` : "–"} />
-        <Tile label="Pre-orders not out yet" value={String(preorders.length)} />
+        <Stat label="Orders to ship" value={ready.length} />
+        <Stat label="Items to pack" value={pack.reduce((a, p) => a + p.quantity, 0)} />
+        <Stat label="Oldest waiting" value={ready.length ? `${ready[0].daysWaiting} day${ready[0].daysWaiting === 1 ? "" : "s"}` : "–"} />
+        <Stat label="Pre-orders not out yet" value={preorders.length} />
       </div>
 
       <PickupList pickups={pickups} bandName={bandName} canEdit={canEdit} />
@@ -354,15 +354,6 @@ function OrderList({
         </li>
       ))}
     </ul>
-  );
-}
-
-function Tile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border border-border bg-surface px-4 py-3">
-      <div className="text-2xl font-bold tabular-nums">{value}</div>
-      <div className="text-xs text-muted">{label}</div>
-    </div>
   );
 }
 

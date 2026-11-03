@@ -3,7 +3,7 @@ import { BandFilter } from "@/components/band-filter";
 import { connection } from "next/server";
 import { ActionForm, SaveWhenChanged, SubmitButton } from "@/components/client";
 import { DisclosureRow } from "@/components/disclosure-row";
-import { Badge, Callout, Card, Disclosure, Empty, Field, PageHeader } from "@/components/ui";
+import { Badge, Callout, Card, Disclosure, Empty, Field, PageHeader, Stat } from "@/components/ui";
 import { db, schema } from "@/db";
 import { isLow, MOVE_REASONS } from "@/lib/inventory";
 import { InventoryCounter } from "@/components/inventory-counter";
@@ -91,10 +91,10 @@ export default async function InventoryPage({ searchParams }: PageProps<"/invent
       {bandsWithItems.length > 1 && <BandFilter path="/inventory" bands={bandsWithItems} current={band} all="everything" />}
 
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Tile label="Items" value={String(items.length)} />
-        <Tile label="Units on hand" value={String(units)} />
-        <Tile label="Running low" value={String(low.length)} warn={low.length > 0} />
-        <Tile label="Value at cost" value={value.size ? [...value].map(([cur, c]) => formatCents(c, cur)).join(" · ") : "–"} />
+        <Stat label="Items" value={items.length} />
+        <Stat label="Units on hand" value={units} />
+        <Stat label="Running low" value={low.length} tone={low.length > 0 ? "warn" : undefined} />
+        <Stat label="Value at cost" value={value.size ? [...value].map(([cur, c]) => formatCents(c, cur)).join(" · ") : "–"} />
       </div>
 
       {low.length > 0 && (
@@ -164,15 +164,6 @@ export default async function InventoryPage({ searchParams }: PageProps<"/invent
 }
 
 const itemLabel = (i: Item) => `${i.name}${i.option ? ` (${i.option})` : ""}`;
-
-function Tile({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
-  return (
-    <div className={`border bg-surface px-4 py-3 ${warn ? "border-warn" : "border-border"}`}>
-      <div className={`text-2xl font-bold tabular-nums ${warn ? "text-warn" : ""}`}>{value}</div>
-      <div className="text-xs text-muted">{label}</div>
-    </div>
-  );
-}
 
 function ItemTable({
   items,

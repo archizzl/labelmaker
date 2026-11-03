@@ -4,7 +4,7 @@ import { loadHiddenColumns } from "@/server/list-columns";
 import Link from "next/link";
 import { ActionForm, CopyButton, Fading, SubmitButton } from "@/components/client";
 import { outsideArtistRows } from "@/components/outside-artists";
-import { Badge, Callout, Card, Disclosure, Empty, Field, LinkButton, Money, PageHeader, buttonClass } from "@/components/ui";
+import { Badge, Callout, Card, Disclosure, Empty, Field, LinkButton, Money, PageHeader, Stat, buttonClass } from "@/components/ui";
 import { db, schema } from "@/db";
 import { centsToDecimal } from "@/lib/money";
 import { formatCents } from "@/lib/money";
@@ -299,12 +299,12 @@ export async function PayoutView({
         const toPeople = [...s.byPerson.values()].reduce((a, p) => a + p.total, 0);
         return (
           <div key={cur} className="mb-8 grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-5">
-            <Stat label={`Net sales${currencies.length > 1 ? ` (${cur})` : ""}`} cents={s.grossCents} currency={cur} />
-            <Stat label="Label" cents={dest("label")} currency={cur} />
-            <Stat label="Band funds" cents={dest("band_fund")} currency={cur} />
-            <Stat label="Expenses recouped" cents={dest("expense")} currency={cur} />
-            <Stat label="To people" cents={toPeople} currency={cur} emphasis />
-            {s.unallocated !== 0 && <Stat label="Unallocated" cents={s.unallocated} currency={cur} tone="bad" />}
+            <Stat label={`Net sales${currencies.length > 1 ? ` (${cur})` : ""}`} value={<Money cents={s.grossCents} currency={cur} />} />
+            <Stat label="Label" value={<Money cents={dest("label")} currency={cur} />} />
+            <Stat label="Band funds" value={<Money cents={dest("band_fund")} currency={cur} />} />
+            <Stat label="Expenses recouped" value={<Money cents={dest("expense")} currency={cur} />} />
+            <Stat label="To people" value={<Money cents={toPeople} currency={cur} />} tone="accent" />
+            {s.unallocated !== 0 && <Stat label="Unallocated" value={<Money cents={s.unallocated} currency={cur} />} tone="bad" />}
           </div>
         );
       })}
@@ -632,16 +632,5 @@ export async function PayoutView({
         </Card>
       )}
     </>
-  );
-}
-
-function Stat({ label, cents, currency, emphasis, tone }: { label: string; cents: number; currency: string; emphasis?: boolean; tone?: "bad" }) {
-  return (
-    <div className={`border-l-2 pl-3 ${tone === "bad" ? "border-bad" : emphasis ? "border-accent" : "border-border"}`}>
-      <div className={`text-xs lowercase ${tone === "bad" ? "text-bad" : "text-muted"}`}>{label}</div>
-      <div className={`mt-0.5 text-xl font-bold ${tone === "bad" ? "text-bad" : emphasis ? "text-accent" : ""}`}>
-        <Money cents={cents} currency={currency} />
-      </div>
-    </div>
   );
 }
