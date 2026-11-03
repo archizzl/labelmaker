@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
-import { AREAS } from "@/lib/permissions";
+import { SHOWN_AREAS } from "@/lib/permissions";
 import {
   cancelInvite,
   deleteMemberType,
@@ -125,11 +125,11 @@ const managedBands = actionTool({
   fields: (_ctx, a) => ({ userId: a.userId, mode: a.bandIds ? "picked" : "member", bandId: a.bandIds }),
 });
 
-const area = z.enum(AREAS.map((a) => a.key) as [string, ...string[]]);
+const area = z.enum(SHOWN_AREAS.map((a) => a.key) as [string, ...string[]]);
 const memberType = actionTool({
   name: "save_member_type",
   label: "Save a member type",
-  description: `Add a member type (what a kind of member can see and change), or change one (give its id: its sections are replaced by the ones given). Sections: ${AREAS.map((a) => `${a.key} (${a.label})`).join(", ")}. ownBandsOnly: sections limited to their own bands.`,
+  description: `Add a member type (what a kind of member can see and change), or change one (give its id: its sections are replaced by the ones given). Sections: ${SHOWN_AREAS.map((a) => `${a.key} (${a.label})`).join(", ")}. ownBandsOnly: sections limited to their own bands.`,
   params: z.object({
     id: id.optional(),
     name: z.string().min(1).max(60),

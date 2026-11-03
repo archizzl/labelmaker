@@ -4,7 +4,7 @@ import { ActionForm, SaveWhenChanged, SubmitButton } from "@/components/client";
 import { DisclosureRow } from "@/components/disclosure-row";
 import { Card, Disclosure, Empty, Field } from "@/components/ui";
 import { db, schema } from "@/db";
-import { AREAS, type Area, normalizeBandAreas, normalizePermissions } from "@/lib/permissions";
+import { type Area, normalizeBandAreas, normalizePermissions, SHOWN_AREAS } from "@/lib/permissions";
 import { deleteMemberType, saveMemberType } from "@/server/account-actions";
 import { StandingInviteLink } from "./band-invite-links";
 import { listMemberTypes, memberTypeOf } from "@/server/member-types";
@@ -117,7 +117,7 @@ function MemberTypeForm({
             </tr>
           </thead>
           <tbody>
-            {AREAS.map((a) => {
+            {SHOWN_AREAS.map((a) => {
               const level = permissions[a.key] ?? "none";
               return (
                 <tr key={a.key}>

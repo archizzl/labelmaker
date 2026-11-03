@@ -10,7 +10,7 @@ import { slugify } from "@/lib/slug";
 import { auth } from "./auth";
 import { accountContext, accountsFor, type Context, getSession, mayDeleteGroup, requireAdmin, VIEW_AS_COOKIE } from "./context";
 import { joinedLabel, labelReachNote, renameJoinedBand, syncJoinedPeople } from "./own-books";
-import { AREAS, type Area, normalizeBandAreas, normalizePermissions } from "@/lib/permissions";
+import { AREAS, type Area, HIDDEN_AREAS, normalizeBandAreas, normalizePermissions } from "@/lib/permissions";
 import { assignMemberType, memberTypeForInvite, parseRoleChoice, setInviteMemberType, setManagedBands } from "./member-types";
 import { applyMyDetails, normalizeEmail } from "./people";
 import { deleteAccountsWithBooks, soleAccounts } from "./account-deletion";
@@ -408,6 +408,13 @@ export async function saveMemberType(_: FormState, fd: FormData): Promise<FormSt
   const existing = await db.select().from(schema.memberTypes).where(eq(schema.memberTypes.orgId, orgId));
   if (existing.some((t) => t.id !== id && t.name.trim().toLowerCase() === name.toLowerCase())) {
     return { error: `There’s already a member type called ${name}.` };
+  }
+  // Sections not offered for now (the form has no row for them) keep what was saved.
+  const before = existing.find((t) => t.id === id);
+  for (const k of HIDDEN_AREAS) {
+    const level = normalizePermissions(before?.permissions)[k];
+    if (level) permissions[k] = level;
+    if (level && normalizeBandAreas(before?.bandAreas).includes(k)) bandAreas.push(k);
   }
   if (id) {
     const updated = await db

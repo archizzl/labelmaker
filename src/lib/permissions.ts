@@ -20,6 +20,10 @@ export const AREAS = [
 ] as const;
 
 export type Area = (typeof AREAS)[number]["key"];
+
+/** Sections whose page is switched off for now: kept in saved member types, but not offered or described. */
+export const HIDDEN_AREAS: readonly Area[] = ["fans"];
+export const SHOWN_AREAS = AREAS.filter((a) => !HIDDEN_AREAS.includes(a.key));
 export type Level = "none" | "view" | "edit";
 export type Permissions = Partial<Record<Area, "view" | "edit">>;
 
@@ -65,7 +69,7 @@ export const bandScope = (access: Access, area: Area): number[] | null =>
 
 /** "Sales: view (own bands) · Orders: change (own bands)" */
 export function describePermissions(permissions: Permissions, bandAreas: Area[]): string {
-  const parts = AREAS.filter((a) => permissions[a.key]).map(
+  const parts = SHOWN_AREAS.filter((a) => permissions[a.key]).map(
     (a) => `${a.label}: ${permissions[a.key] === "edit" ? "change" : "view"}${bandAreas.includes(a.key) ? " (own bands)" : ""}`,
   );
   return parts.length ? parts.join(" · ") : "Only their own earnings";
