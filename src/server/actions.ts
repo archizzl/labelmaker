@@ -233,6 +233,10 @@ export async function deleteBand(fd: FormData) {
   access.labelWide();
   const { orgId } = access;
   const id = int(fd, "id");
+  // Like deleting a group: the band's name typed to confirm.
+  const [band] = await db.select({ name: bands.name }).from(bands).where(and(eq(bands.orgId, orgId), eq(bands.id, id)));
+  if (!band) throw new Error("No such band in this group.");
+  if (str(fd, "name").toLowerCase() !== band.name.trim().toLowerCase()) throw new Error(`Type ${band.name} exactly to confirm.`);
   const [hasPayouts] = await db
     .select({ id: periods.id })
     .from(periods)
