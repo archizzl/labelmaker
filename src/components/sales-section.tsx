@@ -11,6 +11,7 @@ import { ColumnsMenu } from "@/components/columns-menu";
 import { loadHiddenColumns } from "@/server/list-columns";
 import { ChartBoard } from "./chart-board";
 import type { Segment } from "./charts";
+import { Tabs } from "./tabs";
 import { Card, Money } from "./ui";
 
 /**
@@ -119,23 +120,12 @@ export async function SalesSection({
   const [saved, hiddenColumns] = await Promise.all([loadLayout(boardId), showItems ? loadHiddenColumns("items") : []]);
 
   return (
-    <Card
-      title={title}
-      actions={
-        <nav className="flex flex-wrap gap-3 text-xs" aria-label="Date range">
-          {SALES_RANGES.map((o) => (
-            <Link
-              key={o.key}
-              href={o.key === "all" ? basePath : `${basePath}?range=${o.key}`}
-              scroll={false}
-              className={`border-b-2 pb-0.5 hover:no-underline ${r.key === o.key ? "border-accent font-bold text-text" : "border-transparent text-muted hover:text-text"}`}
-            >
-              {o.label}
-            </Link>
-          ))}
-        </nav>
-      }
-    >
+    <Card title={title}>
+      <Tabs
+        label="Date range"
+        scroll={false}
+        items={SALES_RANGES.map((o) => ({ href: o.key === "all" ? basePath : `${basePath}?range=${o.key}`, label: o.label, active: r.key === o.key }))}
+      />
       {report.saleCount === 0 ? (
         <p className="text-sm text-muted">
           No sales {r.key === "all" ? "yet" : "in this range"}.{" "}

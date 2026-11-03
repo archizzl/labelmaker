@@ -1,10 +1,10 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
-import Link from "next/link";
 import { connection } from "next/server";
 import { ActionForm, CopyButton, SaveWhenChanged, SubmitButton } from "@/components/client";
 import { ResetLinkButton } from "@/components/reset-link-button";
 import { FilterList } from "@/components/filter-list";
+import { Tabs } from "@/components/tabs";
 import { Badge, Callout, Card, Empty, Field, PageHeader } from "@/components/ui";
 import { db, schema } from "@/db";
 import { FEATURE_FLAGS, FLAG_AUDIENCES } from "@/lib/feature-flags";
@@ -129,29 +129,23 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   const groupsOf = (userId: string) => memberships.filter((m) => m.userId === userId);
   const openInvites = invites.filter((i) => inviteStatus(i) === "open").length;
 
-  const tabLink = (key: Tab, label: string, count?: number | string) => (
-    <Link
-      key={key}
-      href={`/admin?tab=${key}`}
-      className={`border-b-2 pb-1 whitespace-nowrap hover:no-underline ${tab === key ? "border-accent font-bold text-text" : "border-transparent text-muted hover:text-text"}`}
-    >
-      {label}
-      {count !== undefined && <span className="ml-1.5 text-xs font-normal text-muted">{count}</span>}
-    </Link>
-  );
+  const tabLink = (key: Tab, label: string, count?: number | string) => ({ href: `/admin?tab=${key}`, label, active: tab === key, badge: count });
 
   return (
     <>
       <PageHeader title="Admin" />
-      <nav className="mb-6 flex gap-x-6 gap-y-2 overflow-x-auto border-b border-border text-sm" aria-label="Admin">
-        {tabLink("applications", "Applications", waiting.length || undefined)}
-        {tabLink("flags", "Feature flags", FEATURE_FLAGS.length)}
-        {tabLink("abel", "Abel")}
-        {tabLink("invites", "Invites", openInvites || undefined)}
-        {tabLink("accounts", "Accounts", people.length)}
-        {tabLink("groups", "Groups", accounts.length)}
-        {tests && tabLink("tests", "Tests")}
-      </nav>
+      <Tabs
+        label="Admin"
+        items={[
+          tabLink("applications", "Applications", waiting.length || undefined),
+          tabLink("flags", "Feature flags", FEATURE_FLAGS.length),
+          tabLink("abel", "Abel"),
+          tabLink("invites", "Invites", openInvites || undefined),
+          tabLink("accounts", "Accounts", people.length),
+          tabLink("groups", "Groups", accounts.length),
+          ...(tests ? [tabLink("tests", "Tests")] : []),
+        ]}
+      />
 
       {created && (
         <Callout tone="good">

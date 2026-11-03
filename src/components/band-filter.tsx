@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Tabs } from "./tabs";
 
 /** Up to this many bands are each a button; more (a big label's roster) are a list to pick from. */
 const BUTTONS_UP_TO = 8;
@@ -38,38 +39,45 @@ export function BandFilter({
       key={c.href}
       href={c.href}
       scroll={false}
-      className={
-        look === "pills"
-          ? `rounded-full px-3 py-1 hover:no-underline ${c.on ? "bg-text text-bg" : "bg-surface-2 text-muted hover:text-text"}`
-          : `border-b-2 pb-0.5 hover:no-underline ${c.on ? "border-accent font-bold text-text" : "border-transparent text-muted hover:text-text"}`
-      }
+      className={`rounded-full px-3 py-1 hover:no-underline ${c.on ? "bg-text text-bg" : "bg-surface-2 text-muted hover:text-text"}`}
     >
       {c.label}
     </Link>
   );
   const allOn = !current && !extras.some((e) => e.on);
   const many = bands.length > BUTTONS_UP_TO;
+  const picker = many && (
+    <select
+      value={current ?? ""}
+      onChange={(e) => router.push(e.target.value ? hrefOf(Number(e.target.value)) : path, { scroll: false })}
+      aria-label="Band"
+      className={`!w-auto max-w-full !py-1 text-sm ${current ? "" : "text-muted"}`}
+    >
+      <option value="">{bands.length} bands…</option>
+      {[...bands]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((b) => (
+          <option key={b.id} value={b.id}>
+            {b.name}
+          </option>
+        ))}
+    </select>
+  );
+  if (look === "tabs") {
+    const choices = [{ href: path, label: all, on: allOn }, ...extras, ...(many ? [] : bands.map((b) => ({ href: hrefOf(b.id), label: b.name, on: current === b.id })))];
+    return (
+      <Tabs label="Band" lead={label} scroll={false} items={choices.map((c) => ({ href: c.href, label: c.label, active: c.on }))}>
+        {picker}
+      </Tabs>
+    );
+  }
   return (
-    <nav className={`mb-6 flex flex-wrap items-center text-sm ${look === "pills" ? "gap-2" : "gap-x-5 gap-y-2"}`} aria-label="Band">
+    <nav className="mb-6 flex flex-wrap items-center gap-2 text-sm" aria-label="Band">
       {label && <span className="text-muted">{label}</span>}
       {choice({ href: path, label: all, on: allOn })}
       {extras.map(choice)}
       {many ? (
-        <select
-          value={current ?? ""}
-          onChange={(e) => router.push(e.target.value ? hrefOf(Number(e.target.value)) : path, { scroll: false })}
-          aria-label="Band"
-          className={`!w-auto max-w-full !py-1 text-sm ${current ? "" : "text-muted"}`}
-        >
-          <option value="">{bands.length} bands…</option>
-          {[...bands]
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-        </select>
+        picker
       ) : (
         bands.map((b) => choice({ href: hrefOf(b.id), label: b.name, on: current === b.id }))
       )}

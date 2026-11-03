@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Tabs } from "./tabs";
 
 const TABS = [
   { key: "overview", label: "Overview" },
@@ -26,22 +26,22 @@ export function BandTabs({
   noSettings?: boolean;
 }) {
   return (
-    <nav className="mb-8 flex gap-6 overflow-x-auto border-b border-border text-sm" aria-label="Band">
-      {TABS.filter((t) => !(noSettings && t.key === "settings")).map((t) => (
-        <Link
-          key={t.key}
-          href={t.key === "overview" ? `/bands/${bandId}` : `/bands/${bandId}?tab=${t.key}`}
-          className={`border-b-2 pb-1 whitespace-nowrap hover:no-underline ${active === t.key ? "border-accent font-bold text-text" : "border-transparent text-muted hover:text-text"}`}
-        >
-          {t.label}
-          {t.key === "money" && needsSplit && (
+    <Tabs
+      label="Band"
+      className="mb-8"
+      items={TABS.filter((t) => !(noSettings && t.key === "settings")).map((t) => ({
+        href: t.key === "overview" ? `/bands/${bandId}` : `/bands/${bandId}?tab=${t.key}`,
+        label: t.label,
+        active: active === t.key,
+        badge:
+          t.key === "money" && needsSplit ? (
             <span className="ml-1.5 rounded-full bg-bad-bg px-1.5 text-xs text-bad" aria-label="No split yet">
               !
             </span>
-          )}
-          {t.key === "people" && <span className="ml-1.5 text-xs text-muted">{members}</span>}
-        </Link>
-      ))}
-    </nav>
+          ) : t.key === "people" ? (
+            members
+          ) : undefined,
+      }))}
+    />
   );
 }
