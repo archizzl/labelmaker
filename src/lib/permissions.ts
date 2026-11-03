@@ -6,7 +6,7 @@
  */
 
 export const AREAS = [
-  { key: "dashboard", label: "Dashboard", hint: "The overview: who's owed what, recent sales, charts.", edit: false, bands: false },
+  { key: "dashboard", label: "Dashboard", hint: "The overview of every band: who's owed what, recent sales, charts.", edit: false, bands: false },
   { key: "sales", label: "Sales", hint: "Browsing sales; changing means importing and matching them.", edit: true, bands: true },
   { key: "orders", label: "Orders", hint: "Open merch orders; changing means marking them shipped.", edit: true, bands: true },
   { key: "inventory", label: "Inventory", hint: "Stock of merch, formats and supplies; changing means adding items and counts.", edit: true, bands: true },
