@@ -8,7 +8,7 @@ import { db, schema } from "@/db";
 import { safePath } from "@/lib/safe-path";
 import { slugify } from "@/lib/slug";
 import { auth } from "./auth";
-import { accountContext, accountsFor, type Context, getSession, requireAdmin, VIEW_AS_COOKIE } from "./context";
+import { accountContext, accountsFor, type Context, getSession, mayDeleteGroup, requireAdmin, VIEW_AS_COOKIE } from "./context";
 import { joinedLabel, labelReachNote, renameJoinedBand, syncJoinedPeople } from "./own-books";
 import { AREAS, type Area, normalizeBandAreas, normalizePermissions } from "@/lib/permissions";
 import { assignMemberType, memberTypeForInvite, parseRoleChoice, setInviteMemberType, setManagedBands } from "./member-types";
@@ -585,7 +585,7 @@ export async function deleteAccount(_: FormState, fd: FormData): Promise<FormSta
   const ctx = await accountContext();
   const { orgId, user } = ctx;
   if (str(fd, "orgId") !== orgId) return { error: "You’ve switched groups since. Reload this page and try again." };
-  if (ctx.managedBy || !ctx.isAdmin) return { error: "Only an admin of this group can delete it." };
+  if (!(await mayDeleteGroup(ctx))) return { error: "Only the group’s owner can delete it." };
   if (str(fd, "name").toLowerCase() !== ctx.org.name.trim().toLowerCase()) return { error: `Type ${ctx.org.name} exactly to confirm.` };
   await deleteAccountsWithBooks([orgId]);
   (await cookies()).delete(VIEW_AS_COOKIE);

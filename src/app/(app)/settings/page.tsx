@@ -14,7 +14,7 @@ import { DeleteAccount } from "@/components/delete-account";
 import { SyncFooter } from "@/components/sync-status";
 import { setLabelAccountHolder, setSetupHidden } from "@/server/actions";
 import { bandcampApiOff } from "@/server/bandcamp-api";
-import { accountContext, type Context, isBandLogin, requireAdmin } from "@/server/context";
+import { accountContext, type Context, isBandLogin, mayDeleteGroup, requireAdmin } from "@/server/context";
 import { unlink } from "@/server/link-actions";
 import { labelsForBandAccount } from "@/server/links";
 import { labelReach } from "@/server/own-books";
@@ -136,7 +136,7 @@ export default async function SettingsPage() {
         </div>
       )}
 
-      <DeleteAccount name={ctx.org.name} orgId={ctx.orgId} label={kind === "label"} />
+      {(await mayDeleteGroup(ctx)) && <DeleteAccount name={ctx.org.name} orgId={ctx.orgId} label={kind === "label"} />}
       <SyncFooter orgId={ctx.orgId} onSettings />
     </>
   );

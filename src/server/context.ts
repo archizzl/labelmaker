@@ -476,6 +476,20 @@ export async function contextFor(
   return can(ctx.access, area, level) ? ctx : null;
 }
 
+/**
+ * Deleting the whole group: its owner (whoever set it up). If the owner has left it, any admin, so
+ * it's never stuck. Never a band account the label made (the label deletes the band).
+ */
+export async function mayDeleteGroup(ctx: Context): Promise<boolean> {
+  if (ctx.managedBy || !ctx.isAdmin) return false;
+  if (ctx.org.role === "owner") return true;
+  const [owner] = await db
+    .select({ id: schema.member.id })
+    .from(schema.member)
+    .where(and(eq(schema.member.organizationId, ctx.orgId), eq(schema.member.role, "owner")));
+  return !owner;
+}
+
 /** For pages and actions only admins may use (settings, who can sign in): members are sent to their own earnings page. */
 export async function requireAdmin(): Promise<Context> {
   // Admin of the account itself: for a label-made band account, its own settings and logins.
