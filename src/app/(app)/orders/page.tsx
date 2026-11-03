@@ -12,7 +12,7 @@ import { formatCents } from "@/lib/money";
 import { bandScope, can, inBandScope } from "@/lib/permissions";
 import { requireAccess } from "@/server/context";
 import { loadOpenOrders, type OrderSale, salesForOrders } from "@/server/merch-orders";
-import { markHandedOff, markOrderPickup, markOrderShipped, refreshOrders, savePickupNote } from "@/server/order-actions";
+import { markHandedOffForm, markOrderPickup, markOrderShipped, refreshOrdersForm, savePickupNoteForm } from "@/server/order-actions";
 import { formatDate } from "@/lib/dates";
 
 export const metadata = { title: "orders" };
@@ -56,11 +56,11 @@ export default async function OrdersPage({ searchParams }: PageProps<"/orders">)
         ) : (
           <Callout tone="bad">
             Couldn’t get your orders from Bandcamp: {open.message}{" "}
-            <form action={refreshOrders} className="inline">
+            <ActionForm action={refreshOrdersForm} className="inline">
               <button type="submit" className="underline">
                 Try again
               </button>
-            </form>
+            </ActionForm>
           </Callout>
         )}
         <div className="mt-8">
@@ -89,11 +89,11 @@ export default async function OrdersPage({ searchParams }: PageProps<"/orders">)
                 Packing slips ({ready.length})
               </Link>
             )}
-            <form action={refreshOrders}>
+            <ActionForm action={refreshOrdersForm}>
               <button type="submit" className={buttonClass("ghost")}>
                 Refresh
               </button>
-            </form>
+            </ActionForm>
           </>
         }
       />
@@ -509,7 +509,7 @@ function PickupList({ pickups, bandName, canEdit }: { pickups: PickupRow[]; band
                 ))}
               </ul>
               {canEdit ? (
-                <form action={savePickupNote} className="flex flex-wrap items-center gap-2">
+                <ActionForm action={savePickupNoteForm} className="flex flex-wrap items-center gap-2">
                   <input type="hidden" name="id" value={p.id} />
                   <input name="note" defaultValue={p.note ?? ""} placeholder="Note: when, where, who’s collecting" className="!w-72 !py-1 !text-sm" maxLength={500} />
                   <SaveWhenChanged>
@@ -517,18 +517,18 @@ function PickupList({ pickups, bandName, canEdit }: { pickups: PickupRow[]; band
                       Save note
                     </SubmitButton>
                   </SaveWhenChanged>
-                </form>
+                </ActionForm>
               ) : (
                 p.note && <p className="text-sm text-muted">{p.note}</p>
               )}
             </div>
             {canEdit && (
-              <form action={markHandedOff} className="self-start">
+              <ActionForm action={markHandedOffForm} className="self-start">
                 <input type="hidden" name="id" value={p.id} />
                 <SubmitButton size="sm" confirm={`Mark ${p.buyerName}’s order as handed over? It leaves this list.`}>
                   Handed over
                 </SubmitButton>
-              </form>
+              </ActionForm>
             )}
           </li>
         ))}

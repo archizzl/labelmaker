@@ -2,14 +2,14 @@ import { and, asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { SaveWhenChanged, SubmitButton } from "@/components/client";
+import { ActionForm, SaveWhenChanged, SubmitButton } from "@/components/client";
 import { ItemCosts } from "@/components/item-cost";
 import { SalesSection } from "@/components/sales-section";
 import { costsFor } from "@/components/physical-formats";
 import { SharesSummary, SplitRules, currentRule } from "@/components/split-rules";
 import { Card, Disclosure, Empty, Field, MoneyList } from "@/components/ui";
 import { db, schema } from "@/db";
-import { addTracks, deleteRelease, deleteTrack, refreshReleaseFromBandcamp, saveRelease, saveTrack } from "@/server/actions";
+import { addTracksForm, deleteReleaseForm, deleteTrackForm, refreshReleaseFromBandcamp, saveReleaseForm, saveTrackForm } from "@/server/actions";
 import { bandScope, can } from "@/lib/permissions";
 import { getContext, ownBooksOf, requireAccess } from "@/server/context";
 import { setReleasePhoto } from "@/server/merch-photo-actions";
@@ -293,7 +293,7 @@ export default async function ReleasePage({ params, searchParams }: PageProps<"/
                       {canEdit && (
                       <div>
                         <h3 className="mb-2 text-sm font-bold">details</h3>
-                        <form action={saveTrack} className="grid gap-3 sm:grid-cols-2">
+                        <ActionForm action={saveTrackForm} className="grid gap-3 sm:grid-cols-2">
                           <input type="hidden" name="id" value={t.id} />
                           <Field label="Title">
                             <input name="title" defaultValue={t.title} required />
@@ -331,13 +331,13 @@ export default async function ReleasePage({ params, searchParams }: PageProps<"/
                               <SubmitButton size="sm">save track</SubmitButton>
                             </SaveWhenChanged>
                           </div>
-                        </form>
-                        <form action={deleteTrack} className="mt-3">
+                        </ActionForm>
+                        <ActionForm action={deleteTrackForm} className="mt-3">
                           <input type="hidden" name="id" value={t.id} />
                           <SubmitButton variant="danger" size="sm" confirm={`Delete ${t.title}?`}>
                             Delete track
                           </SubmitButton>
-                        </form>
+                        </ActionForm>
                       </div>
                       )}
                     </div>
@@ -350,13 +350,13 @@ export default async function ReleasePage({ params, searchParams }: PageProps<"/
         {canEdit && (
         <div className="mt-4">
           <Disclosure summary="+ Add tracks">
-            <form action={addTracks} className="space-y-3">
+            <ActionForm action={addTracksForm} className="space-y-3">
               <input type="hidden" name="releaseId" value={id} />
               <Field label="One track per line" hint="Title, then optionally | and the track’s URL.">
                 <textarea name="titles" rows={6} required />
               </Field>
               <SubmitButton>Add tracks</SubmitButton>
-            </form>
+            </ActionForm>
           </Disclosure>
         </div>
         )}
@@ -452,7 +452,7 @@ export default async function ReleasePage({ params, searchParams }: PageProps<"/
 
       {canEdit && (
       <Card title={isMerch ? "Item settings" : "Release settings"}>
-        <form action={saveRelease} className="grid gap-4 sm:grid-cols-2">
+        <ActionForm action={saveReleaseForm} className="grid gap-4 sm:grid-cols-2">
           <input type="hidden" name="id" value={id} />
           {release.kind !== "album" && <input type="hidden" name="albumSplitMode" value={release.albumSplitMode} />}
           {oneBand ? (
@@ -493,13 +493,13 @@ export default async function ReleasePage({ params, searchParams }: PageProps<"/
               <SubmitButton>Save</SubmitButton>
             </SaveWhenChanged>
           </div>
-        </form>
-        <form action={deleteRelease} className="mt-8 border-t border-border pt-4">
+        </ActionForm>
+        <ActionForm action={deleteReleaseForm} className="mt-8 border-t border-border pt-4">
           <input type="hidden" name="id" value={id} />
           <SubmitButton variant="danger" size="sm" confirm={`Delete ${release.title}${isMerch ? "" : " and its tracks"} and splits?`}>
             {isMerch ? "Delete item" : "Delete release"}
           </SubmitButton>
-        </form>
+        </ActionForm>
       </Card>
       )}
     </>

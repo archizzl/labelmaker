@@ -90,6 +90,9 @@ export async function refreshOrders() {
   forgetOpenOrders(orgId);
   revalidatePath("/orders");
 }
+export async function refreshOrdersForm(_: ShipState): Promise<ShipState> {
+  return asFormResult(() => refreshOrders());
+}
 
 /**
  * In-person pickup: mark the order shipped on Bandcamp now (so it isn't late, and the buyer can be
@@ -146,6 +149,9 @@ export async function markHandedOff(fd: FormData) {
   revalidatePath("/orders");
   revalidatePath("/");
 }
+export async function markHandedOffForm(_: ShipState, fd: FormData): Promise<ShipState> {
+  return asFormResult(() => markHandedOff(fd));
+}
 
 /** The note on an order waiting for pickup (where, when, who's collecting). */
 export async function savePickupNote(fd: FormData) {
@@ -158,6 +164,9 @@ export async function savePickupNote(fd: FormData) {
   if (!row || !inBandScope(bandScope(access, "orders"), row.bandIds)) return;
   await db.update(schema.pickupOrders).set({ note: str(fd, "note").slice(0, 500) || null }).where(eq(schema.pickupOrders.id, id));
   revalidatePath("/orders");
+}
+export async function savePickupNoteForm(_: ShipState, fd: FormData): Promise<ShipState> {
+  return asFormResult(() => savePickupNote(fd), "Saved.");
 }
 
 /** Hide the dashboard's "orders waiting to ship" banner, for a week (for whoever hides it). */

@@ -1,6 +1,7 @@
+import { ActionForm } from "@/components/client";
 import { Badge, Callout, Card, Empty } from "@/components/ui";
 import { plural } from "@/lib/plural";
-import { runTestsAction } from "@/server/admin-actions";
+import { runTestsForm } from "@/server/admin-actions";
 import { listTests, savedResults, type TestResult, testId, testsRunning } from "@/server/test-runner";
 import { RunTestsButton } from "./run-tests-button";
 import { formatDateTime } from "@/lib/dates";
@@ -34,11 +35,11 @@ export async function AdminTests() {
       <Card
         title={`${plural(total, "test")} in ${plural(files.length, "file")}`}
         actions={
-          <form action={runTestsAction}>
+          <ActionForm action={runTestsForm}>
             <RunTestsButton variant="primary" size="md">
               Run all
             </RunTestsButton>
-          </form>
+          </ActionForm>
         }
       >
         {last ? (
@@ -72,10 +73,10 @@ export async function AdminTests() {
                 ) : passed > 0 ? (
                   <Badge>{passed} passed</Badge>
                 ) : null}
-                <form action={runTestsAction} className="ml-auto">
+                <ActionForm action={runTestsForm} className="ml-auto">
                   <input type="hidden" name="file" value={f.file} />
                   <RunTestsButton>Run</RunTestsButton>
-                </form>
+                </ActionForm>
               </summary>
               <div className="mb-3 ml-7 space-y-1 text-sm">
                 {fileError && <pre className="max-h-64 overflow-auto rounded-sm bg-surface-2 p-3 text-xs whitespace-pre-wrap text-bad">{fileError}</pre>}
@@ -87,11 +88,11 @@ export async function AdminTests() {
                         <Mark r={r} />
                         <span className="min-w-0 flex-1">{name}</span>
                         {r && <span className="text-xs whitespace-nowrap text-muted">{r.ms} ms · {when(r.at)}</span>}
-                        <form action={runTestsAction}>
+                        <ActionForm action={runTestsForm}>
                           <input type="hidden" name="file" value={f.file} />
                           <input type="hidden" name="name" value={name} />
                           <RunTestsButton>Run</RunTestsButton>
-                        </form>
+                        </ActionForm>
                       </div>
                       {r?.failure && <pre className="mt-1 mb-2 ml-6 max-h-72 overflow-auto rounded-sm bg-surface-2 p-3 text-xs whitespace-pre-wrap">{r.failure}</pre>}
                     </div>

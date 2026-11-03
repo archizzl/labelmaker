@@ -13,10 +13,10 @@ import { ownBand } from "@/server/data";
 import { MemberTypesCard } from "@/components/member-types";
 import { DeleteAccount } from "@/components/delete-account";
 import { SyncFooter } from "@/components/sync-status";
-import { setLabelAccountHolder, setSetupHidden } from "@/server/actions";
+import { setLabelAccountHolderForm, setSetupHiddenForm } from "@/server/actions";
 import { bandcampApiOff } from "@/server/bandcamp-api";
 import { accountContext, type Context, isBandLogin, mayDeleteGroup, requireAdmin } from "@/server/context";
-import { unlink } from "@/server/link-actions";
+import { unlinkForm } from "@/server/link-actions";
 import { labelsForBandAccount } from "@/server/links";
 import { labelReach } from "@/server/own-books";
 import { bandcampAddressProblem } from "@/lib/routing";
@@ -66,7 +66,7 @@ export default async function SettingsPage() {
               Whoever the label’s bank account belongs to doesn’t need to pay themselves. Their share of each payout is recorded as theirs, but
               marked <i>kept in label account</i> instead of being sent through PayPal.
             </p> */}
-            <form action={setLabelAccountHolder} className="flex flex-wrap items-center gap-2">
+            <ActionForm action={setLabelAccountHolderForm} className="flex flex-wrap items-center gap-2">
               <select key={holder?.id ?? "none"} name="personId" defaultValue={holder?.id ?? ""} className="!w-64" aria-label="Who holds the label’s bank account">
                 <option value="">Nobody (pay everyone out)</option>
                 {people.map((p) => (
@@ -78,7 +78,7 @@ export default async function SettingsPage() {
               <SaveWhenChanged>
                 <SubmitButton variant="secondary">Save</SubmitButton>
               </SaveWhenChanged>
-            </form>
+            </ActionForm>
             {/* <p className="mt-2 text-xs text-muted">Choosing someone also marks their unpaid payouts so far as kept.</p> */}
           </Card>
         </div>
@@ -87,12 +87,12 @@ export default async function SettingsPage() {
       {settings?.setupHidden && (
         <div className="mb-6 flex flex-wrap items-center gap-2 text-sm text-muted">
           The dashboard’s getting started checklist is hidden.
-          <form action={setSetupHidden}>
+          <ActionForm action={setSetupHiddenForm}>
             <input type="hidden" name="hidden" value="0" />
             <SubmitButton variant="secondary" size="sm">
               Show it again
             </SubmitButton>
-          </form>
+          </ActionForm>
         </div>
       )}
 
@@ -111,7 +111,7 @@ export default async function SettingsPage() {
                   </Link>
                   <span className="text-muted">as {band.name}</span>
                   {!link.managed && (
-                    <form action={unlink} className="ml-auto">
+                    <ActionForm action={unlinkForm} className="ml-auto">
                       <input type="hidden" name="id" value={link.id} />
                       <SubmitButton
                         variant="danger-ghost"
@@ -120,7 +120,7 @@ export default async function SettingsPage() {
                       >
                         {link.joined ? "Leave" : "Unlink"}
                       </SubmitButton>
-                    </form>
+                    </ActionForm>
                   )}
                 </li>
               ))}
