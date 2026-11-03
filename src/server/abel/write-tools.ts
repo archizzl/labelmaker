@@ -3,11 +3,10 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { formatCents, parseCents } from "@/lib/money";
-import { MOVE_REASONS } from "@/lib/inventory";
 import { MANUAL_KINDS, PAYMENT_METHODS } from "@/lib/manual-sales";
 import { addManualSale } from "../manual-sale-actions";
 import { finalizePayout, markAllPaid } from "../actions";
-import { adjustInventory } from "../inventory-actions";
+import { changeCount } from "../inventory-actions";
 import { markOrderShipped } from "../order-actions";
 import { saleAdder } from "../manual-sales";
 import type { Context } from "../context";
@@ -148,22 +147,29 @@ const shipOrder = abelTool({
 });
 
 const changeStock = abelTool({
-  name: "adjust_inventory",
-  description: "Change an inventory item's count: received, sold, used, given, damaged, or a recount (sets the count). Use inventory for ids.",
+  name: "change_inventory_count",
+  description:
+    "Change an inventory item's count, as the counter on the Inventory page does: give `by` to add some (+) or take some off (−), or `to` to set the count (a recount). Give one of them. Use inventory for ids.",
   params: z.object({
     itemId: z.number().int(),
-    reason: z.enum(MOVE_REASONS.map((r) => r.key) as [string, ...string[]]),
-    amount: z.number().int(),
-    note: z.string().max(300).optional(),
+    by: z.number().int().optional(),
+    to: z.number().int().min(0).optional(),
   }),
   needs: { area: "inventory", level: "edit" },
   write: true,
   summary: async (ctx, a) => {
     const item = await itemName(ctx, a.itemId);
-    const reason = MOVE_REASONS.find((r) => r.key === a.reason)!.label.toLowerCase();
-    return a.reason === "recount" ? `Set the count of ${item} to ${a.amount}` : `${item}: ${reason}, ${Math.abs(a.amount)}`;
+    if (a.to !== undefined) return `Set the count of ${item} to ${a.to}`;
+    return (a.by ?? 0) < 0 ? `Take ${Math.abs(a.by!)} off ${item}` : `Add ${a.by ?? 0} to ${item}`;
   },
-  run: async (_ctx, a) => viaAction(() => adjustInventory(null, form({ id: a.itemId, reason: a.reason, amount: a.amount, note: a.note }))),
+  run: async (ctx, a) => {
+    if ((a.to === undefined) === (a.by === undefined)) return { error: "Give either by (to add or take off) or to (to set the count), not both." };
+    const item = await itemName(ctx, a.itemId);
+    return viaAction(async () => {
+      const r = await changeCount(a.itemId, a.to !== undefined ? { to: a.to } : { by: a.by! });
+      return r.error ? { error: r.error } : { ok: `${item}: ${r.onHand} on hand.` };
+    });
+  },
 });
 
 export const WRITE_TOOLS = [
