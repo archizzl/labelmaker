@@ -123,6 +123,22 @@ export function withHours(marks: Mark[], userId: string, date: string, hours: nu
 }
 
 /*
+ * Tapping and dragging, as in when2meet: what the first cell is decides what the drag does. On a
+ * cell already marked the way you're marking (available, say), it takes the mark off; anywhere
+ * else it puts it on.
+ */
+
+/** What a drag that starts on a day of this status does to every day it covers. */
+export const toggleDay = (current: DayStatus, mark: boolean): boolean | null => (current === (mark ? "yes" : "no") ? null : mark);
+
+/**
+ * The same for an hour. Taking a mark off an hour leaves it to its day, unless the day says the
+ * same: then the hour gets the opposite, so it really changes.
+ */
+export const toggleHour = (current: boolean | null, day: boolean | null, mark: boolean): boolean | null =>
+  current === mark ? (day === mark ? !mark : null) : mark;
+
+/*
  * Dates and hours, shown.
  */
 

@@ -11,6 +11,8 @@ import {
   rankDays,
   shiftMonth,
   statusAt,
+  toggleDay,
+  toggleHour,
   summarizeDay,
   withDays,
   withHours,
@@ -83,6 +85,25 @@ describe("changing marks", () => {
     expect(off).toEqual([day("a", "2026-11-14", true), hour("a", "2026-11-14", 20, false), hour("a", "2026-11-14", 21, false)]);
     expect(withHours(off, "a", "2026-11-14", [21], true)).toEqual([day("a", "2026-11-14", true), hour("a", "2026-11-14", 20, false)]);
     expect(withHours(off, "a", "2026-11-14", [20], null)).toEqual([day("a", "2026-11-14", true), hour("a", "2026-11-14", 21, false)]);
+  });
+});
+
+describe("tapping and dragging", () => {
+  it("takes a day's mark off when it's already marked that way, and puts it on otherwise", () => {
+    expect(toggleDay(null, true)).toBe(true);
+    expect(toggleDay("yes", true)).toBeNull();
+    expect(toggleDay("no", true)).toBe(true);
+    expect(toggleDay("partly", true)).toBe(true);
+    expect(toggleDay("no", false)).toBeNull();
+  });
+
+  it("does the same for an hour, turning it over when its day says the same", () => {
+    expect(toggleHour(null, null, true)).toBe(true);
+    expect(toggleHour(true, null, true)).toBeNull();
+    // Free all day: tapping a free hour makes it not free.
+    expect(toggleHour(true, true, true)).toBe(false);
+    // Busy all day, one hour free: tapping it again goes back to the day.
+    expect(toggleHour(true, false, true)).toBeNull();
   });
 });
 

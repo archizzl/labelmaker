@@ -24,6 +24,8 @@ import {
   shiftMonth,
   statusAt,
   summarizeDay,
+  toggleDay,
+  toggleHour,
   weekday,
   withDays,
   withHours,
@@ -35,12 +37,14 @@ import { ActionForm, SubmitButton, useReadOnly } from "./client";
 import { buttonClass } from "./ui";
 
 /*
- * The calendar: everyone's days at a glance, and your own to mark. Marking works like painting:
- * choose available, unavailable or clear, then tap a day or drag across several (hours the same,
- * on a day's own grid). Changes show straight away and save in the background.
+ * The calendar: everyone's days at a glance, and your own to mark. Marking works as in when2meet:
+ * tap a day or drag across several (hours the same, on a day's own grid), and the first one decides
+ * what the drag does: marked already, it takes the mark off; otherwise it puts it on (available,
+ * or unavailable when that's chosen). Changes show straight away and save in the background.
  */
 
-type Brush = boolean | null;
+/** What tapping and dragging mark: available (true) or unavailable. */
+type Brush = boolean;
 type PlanChip = { id: number; title: string; date: string | null; startHour: number | null; endHour: number | null };
 
 /** Marks as the server sent them, changed here as you paint (and reset when the server sends new ones). */
@@ -70,18 +74,25 @@ function useMarks(initial: Mark[]) {
   return { marks, error, save };
 }
 
-const valueOf = (brush: Brush) => (brush === true ? "yes" : brush === false ? "no" : "clear");
+const valueOf = (v: boolean | null) => (v === true ? "yes" : v === false ? "no" : "clear");
 
 /**
  * Dragging across cells marked data-paint: the run from where it started to where the pointer is
- * (`span` fills in what's between), handed to `commit` when it's let go.
+ * (`span` fills in what's between), handed to `commit` when it's let go, with what the drag does
+ * (`decide`, from the cell it started on).
  */
-function usePaint(enabled: boolean, span: (a: string, b: string) => string[], commit: (keys: string[]) => void) {
-  const [drag, setDrag] = useState<{ from: string; to: string } | null>(null);
+type Drag = { from: string; to: string; value: boolean | null };
+function usePaint(
+  enabled: boolean,
+  span: (a: string, b: string) => string[],
+  decide: (key: string) => boolean | null,
+  commit: (keys: string[], value: boolean | null) => void,
+) {
+  const [drag, setDrag] = useState<Drag | null>(null);
   // The drag as the pointer has it, for letting go (the state can be a render behind a fast drag).
-  const live = useRef<{ from: string; to: string } | null>(null);
+  const live = useRef<Drag | null>(null);
   const keyAt = (e: PointerEvent) => (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest<HTMLElement>("[data-paint]")?.dataset.paint;
-  const move = (next: { from: string; to: string } | null) => {
+  const move = (next: Drag | null) => {
     live.current = next;
     setDrag(next);
   };
@@ -94,7 +105,7 @@ function usePaint(enabled: boolean, span: (a: string, b: string) => string[], co
           if (!k) return;
           e.preventDefault();
           e.currentTarget.setPointerCapture(e.pointerId);
-          move({ from: k, to: k });
+          move({ from: k, to: k, value: decide(k) });
         },
         onPointerMove: (e: PointerEvent) => {
           const d = live.current;
@@ -103,14 +114,14 @@ function usePaint(enabled: boolean, span: (a: string, b: string) => string[], co
         },
         onPointerUp: (e: PointerEvent) => {
           const d = live.current;
-          if (d) commit(span(d.from, keyAt(e) ?? d.to));
+          if (d) commit(span(d.from, keyAt(e) ?? d.to), d.value);
           move(null);
         },
         onPointerCancel: () => move(null),
         style: { touchAction: "none" as const, userSelect: "none" as const },
       }
     : {};
-  return { painting: new Set(keys), props };
+  return { painting: new Set(keys), value: drag?.value ?? null, props };
 }
 
 /**
@@ -142,7 +153,6 @@ function BrushPicker({ brush, setBrush }: { brush: Brush; setBrush: (b: Brush) =
   const options: { value: Brush; label: string; swatch: string }[] = [
     { value: true, label: "available", swatch: "bg-good" },
     { value: false, label: "unavailable", swatch: "bg-bad" },
-    { value: null, label: "clear", swatch: "border border-border bg-surface" },
   ];
   return (
     <div role="radiogroup" aria-label="Mark days as" className="flex flex-wrap gap-1">
@@ -271,15 +281,20 @@ function DayHours({
   // Your column first.
   const cols = me && people.some((p) => p.id === me) ? [people.find((p) => p.id === me)!, ...people.filter((p) => p.id !== me)] : people;
   const hours = early ? HOURS : DAY_HOURS;
-  const { painting, props } = usePaint(canMark, hourSpan, (keys) => {
-    if (!me) return;
-    const hs = keys.map(Number);
-    save(withHours(marks, me, date, hs, brush), { date, hours: hs.map(String), value: valueOf(brush) }, setHours);
-  });
-  const markDay = (v: Brush) => me && save(withDays(marks, me, [date], v), { dates: [date], value: valueOf(v) }, setDays);
-  const mine = me ? dayStatus(book, me, date) : null;
-  // What a cleared hour falls back to while you paint.
+  // Your whole day's mark (what an hour without its own follows).
   const dayMark = marks.find((m) => m.userId === me && m.date === date && m.hour === null)?.available ?? null;
+  const { painting, value, props } = usePaint(
+    canMark,
+    hourSpan,
+    (h) => toggleHour(me ? statusAt(book, me, date, Number(h)) : null, dayMark, brush),
+    (keys, v) => {
+      if (!me) return;
+      const hs = keys.map(Number);
+      save(withHours(marks, me, date, hs, v), { date, hours: hs.map(String), value: valueOf(v) }, setHours);
+    },
+  );
+  const markDay = (v: boolean | null) => me && save(withDays(marks, me, [date], v), { dates: [date], value: valueOf(v) }, setDays);
+  const mine = me ? dayStatus(book, me, date) : null;
   return (
     <section className="mb-10 border border-border p-4" aria-label={dayName(date, thisYear)}>
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
@@ -356,7 +371,7 @@ function DayHours({
                   </td>
                   {cols.map((p) => {
                     const own = p.id === me && canMark;
-                    const st = own && painting.has(String(h)) ? (brush ?? dayMark) : statusAt(book, p.id, date, h);
+                    const st = own && painting.has(String(h)) ? (value ?? dayMark) : statusAt(book, p.id, date, h);
                     return (
                       <td
                         key={p.id}
@@ -415,9 +430,10 @@ export function MonthBoard({
   const weeks = monthWeeks(month);
   const dates = weeks.flat().filter((d): d is string => !!d);
   const summaries = new Map(dates.map((d) => [d, summarizeDay(book, who, d)]));
-  const { painting: pending, props } = usePaint(painting, daySpan, (keys) => {
+  const toggle = (d: string) => toggleDay(me ? dayStatus(book, me, d) : null, brush);
+  const { painting: pending, value, props } = usePaint(painting, daySpan, toggle, (keys, v) => {
     if (!me) return;
-    save(withDays(marks, me, keys, brush), { dates: keys, value: valueOf(brush) }, setDays);
+    save(withDays(marks, me, keys, v), { dates: keys, value: valueOf(v) }, setDays);
     if (keys.length === 1) setSelected(keys[0]);
   });
   const free = dates.map((d) => summaries.get(d)!).filter((s) => s.date >= today && (s.everyone || s.freeHours.length));
@@ -472,7 +488,7 @@ export function MonthBoard({
               const s = summaries.get(d)!;
               const past = d < today;
               const mine = me ? dayStatus(book, me, d) : null;
-              const shown: boolean | null | "partly" = pending.has(d) ? brush : mine === "yes" ? true : mine === "no" ? false : mine;
+              const shown: boolean | null | "partly" = pending.has(d) ? value : mine === "yes" ? true : mine === "no" ? false : mine;
               const dayPlans = plans.filter((p) => p.date === d);
               const tone = painting
                 ? markTone(shown)
@@ -496,7 +512,7 @@ export function MonthBoard({
                   onKeyDown={(e) => {
                     if (e.key !== "Enter" && e.key !== " ") return;
                     e.preventDefault();
-                    if (painting && me) save(withDays(marks, me, [d], brush), { dates: [d], value: valueOf(brush) }, setDays);
+                    if (painting && me) save(withDays(marks, me, [d], toggle(d)), { dates: [d], value: valueOf(toggle(d)) }, setDays);
                     setSelected(d);
                   }}
                   className={`relative flex min-h-16 cursor-pointer flex-col gap-0.5 border-r border-b border-border p-1 text-left last:border-r-0 md:min-h-24 md:p-1.5 ${tone} ${
@@ -609,10 +625,15 @@ export function PlanBoard({
     .filter((s) => s.yes + s.partly > 0 && (s.no === 0 || s.freeHours.length > 0))
     .slice(0, 5);
   const rows = canMark ? [people.find((p) => p.id === me)!, ...people.filter((p) => p.id !== me)] : people;
-  const { painting, props } = usePaint(canMark, (a, b) => daySpan(a, b).filter((d) => dates.includes(d)), (keys) => {
-    if (!me) return;
-    save(withDays(marks, me, keys, brush), { dates: keys, value: valueOf(brush) }, setDays);
-  });
+  const { painting, value, props } = usePaint(
+    canMark,
+    (a, b) => daySpan(a, b).filter((d) => dates.includes(d)),
+    (d) => toggleDay(me ? dayStatus(book, me, d) : null, brush),
+    (keys, v) => {
+      if (!me) return;
+      save(withDays(marks, me, keys, v), { dates: keys, value: valueOf(v) }, setDays);
+    },
+  );
 
   return (
     <>
@@ -689,7 +710,7 @@ export function PlanBoard({
                 {dates.map((d) => {
                   const own = p.id === me && canMark;
                   const st = dayStatus(book, p.id, d);
-                  const shown: boolean | null | "partly" = own && painting.has(d) ? brush : st === "yes" ? true : st === "no" ? false : st;
+                  const shown: boolean | null | "partly" = own && painting.has(d) ? value : st === "yes" ? true : st === "no" ? false : st;
                   return (
                     <td
                       key={d}
