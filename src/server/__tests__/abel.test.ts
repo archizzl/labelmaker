@@ -112,8 +112,8 @@ describe("Abel's tools", () => {
   it("gives an admin every tool", async () => {
     const { orgId, userId } = await setup();
     as(orgId, userId, ADMIN);
-    // Not: their own earnings (no payee record), projects and the calendar (features this group doesn't have), a band group's
-    // settings and what a band sends its label (it's a label).
+    // Not: their own earnings (no payee record), projects (a feature this group doesn't have), a band group's settings and
+    // what a band sends its label (it's a label).
     const not = [
       "my_earnings",
       "list_projects",
@@ -123,7 +123,6 @@ describe("Abel's tools", () => {
       "mark_band_payout",
       "record_payment_to_label",
       "delete_payment_to_label",
-      ...["calendar_days", "mark_my_days", "mark_my_hours", "save_plan", "pick_plan_day", "delete_plan"],
     ];
     expect(await names()).toEqual(agent.ABEL_TOOLS.filter((t) => !not.includes(t.name)).map((t) => t.name).sort());
   });
@@ -142,16 +141,22 @@ describe("Abel's tools", () => {
     as(orgId, userId, { admin: false, permissions: {}, bandAreas: [], bandIds: [] }, { person: p });
     // (Adding and taking back their bands' hand-added sales, withdrawing their own receipt, and their own details:
     // the app lets anyone, and the action decides.)
-    // (find and person_detail too: limited to themselves.)
+    // (find and person_detail too: limited to themselves.) The calendar is everyone's.
     expect(await names()).toEqual([
       "add_manual_sale",
+      "calendar_days",
       "delete_expense",
       "delete_manual_sale",
+      "delete_plan",
       "find",
+      "mark_my_days",
+      "mark_my_hours",
       "my_access",
       "my_earnings",
       "person_detail",
+      "pick_plan_day",
       "save_my_details",
+      "save_plan",
       "where_is",
     ]);
   });

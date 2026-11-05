@@ -15,11 +15,6 @@ export const FEATURE_FLAGS = [
     label: "Abel",
     description: "Abel, the assistant: answers questions about the group's money, sales and orders, and makes changes once you confirm them.",
   },
-  {
-    key: "calendar",
-    label: "Calendar",
-    description: "When everyone in the group is free: each person marks the days and hours they can and can't make, and plans pick a day that suits everyone.",
-  },
 ] as const;
 
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number]["key"];

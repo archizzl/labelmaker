@@ -1,6 +1,7 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { visiblePlan } from "../calendar";
 import type { Context } from "../context";
 
 /*
@@ -60,11 +61,9 @@ export async function itemName(ctx: Context, kind: ItemKind, id: number): Promis
       const [r] = await db.select({ name: s.expenseFiles.filename }).from(s.expenseFiles).where(and(eq(s.expenseFiles.orgId, org), eq(s.expenseFiles.id, id)));
       return r?.name ?? null;
     }
-    case "plan": {
-      // The calendar is the group's own (for a band account the label made, not the label's books).
-      const [r] = await db.select({ title: s.plans.title }).from(s.plans).where(and(eq(s.plans.orgId, ctx.org.id), eq(s.plans.id, id)));
-      return r?.title ?? null;
-    }
+    case "plan":
+      // The group's own plans, and its labels' for it.
+      return (await visiblePlan(ctx, id))?.title ?? null;
     case "project": {
       const [r] = await db.select({ name: s.projects.name }).from(s.projects).where(and(eq(s.projects.orgId, org), eq(s.projects.id, id)));
       return r?.name ?? null;

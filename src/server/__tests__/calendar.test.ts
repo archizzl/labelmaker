@@ -9,10 +9,10 @@ import type { Context } from "../context";
  */
 
 let who = {} as Context;
-const as = (orgId: string, userId: string, role: "admin" | "member" = "member") => {
+const as = (orgId: string, userId: string, role: "admin" | "member" = "member", kind: "label" | "band" = "label") => {
   who = {
     user: { id: userId, name: userId, email: `${userId}@example.test` },
-    org: { id: orgId, name: "Test Label", slug: "t", kind: "label", role },
+    org: { id: orgId, name: "Test Label", slug: "t", kind, role },
     orgId,
     role,
     isAdmin: role === "admin",
@@ -37,10 +37,13 @@ beforeAll(async () => {
   actions = await import("../calendar-actions");
 });
 
-/** A group with the calendar on and these people in it. */
+/** A group with these people signing in to it. */
 async function group(...names: string[]) {
-  const orgId = await newAccount();
-  await db.insert(schema.featureFlagAccounts).values({ flag: "calendar", orgId });
+  return groupOf("label", ...names);
+}
+
+async function groupOf(kind: "label" | "band", ...names: string[]) {
+  const orgId = await newAccount(`Group ${names.join(" ")}`, kind);
   const ids: string[] = [];
   for (const n of names) {
     const id = `${n}-${Math.random().toString(36).slice(2)}`;
@@ -97,7 +100,7 @@ describe("marking days", () => {
   it("is only for people in the group", async () => {
     const { orgId } = await group("Ana");
     as(orgId, "someone-else");
-    await expect(actions.setDays(fd({ dates: ["2026-11-14"], value: "yes" }))).rejects.toThrow(/own account/);
+    await expect(actions.setDays(fd({ dates: ["2026-11-14"], value: "yes" }))).rejects.toThrow(/sign in to this group/);
   });
 });
 
@@ -123,6 +126,38 @@ describe("plans", () => {
     // Everyone ticked is everyone.
     const [all] = await db.select().from(schema.plans).where(eq(schema.plans.id, Number(id)));
     expect(all.userIds).toBeNull();
+  });
+
+  it("for a label's band show in the band's own group, with everyone in the band", async () => {
+    const label = await group("Lee");
+    const bandGroup = await groupOf("band", "Ana", "Ben");
+    const other = await groupOf("band", "Cy");
+    const [band] = await db.insert(schema.bands).values({ orgId: label.orgId, name: "Flag Day" }).returning();
+    const [otherBand] = await db.insert(schema.bands).values({ orgId: label.orgId, name: "Other" }).returning();
+    await db.insert(schema.accountLinks).values([
+      { labelOrgId: label.orgId, labelBandId: band.id, bandOrgId: bandGroup.orgId, code: `c-${band.id}`, status: "active", managed: true },
+      { labelOrgId: label.orgId, labelBandId: otherBand.id, bandOrgId: other.orgId, code: `c-${otherBand.id}`, status: "active", managed: true },
+    ]);
+    as(label.orgId, label.ids[0], "admin");
+    const to = await redirected(() => actions.savePlan(null, fd({ title: "Rehearsal", fromDate: "2026-11-10", toDate: "2026-11-20", bandId: String(band.id) })));
+    const id = Number(to!.split("/").at(-1));
+
+    const calendar = await import("../calendar");
+    // The band's group sees it, and its people are the band's.
+    as(bandGroup.orgId, bandGroup.ids[0], "member", "band");
+    const plan = await calendar.visiblePlan(who, id);
+    expect(plan).toMatchObject({ title: "Rehearsal", bandName: "Flag Day" });
+    expect((await calendar.upcomingPlans(who, "2026-11-01")).map((p) => p.id)).toContain(id);
+    expect((await calendar.planBase(plan!)).map((p) => p.id).sort()).toEqual([...bandGroup.ids].sort());
+    // Band members mark their days for it.
+    expect(await actions.setDays(fd({ dates: ["2026-11-14"], value: "yes" }))).toEqual({ ok: "Saved." });
+    // Another band's group doesn't see it.
+    as(other.orgId, other.ids[0], "admin", "band");
+    expect(await calendar.visiblePlan(who, id)).toBeNull();
+    // The band's admins can pick its day, but not delete the label's plan.
+    as(bandGroup.orgId, bandGroup.ids[1], "admin", "band");
+    expect(await actions.pickPlanDate(null, fd({ id: String(id), date: "2026-11-14" }))).toEqual({ ok: "Day picked." });
+    await expect(actions.deletePlan(fd({ id: String(id) }))).rejects.toThrow(/admin of/);
   });
 
   it("keep to their group", async () => {

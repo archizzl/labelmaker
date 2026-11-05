@@ -1150,7 +1150,7 @@ export const siteSettings = pgTable("site_settings", {
 });
 
 /*
- * The calendar (feature flag "calendar"): when people are free, and plans made with it.
+ * The calendar: when people are free, and plans made with it.
  * Availability is the person's own, not one group's: marked once, every group they're in sees it.
  * A mark is for a whole day (hour empty) or one hour of it (0–23, the hour starting then); an
  * hour's mark wins over its day's.
@@ -1187,7 +1187,12 @@ export const plans = pgTable(
     /** The days it could be, from and to (inclusive). */
     fromDate: text("from_date").notNull(),
     toDate: text("to_date").notNull(),
-    /** Who it's for (account ids); empty for everyone in the group. */
+    /**
+     * The band it's for (a label's plan for one of its bands): everyone in the band takes part, and
+     * it shows in the band's own group too.
+     */
+    bandId: integer("band_id").references(() => bands.id, { onDelete: "set null" }),
+    /** Who it's for (account ids), of the group or the band; empty for all of them. */
     userIds: jsonb("user_ids").$type<string[]>(),
     date: text("date"),
     startHour: integer("start_hour"),
@@ -1195,5 +1200,5 @@ export const plans = pgTable(
     createdByUserId: text("created_by_user_id").references(() => user.id, { onDelete: "set null" }),
     createdAt: text("created_at").notNull().default(now),
   },
-  (t) => [index("plans_org").on(t.orgId, t.fromDate)],
+  (t) => [index("plans_org").on(t.orgId, t.fromDate), index("plans_band").on(t.bandId)],
 );

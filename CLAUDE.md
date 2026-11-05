@@ -112,7 +112,7 @@ Never write to the live database by hand. Changes go through migrations and the 
   - The Directory (`/directory`) lists bands and their people, and who can sign in. `/bands` and `/people` redirect there.
   - Each band's page (`/bands/[id]`) has tabs, including Money (a band group's splits).
   - Payouts are at `/periods`, label funds at `/funds` with the label's splits and deductions (`/rules`) as its Rules tab, a member's own earnings at `/me`.
-  - Also: sales (with `/sales/import` and `/sales/add`), orders, inventory, receipts, catalog, projects (feature flag), calendar (feature flag `calendar`: who's free when, and plans; `src/server/calendar.ts`, rules in `src/lib/availability.ts`; availability is per account, shared by all their groups), fans (hidden from the nav), from-label (a linked band's view of its label), settings, account.
+  - Also: sales (with `/sales/import` and `/sales/add`), orders, inventory, receipts, catalog, projects (feature flag), calendar (who's free when, and plans; `src/server/calendar.ts`, rules in `src/lib/availability.ts`; availability is per account, shared by all their groups), fans (hidden from the nav), from-label (a linked band's view of its label), settings, account.
   - The nav is `src/components/nav.tsx`; what members see is set by member types (`src/lib/permissions.ts`).
 - **`src/app/(auth)`:** sign-in, sign-up, password reset, join links and the welcome page (anyone can set up a group there).
 - **`src/app/(admin)`:** the site admin dashboard (old group applications, invite links, accounts, groups, feature flags, and Abel's models: `src/server/abel/models.ts`, kept in `site_settings`, ahead of `ABEL_MODEL`).

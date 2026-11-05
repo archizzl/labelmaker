@@ -34,9 +34,8 @@ function itemsFor(
   bandHref: string | null,
   hideOrders: boolean,
   earnings: boolean,
-  calendar: boolean,
 ): Item[] {
-  const cal = calendar ? [{ href: "/calendar", label: "calendar" }] : [];
+  const cal = [{ href: "/calendar", label: "calendar" }];
   // A band account the label made: its own books with the label's part for it (dashboard, sales,
   // payouts, receipts, splits), its part of the label's (orders, inventory, funds, catalog,
   // Directory), and its settings.
@@ -180,7 +179,6 @@ export function Nav({
   bandLogin = false,
   earnings = false,
   abel = false,
-  calendar = false,
 }: {
   user: { name: string; email: string; image?: string | null };
   account: Account;
@@ -220,8 +218,6 @@ export function Nav({
   earnings?: boolean;
   /** Abel, the assistant, is on for them: his button. */
   abel?: boolean;
-  /** The calendar is switched on for them (a flagged feature). */
-  calendar?: boolean;
 }) {
   const path = usePathname();
   // "New sales" counts from your last look at Sales: once you've opened it, stop showing the number
@@ -233,7 +229,7 @@ export function Nav({
     if (key === "sales" && seenSales) return 0;
     return badges[key] ?? 0;
   };
-  const items = [...itemsFor(account, isAdmin, areas, labels, projects, managed, bandHref, hideOrders, earnings, calendar), ...(siteAdmin && showAdminLink && !viewing ? [{ href: "/admin", label: "admin" }] : [])];
+  const items = [...itemsFor(account, isAdmin, areas, labels, projects, managed, bandHref, hideOrders, earnings), ...(siteAdmin && showAdminLink && !viewing ? [{ href: "/admin", label: "admin" }] : [])];
   return (
     <header className="no-print border-b border-border bg-surface">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 pt-4 pb-3 md:px-8">
