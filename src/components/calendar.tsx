@@ -531,16 +531,24 @@ export function MonthBoard({
                   </span>
                   {!painting && !s.everyone && s.freeHours.length > 0 && <span className="hidden truncate text-[11px] text-good md:block">{hoursName(s.freeHours)}</span>}
                   {painting && shown === "partly" && <span className="hidden text-[11px] text-muted md:block">some hours</span>}
-                  {dayPlans.map((p) => (
-                    <Link
-                      key={p.id}
-                      href={`/calendar/plans/${p.id}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="truncate rounded-sm bg-accent px-1 text-[11px] leading-4 text-accent-fg hover:no-underline"
-                    >
-                      {p.title}
-                    </Link>
-                  ))}
+                  {dayPlans.map((p) =>
+                    // While you mark your days, a plan's name is only a label: the day under it is what you press.
+                    painting ? (
+                      <span key={p.id} className="pointer-events-none truncate rounded-sm bg-accent px-1 text-[11px] leading-4 text-accent-fg">
+                        {p.title}
+                      </span>
+                    ) : (
+                      <Link
+                        key={p.id}
+                        href={`/calendar/plans/${p.id}`}
+                        draggable={false}
+                        onClick={(e) => e.stopPropagation()}
+                        className="truncate rounded-sm bg-accent px-1 text-[11px] leading-4 text-accent-fg hover:no-underline"
+                      >
+                        {p.title}
+                      </Link>
+                    ),
+                  )}
                 </div>
               );
             })}
