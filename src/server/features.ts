@@ -41,3 +41,11 @@ export const projectsEnabled = () => featureOn("projects");
 export async function requireProjects() {
   if (!(await projectsEnabled())) notFound();
 }
+
+/** The calendar: who's free when, and plans. */
+export const calendarEnabled = () => featureOn("calendar");
+
+/** For the calendar's own pages and actions: anyone without the feature gets "not found". */
+export async function requireCalendar() {
+  if (!(await calendarEnabled())) notFound();
+}

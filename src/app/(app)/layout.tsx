@@ -12,7 +12,7 @@ import { catalogSyncProgress, catalogSyncRequestedAt } from "@/server/catalog-re
 import { getContext, groupPhotos, isBandLogin } from "@/server/context";
 import { ownBand } from "@/server/data";
 import { labelsForBandAccount } from "@/server/links";
-import { featureOn, projectsEnabled } from "@/server/features";
+import { calendarEnabled, featureOn, projectsEnabled } from "@/server/features";
 import { abelConfigured } from "@/server/abel/config";
 import { AbelPanel } from "@/components/abel/abel-panel";
 import { navBadges, ordersInUse } from "@/server/nav-badges";
@@ -23,7 +23,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const ctx = await getContext();
   // What syncs with Bandcamp: the account's own books (for a band account the label made too).
   const syncOrgId = ctx.managedBy ? ctx.org.id : ctx.orgId;
-  const [labels, sync, badges, projects, band, orders, catalogAsked, catalogProgress, photos, abel] = await Promise.all([
+  const [labels, sync, badges, projects, band, orders, catalogAsked, catalogProgress, photos, abel, calendar] = await Promise.all([
     // A band account's admins see each label it's linked to (one the label made has it all on its own pages).
     ctx.isAdmin && ctx.org.kind === "band" && !ctx.managedBy ? labelsForBandAccount(ctx.orgId) : [],
     syncStatus(syncOrgId),
@@ -35,6 +35,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     ctx.viewingAs ? null : catalogSyncProgress(ctx.orgId),
     groupPhotos([ctx.org, ...ctx.accounts]),
     abelConfigured() ? featureOn("abel") : false,
+    calendarEnabled(),
   ]);
 
   // Locally, opening the app keeps it in step with Bandcamp: at most once an hour, in the background,
@@ -78,6 +79,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         syncedAt={sync?.finishedAt ?? null}
         catalogBusy={!!catalogAsked || !!catalogProgress}
         abel={abel}
+        calendar={calendar}
         labels={labels.map(({ link, label }) => ({ href: `/from-label/${link.id}`, label: `from ${label.name}` }))}
       />
       <main className="min-w-0 flex-1 px-4 py-8 md:px-8">

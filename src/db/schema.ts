@@ -1148,3 +1148,52 @@ export const siteSettings = pgTable("site_settings", {
   updatedBy: text("updated_by").references(() => user.id, { onDelete: "set null" }),
   updatedAt: text("updated_at").notNull().default(now),
 });
+
+/*
+ * The calendar (feature flag "calendar"): when people are free, and plans made with it.
+ * Availability is the person's own, not one group's: marked once, every group they're in sees it.
+ * A mark is for a whole day (hour empty) or one hour of it (0–23, the hour starting then); an
+ * hour's mark wins over its day's.
+ */
+export const availability = pgTable(
+  "availability",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    date: text("date").notNull(),
+    hour: integer("hour"),
+    available: boolean("available").notNull(),
+    updatedAt: text("updated_at").notNull().default(now),
+  },
+  (t) => [
+    uniqueIndex("availability_user_day").on(t.userId, t.date).where(sql`${t.hour} is null`),
+    uniqueIndex("availability_user_hour").on(t.userId, t.date, t.hour).where(sql`${t.hour} is not null`),
+  ],
+);
+
+/**
+ * Something a group is planning (a rehearsal, a show, a meeting): the days it could be, who it's
+ * for, and once picked, its date (and hours: from startHour up to endHour, or all day).
+ */
+export const plans = pgTable(
+  "plans",
+  {
+    id: id(),
+    orgId: orgId(),
+    title: text("title").notNull(),
+    notes: text("notes"),
+    /** The days it could be, from and to (inclusive). */
+    fromDate: text("from_date").notNull(),
+    toDate: text("to_date").notNull(),
+    /** Who it's for (account ids); empty for everyone in the group. */
+    userIds: jsonb("user_ids").$type<string[]>(),
+    date: text("date"),
+    startHour: integer("start_hour"),
+    endHour: integer("end_hour"),
+    createdByUserId: text("created_by_user_id").references(() => user.id, { onDelete: "set null" }),
+    createdAt: text("created_at").notNull().default(now),
+  },
+  (t) => [index("plans_org").on(t.orgId, t.fromDate)],
+);

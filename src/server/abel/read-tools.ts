@@ -16,6 +16,7 @@ import { periodView } from "../period-view";
 import { salesReport } from "../sales-report";
 import { type SalesBooks, salesBooksFor, summarizeSales } from "../sales-browse";
 import { abelTool, isAccountAdmin } from "./tool";
+import { CALENDAR_READ_TOOLS } from "./actions/calendar";
 
 /*
  * What Abel can look up. Each mirrors its page: the same books, the same band limits. Results are
@@ -531,4 +532,22 @@ const whereIs = abelTool({
   run: async (ctx) => pagesFor(ctx),
 });
 
-export const READ_TOOLS = [myAccess, myEarnings, whereIs, owed, listPayouts, payoutDetail, salesSummary, salesBreakdown, funds, listBands, people, catalog, orders, inventory, receipts, splits];
+export const READ_TOOLS = [
+  myAccess,
+  myEarnings,
+  whereIs,
+  owed,
+  listPayouts,
+  payoutDetail,
+  salesSummary,
+  salesBreakdown,
+  funds,
+  listBands,
+  people,
+  catalog,
+  orders,
+  inventory,
+  receipts,
+  splits,
+  ...CALENDAR_READ_TOOLS,
+];

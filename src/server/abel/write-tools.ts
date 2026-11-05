@@ -12,6 +12,7 @@ import { saleAdder } from "../manual-sales";
 import type { Context } from "../context";
 import { nameMaps } from "../data";
 import { abelTool, form, viaAction } from "./tool";
+import { CALENDAR_TOOLS } from "./actions/calendar";
 import { CATALOG_TOOLS } from "./actions/catalog";
 import { MONEY_TOOLS } from "./actions/money";
 import { RECEIPT_TOOLS } from "./actions/receipts";
@@ -186,4 +187,5 @@ export const WRITE_TOOLS = [
   ...STOCK_TOOLS,
   ...RECEIPT_TOOLS,
   ...SETTINGS_TOOLS,
+  ...CALENDAR_TOOLS,
 ];

@@ -103,7 +103,7 @@ src/
   app/
     (app)/        the signed-in app: dashboard, sales, orders, inventory, periods (payouts),
                   funds (and rules, its Rules tab), receipts, directory, bands/[id] (tabs, including
-                  Money), catalog, projects, fans, me (my earnings), from-label, settings, account
+                  Money), catalog, projects, calendar, fans, me (my earnings), from-label, settings, account
     (auth)/       sign-in, sign-up, password reset, invites, join links, welcome (set up a group)
     (admin)/      the site admin dashboard (admin.labelmaker.ing)
     api/          Better Auth, the hourly cron sync, sync status, catalog sync requests
