@@ -15,7 +15,7 @@ Run every query with:
 node scripts/live-read.mjs "<one SQL statement>"
 ```
 
-from the repo root (`/Users/archieoconnell/dev/label-payouts`). The script opens a read-only transaction, rolls it back, stops queries after 15 seconds, prints at most 200 rows and blanks private columns by name.
+from the repo root (`/Users/archieoconnell/dev/labelmaker`). The script opens a read-only transaction, rolls it back, stops queries after 15 seconds, prints at most 200 rows and blanks private columns by name.
 
 Never connect to the database any other way. Don't use `psql`, `node -e`, `tsx` or a script of your own, and never print or read out `.deploy.local`.
 

@@ -23,7 +23,7 @@ beforeAll(async () => {
 
 /** An old local-app database (same schema as the SQLite app had), with a little of everything. */
 function oldDatabase() {
-  const file = join(mkdtempSync(join(tmpdir(), "label-payouts-old-")), "label.db");
+  const file = join(mkdtempSync(join(tmpdir(), "labelmaker-old-")), "label.db");
   const sqlite = new Database(file);
   migrate(drizzle(sqlite), { migrationsFolder: resolve(import.meta.dirname, "../../../test/fixtures/sqlite-migrations") });
   sqlite.exec(`

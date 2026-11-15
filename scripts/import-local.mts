@@ -3,7 +3,7 @@
  *
  *   1. Create your login at /signup.
  *   2. Run (the dev server can keep running):
- *        npm run import:local -- --email you@example.com --sqlite ../label-payouts/data/label.db
+ *        npm run import:local -- --email you@example.com --sqlite data/label.db
  *      That creates a new account. Optional: --name "Label name" (defaults to the label band's
  *      name) --kind band
  *

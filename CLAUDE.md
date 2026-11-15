@@ -2,7 +2,7 @@
 
 # labelmaker
 
-The app is labelmaker (this repo is `label-payouts`). It splits Bandcamp earnings for labels and bands and pays people out. It's live at https://labelmaker.ing, with the site admin dashboard at https://admin.labelmaker.ing.
+The app is labelmaker (repo `archizzl/labelmaker`, folder `~/dev/labelmaker`; the Cloudflare Worker and its resources are still named `label-payouts`). It splits Bandcamp earnings for labels and bands and pays people out. It's live at https://labelmaker.ing, with the site admin dashboard at https://admin.labelmaker.ing.
 
 **Stack:**
 - **App:** Next.js 16 (App Router, server actions).

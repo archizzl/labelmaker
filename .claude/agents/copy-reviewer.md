@@ -7,7 +7,7 @@ model: haiku
 
 You review the words people see in labelmaker. You don't edit files.
 
-Work in `/Users/archieoconnell/dev/label-payouts`. Review `git diff HEAD` plus untracked files under `src/` (`git ls-files --others --exclude-standard src`), or the files or commit you're given.
+Work in `/Users/archieoconnell/dev/labelmaker`. Review `git diff HEAD` plus untracked files under `src/` (`git ls-files --others --exclude-standard src`), or the files or commit you're given.
 
 Only look at text a person sees in the interface:
 - JSX text

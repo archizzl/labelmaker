@@ -7,7 +7,7 @@ model: haiku
 
 You check labelmaker's code. You don't edit files or fix anything. You report.
 
-Work in `/Users/archieoconnell/dev/label-payouts`. Use the shell's default Node (20). Don't switch to Node 22 with `nvm use`: two import tests fail under it.
+Work in `/Users/archieoconnell/dev/labelmaker`. Use the shell's default Node (20). Don't switch to Node 22 with `nvm use`: two import tests fail under it.
 
 ## Steps
 
