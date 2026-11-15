@@ -104,7 +104,7 @@ Sign in as the site admin (the email in `SITE_ADMIN_EMAILS`), then open each tab
 ## 10. Deploy from GitHub (Cloudflare Workers Builds)
 Pushing to the `production` branch deploys. Pushing to `main` only runs the tests.
 
-Set it up once in the Cloudflare dashboard **(you)**: **Workers & Pages → label-payouts → Settings → Build → Connect**, choose GitHub and the `archizzl/label-payouts` repo, then:
+Set it up once in the Cloudflare dashboard **(you)**: **Workers & Pages → label-payouts → Settings → Build → Connect**, choose GitHub and the `archizzl/labelmaker` repo, then:
 
 | Setting | Value |
 |---|---|
