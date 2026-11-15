@@ -61,11 +61,22 @@ npm run workers:local
 
 ## Deploy
 
+**Going live means pushing to the `production` branch.** Cloudflare Workers Builds watches the GitHub repo:
+- **A push to `production`** runs the tests, then `npm run deploy` in Cloudflare's build. The site is live a few minutes later.
+- **A push to `main`** only runs the tests. It never deploys.
+
+Only when the owner asks to deploy:
+```bash
+git push origin main:production
+```
+Then watch the build in the Cloudflare dashboard (Workers & Pages → label-payouts → Deployments). If the tests fail, nothing deploys.
+
+Deploying from this Mac still works and does the same steps, for when Cloudflare's build is down or a deploy is urgent:
 ```bash
 npm run deploy
 ```
 
-**What it does:**
+**What `npm run deploy` does:**
 - refuses to run if `.env`, `.env.local` or `.env.production*` exists (see Rules below);
 - runs new migrations on the live database;
 - builds;
@@ -73,7 +84,7 @@ npm run deploy
 
 **Notes:**
 - **Node:** Wrangler needs Node 22. The script uses nvm's Node 22 by itself when the shell has 20, so there's no `nvm use` step.
-- **Credentials:** Cloudflare credentials are wrangler's saved login. The live database URL is in `.deploy.local` (git-ignored).
+- **Credentials:** on this Mac, Cloudflare credentials are wrangler's saved login and the live database URL is in `.deploy.local` (git-ignored). In Cloudflare's build, the database URL is the build secret `PRODUCTION_DATABASE_URL`.
 - **Redirect output to a log** and grep it for `✘` and `Version ID`. A narrow grep once hid a failure.
 - **"fetch failed" / EPIPE** during the upload is a dropped network connection, not a size limit; the account is on the paid plan. Retry just the upload with `npx opennextjs-cloudflare deploy`, run with Node 22.
 - **Rolling back:** `npx wrangler rollback`.
@@ -82,8 +93,8 @@ npm run deploy
 **When a task is done:**
 1. Type-check, lint and tests pass.
 2. Commit to `main` (one commit per change, with a clear message).
-3. Push to GitHub (`git push`). Always, without asking.
-4. Don't deploy. The owner deploys themselves; deploy only when they explicitly ask.
+3. Push to GitHub (`git push`, which pushes `main`). Always, without asking. Cloudflare runs the tests on it.
+4. Don't deploy: never push to `production` or run `npm run deploy` unless the owner explicitly asks.
 5. Tell the owner what's pushed.
 
 ## Reading the live database

@@ -101,8 +101,29 @@ Sign-ins are tied to that address, so use the custom domain from now on, not wor
 ## 9. Smoke test, then invite people
 Sign in as the site admin (the email in `SITE_ADMIN_EMAILS`), then open each tab: Dashboard, Sales, Orders, Payouts, Label funds, Receipts (add one with a photo), Fans. Then go to **Admin → Invite someone** to make invite links.
 
+## 10. Deploy from GitHub (Cloudflare Workers Builds)
+Pushing to the `production` branch deploys. Pushing to `main` only runs the tests.
+
+Set it up once in the Cloudflare dashboard **(you)**: **Workers & Pages → label-payouts → Settings → Build → Connect**, choose GitHub and the `archizzl/label-payouts` repo, then:
+
+| Setting | Value |
+|---|---|
+| Production branch | `production` |
+| Build command | `npm test` |
+| Deploy command | `npm run deploy` |
+| Builds for non-production branches | on |
+| Non-production branch deploy command | `npm run ci:no-deploy` |
+| Build secret | `PRODUCTION_DATABASE_URL`: the same Neon direct connection string as in `.deploy.local` |
+
+The build uses Node 22 (from `.nvmrc`). `npm run deploy` reads `PRODUCTION_DATABASE_URL` from the build's environment, so it runs the migrations, builds and deploys just as it does on your Mac. The Worker already has its own secrets (step 4), so they don't need adding to the build.
+
+To deploy what's on `main`:
+```bash
+git push origin main:production
+```
+
 ## Later
-- **Changes:** `npm run deploy`. It runs any new database migrations first.
+- **Changes:** push to `production` (step 10), or run `npm run deploy` here. Either runs any new database migrations first.
 - **Rolling back:** `npx wrangler rollback` returns to the previous version. Migrations only ever add things, so an older version still works.
 - **Logs:** `npx wrangler tail`, or the Workers dashboard's Logs tab.
 - **Trying the Cloudflare build locally:** `npm run workers:local` (a throwaway database and test secrets, on http://localhost:8799; see CLAUDE.md).

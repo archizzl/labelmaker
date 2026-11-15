@@ -16,6 +16,7 @@
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "workers:local": "node scripts/workers-local.mjs",
     "deploy": "node scripts/deploy.mjs",
+    "ci:no-deploy": "echo Tests passed. Branches other than production are never deployed.",
     "abel:eval": "vitest run --config vitest.abel-eval.config.mts",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "copy-to-production": "tsx --env-file=.env.development.local scripts/copy-to-production.mts",

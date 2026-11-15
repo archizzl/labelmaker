@@ -7,6 +7,9 @@
  * .env.local and .env.production.local into the live app, so the deploy refuses if any of them exist.
  * Your local settings live in .env.development.local, which the build skips. See DEPLOY.md.
  *
+ * Cloudflare Workers Builds runs this on every push to the `production` branch (DEPLOY.md, step 10),
+ * with PRODUCTION_DATABASE_URL as a build secret.
+ *
  * Wrangler needs Node 22; if the shell has an older Node, the build and deploy use nvm's Node 22.
  * If the upload fails with "fetch failed" (a dropped connection), it's the network: run
  * `npx opennextjs-cloudflare deploy` (with Node 22) to retry just the upload.
